@@ -14,9 +14,10 @@ import {
   Gem, 
   MessageCircle,
   Package,
-  Info,
-  Clock,
-  ExternalLink
+  User,
+  HelpCircle,
+  ShieldCheck,
+  RotateCcw
 } from 'lucide-react';
 import { Category } from '../types';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
@@ -98,8 +99,13 @@ export const Header: React.FC<HeaderProps> = ({
             <Sparkles className="w-3 h-3 text-[#D4B982] shrink-0" />
           </div>
 
-          {/* Right: Currency Indicator */}
+          {/* Right: Currency Indicator & Account */}
           <div className="hidden sm:flex items-center gap-3 text-[11px] text-white/90">
+            <Link to="/account" className="hover:text-[#D4B982] flex items-center gap-1">
+              <User className="w-3 h-3" />
+              <span>My Account</span>
+            </Link>
+            <span className="text-white/30">•</span>
             <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] font-semibold text-[#D4B982]">
               PKR (Rs.)
             </span>
@@ -113,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="grid grid-cols-3 items-center h-20 md:h-22">
             
             {/* Left: Minimalist Menu Button */}
-            <div className="flex items-center justify-start">
+            <div className="flex items-center justify-start gap-2">
               <button
                 id="main-nav-menu-btn"
                 onClick={() => setIsMenuOpen(true)}
@@ -151,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
               </Link>
             </div>
 
-            {/* Right: Minimalist Action Icons (Search, Wishlist, Bag) */}
+            {/* Right: Minimalist Action Icons (Search, Wishlist, Bag, Account) */}
             <div className="flex items-center justify-end gap-2 sm:gap-3 md:gap-4 text-sm text-[#333333]">
               {/* Search Trigger */}
               <button
@@ -165,9 +171,8 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {/* Wishlist Trigger */}
-              <button
-                id="wishlist-header-btn"
-                onClick={onOpenWishlist}
+              <Link
+                to="/wishlist"
                 className="relative p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/60 hover:bg-white border border-[#e0d8c8]/70 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
                 aria-label="Wishlist"
                 title="Your Wishlist"
@@ -178,7 +183,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {wishlistCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Shopping Bag Button */}
               <button
@@ -326,7 +331,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                 </div>
 
-                {/* 3. Track Your Order (Highlighted Feature) */}
+                {/* 3. Track Your Order */}
                 <div className="border-t border-[#e0d8c8]/60 pt-2">
                   <NavLink
                     to="/track"
@@ -349,7 +354,49 @@ export const Header: React.FC<HeaderProps> = ({
                   </NavLink>
                 </div>
 
-                {/* 4. Our Story & Atelier */}
+                {/* 4. Custom Bespoke Request */}
+                <div className="border-t border-[#e0d8c8]/60 pt-2">
+                  <NavLink
+                    to="/custom-orders"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-[#2d5a61] text-white font-medium shadow-xs'
+                          : 'text-[#333333] hover:bg-white/60 hover:text-[#2d5a61]'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-4 h-4 text-[#D4B982]" />
+                      <span className="font-serif text-lg font-medium">Custom Bespoke Atelier</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-60" />
+                  </NavLink>
+                </div>
+
+                {/* 5. Account & Orders */}
+                <div className="border-t border-[#e0d8c8]/60 pt-2">
+                  <NavLink
+                    to="/account"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-[#2d5a61] text-white font-medium shadow-xs'
+                          : 'text-[#333333] hover:bg-white/60 hover:text-[#2d5a61]'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <User className="w-4 h-4 text-[#2d5a61]" />
+                      <span className="font-serif text-lg">My Account & Orders</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-60" />
+                  </NavLink>
+                </div>
+
+                {/* 6. Our Story & Atelier */}
                 <div className="border-t border-[#e0d8c8]/60 pt-2">
                   <NavLink
                     to="/about"
@@ -370,7 +417,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </NavLink>
                 </div>
 
-                {/* 5. Contact & Studio */}
+                {/* 7. Contact & Studio */}
                 <div className="border-t border-[#e0d8c8]/60 pt-2">
                   <NavLink
                     to="/contact"
@@ -391,35 +438,40 @@ export const Header: React.FC<HeaderProps> = ({
                   </NavLink>
                 </div>
 
-                {/* 6. Custom Bespoke Request */}
-                <div className="border-t border-[#e0d8c8]/60 pt-2">
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onOpenCustomOrder();
-                    }}
-                    className="w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl text-[#2d5a61] hover:bg-white/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Sparkles className="w-4 h-4 text-[#D4B982]" />
-                      <span className="font-serif text-lg font-medium">Custom Bespoke Jewelry</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#2d5a61]" />
-                  </button>
-                </div>
-
-                {/* 7. FAQs & Customer Care */}
-                <div className="border-t border-[#e0d8c8]/60 pt-2">
-                  <button
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onOpenCustomerCare('faqs');
-                    }}
-                    className="w-full text-left flex items-center justify-between px-3 py-2 text-xs text-[#666666] hover:text-[#2d5a61] transition-colors cursor-pointer"
+                {/* 8. FAQs & Care Guides */}
+                <div className="border-t border-[#e0d8c8]/60 pt-2 flex flex-col gap-1 text-xs text-[#555555]">
+                  <Link
+                    to="/faqs"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
                   >
                     <span>FAQs & Sizing Guide</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-50" />
-                  </button>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  </Link>
+                  <Link
+                    to="/jewelry-care"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
+                  >
+                    <span>Jewelry Care & Cleansing</span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  </Link>
+                  <Link
+                    to="/shipping"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
+                  >
+                    <span>Shipping Rates & Delivery Times</span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  </Link>
+                  <Link
+                    to="/returns"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
+                  >
+                    <span>7-Day Exchange & Free Repairs</span>
+                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
+                  </Link>
                 </div>
               </nav>
             </div>
@@ -493,8 +545,8 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Track</span>
         </NavLink>
 
-        <button
-          onClick={onOpenWishlist}
+        <Link
+          to="/wishlist"
           className="relative flex flex-col items-center gap-0.5 text-[10px] font-medium text-[#666666] hover:text-[#2d5a61]"
         >
           <div className="relative">
@@ -506,7 +558,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
           <span>Wishlist</span>
-        </button>
+        </Link>
 
         <button
           onClick={onOpenCart}

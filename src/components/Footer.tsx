@@ -72,7 +72,7 @@ export const Footer: React.FC<FooterProps> = ({
 
           {/* Quick Links */}
           <div className="md:col-span-2 sm:col-span-4">
-            <h4 className="font-semibold mb-4 text-xs text-[#333333] tracking-wider uppercase">Quick Links</h4>
+            <h4 className="font-semibold mb-4 text-xs text-[#333333] tracking-wider uppercase">Collections & Studio</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm text-[#666666]">
               <li>
                 <Link to="/" className="hover:text-[#2d5a61] transition-colors">
@@ -85,6 +85,16 @@ export const Footer: React.FC<FooterProps> = ({
                 </Link>
               </li>
               <li>
+                <Link to="/custom-orders" className="hover:text-[#2d5a61] transition-colors text-[#2d5a61] font-medium">
+                  Custom Bespoke Studio
+                </Link>
+              </li>
+              <li>
+                <Link to="/wishlist" className="hover:text-[#2d5a61] transition-colors">
+                  Saved Wishlist
+                </Link>
+              </li>
+              <li>
                 <Link to="/about" className="hover:text-[#2d5a61] transition-colors">
                   Our Story & Atelier
                 </Link>
@@ -94,44 +104,32 @@ export const Footer: React.FC<FooterProps> = ({
                   Contact & Studio
                 </Link>
               </li>
-              <li>
-                <button 
-                  onClick={onOpenCustomOrder} 
-                  className="hover:text-[#2d5a61] transition-colors cursor-pointer text-left text-[#2d5a61] font-medium"
-                >
-                  Custom Bespoke Request
-                </button>
-              </li>
             </ul>
           </div>
 
           {/* Customer Care */}
           <div className="md:col-span-3 sm:col-span-4">
-            <h4 className="font-semibold mb-4 text-xs text-[#333333] tracking-wider uppercase">Customer Care</h4>
+            <h4 className="font-semibold mb-4 text-xs text-[#333333] tracking-wider uppercase">Customer Care & Help</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm text-[#666666]">
               <li>
-                <button 
-                  onClick={() => onOpenCustomerCare('faqs')} 
-                  className="hover:text-[#2d5a61] transition-colors cursor-pointer text-left"
-                >
+                <Link to="/faqs" className="hover:text-[#2d5a61] transition-colors">
                   FAQs & Sizing Guide
-                </button>
+                </Link>
               </li>
               <li>
-                <button 
-                  onClick={() => onOpenCustomerCare('shipping')} 
-                  className="hover:text-[#2d5a61] transition-colors cursor-pointer text-left"
-                >
+                <Link to="/jewelry-care" className="hover:text-[#2d5a61] transition-colors">
+                  Jewelry Care Rituals
+                </Link>
+              </li>
+              <li>
+                <Link to="/shipping" className="hover:text-[#2d5a61] transition-colors">
                   Shipping & Delivery
-                </button>
+                </Link>
               </li>
               <li>
-                <button 
-                  onClick={() => onOpenCustomerCare('returns')} 
-                  className="hover:text-[#2d5a61] transition-colors cursor-pointer text-left"
-                >
-                  Returns & Exchanges
-                </button>
+                <Link to="/returns" className="hover:text-[#2d5a61] transition-colors">
+                  7-Day Returns & Repairs
+                </Link>
               </li>
               <li>
                 <Link 
@@ -144,16 +142,21 @@ export const Footer: React.FC<FooterProps> = ({
                   </span>
                 </Link>
               </li>
+              <li>
+                <Link to="/account" className="hover:text-[#2d5a61] transition-colors">
+                  My Orders & Addresses
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Contact & Payment Column */}
           <div className="md:col-span-3 sm:col-span-4">
-            <h4 className="font-semibold mb-4 text-xs text-[#333333] tracking-wider uppercase">Contact</h4>
+            <h4 className="font-semibold mb-4 text-xs text-[#333333] tracking-wider uppercase">Contact Atelier</h4>
             <ul className="space-y-3 text-xs sm:text-sm text-[#666666] mb-6">
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#2d5a61] shrink-0" strokeWidth={1.5} />
-                <a href="tel:+923001234567" className="hover:text-[#2d5a61] transition-colors">
+                <a href="tel:+923001234567" className="hover:text-[#2d5a61] transition-colors font-medium">
                   +92 300 1234567
                 </a>
               </li>
@@ -203,7 +206,7 @@ export const Footer: React.FC<FooterProps> = ({
       {/* Copyright Bar */}
       <div className="bg-[#2d5a61] text-white/80 py-4 text-center text-xs tracking-wide">
         <div className="max-w-7xl mx-auto px-4 flex justify-center items-center gap-1.5">
-          <span>&copy; {new Date().getFullYear()} Maryam Sparkle. Handcrafted Artisanal Jewellery.</span>
+          <span>&copy; {new Date().getFullYear()} Maryam Sparkle. Handcrafted Artisanal Jewellery in Pakistan.</span>
           <Heart className="w-3.5 h-3.5 text-white/80 inline" fill="currentColor" />
         </div>
       </div>

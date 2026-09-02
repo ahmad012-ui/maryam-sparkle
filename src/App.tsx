@@ -6,6 +6,19 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
 import { ShopPage } from './pages/ShopPage';
+import { ProductDetailPage } from './pages/ProductDetailPage';
+import { CartPage } from './pages/CartPage';
+import { CheckoutPage } from './pages/CheckoutPage';
+import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
+import { WishlistPage } from './pages/WishlistPage';
+import { SearchPage } from './pages/SearchPage';
+import { AccountPage } from './pages/AccountPage';
+import { AuthPage } from './pages/AuthPage';
+import { CustomOrderPage } from './pages/CustomOrderPage';
+import { FAQPage } from './pages/FAQPage';
+import { ShippingPage } from './pages/ShippingPage';
+import { ReturnsPage } from './pages/ReturnsPage';
+import { JewelryCarePage } from './pages/JewelryCarePage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
@@ -69,7 +82,9 @@ function MainApp() {
     customNote?: string
   ) => {
     setCartItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.product.id === product.id);
+      const existingIndex = prev.findIndex(
+        (item) => item.product.id === product.id && item.selectedSize === (size || 'Medium (6.5")')
+      );
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += 1;
@@ -121,6 +136,13 @@ function MainApp() {
   const handleMoveToBag = (product: Product) => {
     handleAddToCart(product);
     setWishlistIds((prev) => prev.filter((id) => id !== product.id));
+  };
+
+  const handleMoveAllWishlistToBag = () => {
+    const itemsToAdd = PRODUCTS.filter((p) => wishlistIds.includes(p.id));
+    itemsToAdd.forEach((p) => handleAddToCart(p));
+    setWishlistIds([]);
+    navigate('/cart');
   };
 
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -191,6 +213,95 @@ function MainApp() {
                 onOpenCustomOrder={() => setIsCustomOrderOpen(true)}
               />
             }
+          />
+          <Route
+            path="/product/:slug"
+            element={
+              <ProductDetailPage
+                wishlistIds={wishlistIds}
+                onAddToCart={handleAddToCart}
+                onToggleWishlist={handleToggleWishlist}
+                onQuickView={(p) => setQuickViewProduct(p)}
+              />
+            }
+          />
+          <Route
+            path="/cart"
+            element={
+              <CartPage
+                cart={cartItems}
+                onUpdateQuantity={handleUpdateQuantity}
+                onRemoveItem={handleRemoveFromCart}
+                onClearCart={handleClearCart}
+              />
+            }
+          />
+          <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                cart={cartItems}
+                onClearCart={handleClearCart}
+              />
+            }
+          />
+          <Route
+            path="/order-confirmation"
+            element={<OrderConfirmationPage />}
+          />
+          <Route
+            path="/wishlist"
+            element={
+              <WishlistPage
+                wishlist={wishlistProducts}
+                onAddToCart={handleAddToCart}
+                onRemoveFromWishlist={handleToggleWishlist}
+                onMoveAllToCart={handleMoveAllWishlistToBag}
+              />
+            }
+          />
+          <Route
+            path="/search"
+            element={
+              <SearchPage
+                wishlistIds={wishlistIds}
+                onAddToCart={handleAddToCart}
+                onToggleWishlist={handleToggleWishlist}
+                onQuickView={(p) => setQuickViewProduct(p)}
+              />
+            }
+          />
+          <Route
+            path="/account"
+            element={<AccountPage />}
+          />
+          <Route
+            path="/login"
+            element={<AuthPage initialMode="login" />}
+          />
+          <Route
+            path="/register"
+            element={<AuthPage initialMode="register" />}
+          />
+          <Route
+            path="/custom-orders"
+            element={<CustomOrderPage />}
+          />
+          <Route
+            path="/faqs"
+            element={<FAQPage />}
+          />
+          <Route
+            path="/shipping"
+            element={<ShippingPage />}
+          />
+          <Route
+            path="/returns"
+            element={<ReturnsPage />}
+          />
+          <Route
+            path="/jewelry-care"
+            element={<JewelryCarePage />}
           />
           <Route
             path="/about"
