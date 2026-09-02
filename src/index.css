@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Libre Caslon Text', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+    --color-ms-cream: #efe8dc;
+    --color-ms-cream-light: #fdfaf5;
+    --color-ms-teal: #2d5a61;
+    --color-ms-teal-dark: #1e3c41;
+    --color-ms-text: #333333;
+    --color-ms-text-light: #666666;
+    --color-ms-border: #e0d8c8;
+    --color-gold-shimmer: #d4b982;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-ms-cream);
+    color: var(--color-ms-text);
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Custom helper classes */
+.font-serif {
+  font-family: 'Libre Caslon Text', Georgia, serif;
+}
+
+.font-sans {
+  font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+}
+
+.bg-ms-cream {
+  background-color: #efe8dc;
+}
+
+.bg-ms-cream-light {
+  background-color: #fdfaf5;
+}
+
+.bg-ms-teal {
+  background-color: #2d5a61;
+}
+
+.bg-ms-teal-dark {
+  background-color: #1e3c41;
+}
+
+.text-ms-teal {
+  color: #2d5a61;
+}
+
+.text-ms-teal-dark {
+  color: #1e3c41;
+}
+
+.text-ms-text {
+  color: #333333;
+}
+
+.text-ms-text-light {
+  color: #666666;
+}
+
+.border-ms-border {
+  border-color: #e0d8c8;
+}
+
+.decorative-sparkle::after {
+  content: ' ✧';
+  font-size: 1.1em;
+  margin-left: 6px;
+  color: #8c7e6a;
+  display: inline-block;
+}
+
+/* Arch mask helper */
+.arch-mask {
+  border-radius: 180px 180px 0 0;
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

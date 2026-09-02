@@ -1,0 +1,7 @@
+{
+  "name": "Maryam Sparkle",
+  "description": "Handmade artisanal jewellery crafted with love, inspired by nature and little moments of life.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
