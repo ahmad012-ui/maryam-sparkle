@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       {/* Top Announcement Utility Bar */}
-      <div className="bg-[#2d5a61] text-[#fdfaf5] py-2 px-4 text-xs font-medium border-b border-[#24484e]">
+      <div className="bg-[#2d5a61] text-[#fdfaf5] py-1.5 sm:py-2 px-3 sm:px-4 text-[10.5px] sm:text-xs font-medium border-b border-[#24484e]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Left: Contact Hotline & Track Order Shortcut */}
           <div className="hidden sm:flex items-center gap-4 text-[11px] text-white/90">
@@ -91,12 +91,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Center: Promo Announcement */}
-          <div className="flex-1 sm:flex-initial text-center flex items-center justify-center gap-2">
+          <div className="flex-1 sm:flex-initial text-center flex items-center justify-center gap-1.5 sm:gap-2">
             <Sparkles className="w-3 h-3 text-[#D4B982] shrink-0" />
-            <span className="tracking-wide text-[11px] sm:text-xs">
-              Free Delivery in Pakistan on orders over Rs. 3,000 • Code: <strong className="text-[#D4B982]">SPARKLE10</strong>
+            <span className="tracking-wide text-[10px] sm:text-xs">
+              Free Delivery over Rs. 3,000 in Pakistan • Code: <strong className="text-[#D4B982]">SPARKLE10</strong>
             </span>
-            <Sparkles className="w-3 h-3 text-[#D4B982] shrink-0" />
+            <Sparkles className="w-3 h-3 text-[#D4B982] shrink-0 hidden xs:inline" />
           </div>
 
           {/* Right: Currency Indicator & Account */}
@@ -115,72 +115,72 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Main Simple Navbar: Menu on Left, Logo in Center, Actions on Right */}
       <header className="sticky top-0 z-40 bg-[#efe8dc]/95 backdrop-blur-md border-b border-[#e0d8c8]/80 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-3 items-center h-20 md:h-22">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="relative flex items-center justify-between h-14 sm:h-16 md:h-20">
             
             {/* Left: Minimalist Menu Button */}
-            <div className="flex items-center justify-start gap-2">
+            <div className="flex items-center justify-start z-10 shrink-0">
               <button
                 id="main-nav-menu-btn"
                 onClick={() => setIsMenuOpen(true)}
-                className="group flex items-center gap-2.5 px-3 py-2 rounded-full border border-[#e0d8c8] bg-white/70 hover:bg-white text-[#333333] hover:text-[#2d5a61] transition-all focus:outline-none cursor-pointer shadow-2xs"
+                className="w-9 h-9 sm:w-auto sm:h-auto p-2 sm:px-3.5 sm:py-2 rounded-full border border-[#e0d8c8] bg-white/70 hover:bg-white text-[#333333] hover:text-[#2d5a61] transition-all focus:outline-none cursor-pointer shadow-2xs flex items-center justify-center gap-2"
                 aria-label="Open Navigation Menu"
               >
-                <Menu className="w-5 h-5 text-[#2d5a61] transition-transform group-hover:scale-110" strokeWidth={1.75} />
-                <span className="text-xs font-semibold uppercase tracking-widest text-[#333333] group-hover:text-[#2d5a61]">
+                <Menu className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-[#2d5a61]" strokeWidth={1.75} />
+                <span className="hidden sm:inline text-xs font-semibold uppercase tracking-widest text-[#333333]">
                   Menu
                 </span>
               </button>
             </div>
 
-            {/* Center: Brand Logo */}
-            <div className="flex items-center justify-center text-center">
+            {/* Center: Brand Logo (Mathematically Screen Centered) */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-center pointer-events-auto z-0 max-w-[42%] sm:max-w-none">
               <Link
                 to="/"
-                className="flex flex-col items-center justify-center focus:outline-none group cursor-pointer"
+                className="flex flex-col items-center justify-center focus:outline-none group cursor-pointer select-none"
                 aria-label="Maryam Sparkle Home"
               >
                 {/* Geometric Diamond Emblem */}
-                <div className="w-7 h-7 sm:w-8 sm:h-8 text-[#2d5a61] mb-0.5 relative transition-transform duration-300 group-hover:rotate-45">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-[#2d5a61] mb-0.5 relative transition-transform duration-300 group-hover:rotate-45 shrink-0">
                   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <path d="M20 2L38 20L20 38L2 20L20 2Z" stroke="currentColor" strokeWidth="1.5" />
                     <path d="M20 8L32 20L20 32L8 20L20 8Z" stroke="currentColor" strokeWidth="1" />
                     <circle cx="20" cy="20" r="3.5" fill="currentColor" />
                   </svg>
                 </div>
-                <span className="font-serif text-lg sm:text-xl md:text-2xl tracking-[0.25em] leading-tight text-[#2d5a61] font-normal">
+                <span className="font-serif text-sm sm:text-base md:text-xl tracking-[0.22em] sm:tracking-[0.25em] leading-none text-[#2d5a61] font-normal uppercase whitespace-nowrap">
                   MARYAM
                 </span>
-                <span className="text-[7px] sm:text-[8px] md:text-[9px] tracking-[0.35em] uppercase text-[#666666] font-medium">
+                <span className="text-[6.5px] sm:text-[7.5px] md:text-[9px] tracking-[0.3em] uppercase text-[#666666] font-medium leading-none mt-0.5 whitespace-nowrap">
                   Sparkle
                 </span>
               </Link>
             </div>
 
-            {/* Right: Minimalist Action Icons (Search, Wishlist, Bag, Account) */}
-            <div className="flex items-center justify-end gap-2 sm:gap-3 md:gap-4 text-sm text-[#333333]">
+            {/* Right: Minimalist Action Icons (Search, Wishlist, Bag) */}
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 md:gap-3.5 z-10 shrink-0 text-sm text-[#333333]">
               {/* Search Trigger */}
               <button
                 id="search-header-btn"
                 onClick={onOpenSearch}
-                className="p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/60 hover:bg-white border border-[#e0d8c8]/70 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
+                className="w-9 h-9 sm:w-auto sm:h-auto p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/70 hover:bg-white border border-[#e0d8c8]/80 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
                 aria-label="Search jewelry"
                 title="Search jewels"
               >
-                <Search className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={1.75} />
+                <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={1.75} />
               </button>
 
               {/* Wishlist Trigger */}
               <Link
                 to="/wishlist"
-                className="relative p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/60 hover:bg-white border border-[#e0d8c8]/70 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
+                className="relative w-9 h-9 sm:w-auto sm:h-auto p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/70 hover:bg-white border border-[#e0d8c8]/80 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
                 aria-label="Wishlist"
                 title="Your Wishlist"
               >
-                <Heart className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={1.75} />
+                <Heart className="w-4 h-4 sm:w-4.5 sm:h-4.5" strokeWidth={1.75} />
                 {wishlistCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[#D4B982] text-[#1e3c41] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                    {wishlistCount}
+                  <span className="absolute -top-1 -right-1 bg-[#D4B982] text-[#1e3c41] text-[9px] font-bold min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center shadow-xs leading-none">
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
                   </span>
                 )}
               </Link>
@@ -189,14 +189,16 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="cart-header-btn"
                 onClick={onOpenCart}
-                className="flex items-center gap-2 bg-white/90 border border-[#e0d8c8] hover:border-[#2d5a61]/50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full font-medium hover:text-[#2d5a61] transition-all focus:outline-none shadow-2xs cursor-pointer"
+                className="relative w-9 h-9 sm:w-auto sm:h-auto p-2 sm:px-3.5 sm:py-2 rounded-full hover:text-[#2d5a61] bg-white/80 hover:bg-white border border-[#e0d8c8] transition-all focus:outline-none shadow-2xs cursor-pointer flex items-center justify-center gap-2"
                 aria-label="Shopping bag"
               >
-                <div className="relative">
-                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d5a61]" strokeWidth={1.75} />
-                  <span className="absolute -top-1.5 -right-2 bg-[#2d5a61] text-white text-[9px] font-bold min-w-[16px] h-[16px] px-0.5 rounded-full flex items-center justify-center shadow-xs">
-                    {cartCount}
-                  </span>
+                <div className="relative flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-[#2d5a61]" strokeWidth={1.75} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-[#2d5a61] text-white text-[9px] font-bold min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center shadow-xs leading-none">
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </span>
+                  )}
                 </div>
                 <div className="hidden md:flex flex-col text-left">
                   <span className="text-[9px] uppercase tracking-wider text-[#888888] leading-none">Bag</span>
@@ -490,74 +492,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       )}
-
-      {/* Mobile Sticky Bottom Navigation Bar */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#efe8dc]/95 backdrop-blur-md border-t border-[#e0d8c8] px-3 py-2 flex items-center justify-around shadow-lg">
-        <NavLink
-          to="/"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
-              isActive ? 'text-[#2d5a61]' : 'text-[#666666]'
-            }`
-          }
-        >
-          <Home className="w-5 h-5" />
-          <span>Home</span>
-        </NavLink>
-
-        <NavLink
-          to="/shop"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
-              isActive ? 'text-[#2d5a61]' : 'text-[#666666]'
-            }`
-          }
-        >
-          <Gem className="w-5 h-5" />
-          <span>Shop</span>
-        </NavLink>
-
-        {/* Track Order Direct in mobile bar */}
-        <NavLink
-          to="/track"
-          className={({ isActive }) =>
-            `flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
-              isActive ? 'text-[#2d5a61]' : 'text-[#666666]'
-            }`
-          }
-        >
-          <Package className="w-5 h-5" />
-          <span>Track</span>
-        </NavLink>
-
-        <Link
-          to="/wishlist"
-          className="relative flex flex-col items-center gap-0.5 text-[10px] font-medium text-[#666666] hover:text-[#2d5a61]"
-        >
-          <div className="relative">
-            <Heart className="w-5 h-5" />
-            {wishlistCount > 0 && (
-              <span className="absolute -top-1 -right-2 bg-[#D4B982] text-[#1e3c41] text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                {wishlistCount}
-              </span>
-            )}
-          </div>
-          <span>Wishlist</span>
-        </Link>
-
-        <button
-          onClick={onOpenCart}
-          className="relative flex flex-col items-center gap-0.5 text-[10px] font-medium text-[#666666] hover:text-[#2d5a61]"
-        >
-          <div className="relative">
-            <ShoppingBag className="w-5 h-5 text-[#2d5a61]" />
-            <span className="absolute -top-1 -right-2 bg-[#2d5a61] text-white text-[9px] font-bold min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center">
-              {cartCount}
-            </span>
-          </div>
-          <span>Bag</span>
-        </button>
-      </div>
     </>
   );
 };

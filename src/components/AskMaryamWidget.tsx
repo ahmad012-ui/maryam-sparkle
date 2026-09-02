@@ -82,18 +82,23 @@ export const AskMaryamWidget: React.FC<AskMaryamWidgetProps> = ({
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-40">
+    <div
+      className="fixed z-40 right-4 sm:right-6 transition-all duration-300"
+      style={{
+        bottom: 'calc(98px + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       {/* Floating Trigger Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white p-3.5 sm:px-5 sm:py-3.5 rounded-full shadow-xl flex items-center gap-2.5 transition-all duration-300 hover:scale-105 group border border-[#D4B982]/40 cursor-pointer"
+          className="w-[54px] h-[54px] sm:w-auto sm:h-auto bg-[#2d5a61] hover:bg-[#1e3c41] text-white p-3 sm:px-5 sm:py-3.5 rounded-full shadow-[0_8px_25px_rgba(45,90,97,0.3)] flex items-center justify-center sm:justify-start gap-2.5 transition-all duration-300 hover:scale-105 group border border-[#D4B982]/40 cursor-pointer"
           aria-label="Ask Maryam Jewelry Stylist"
         >
-          <div className="relative">
-            <Sparkles className="w-5 h-5 text-[#D4B982] animate-pulse" />
+          <div className="relative flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-[#D4B982] animate-pulse shrink-0" />
           </div>
-          <span className="text-xs font-semibold tracking-wide hidden sm:inline font-sans">
+          <span className="text-xs font-semibold tracking-wide hidden sm:inline font-sans whitespace-nowrap">
             Ask Maryam Stylist
           </span>
         </button>
@@ -101,7 +106,7 @@ export const AskMaryamWidget: React.FC<AskMaryamWidgetProps> = ({
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="bg-[#fdfaf5] w-[92vw] sm:w-[380px] h-[520px] rounded-3xl shadow-2xl border border-[#e0d8c8] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="bg-[#fdfaf5] w-[calc(100vw-32px)] sm:w-[380px] h-[500px] max-h-[calc(100vh-140px)] rounded-3xl shadow-2xl border border-[#e0d8c8] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
           {/* Chat Header */}
           <div className="bg-[#2d5a61] text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-2.5">

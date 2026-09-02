@@ -27,6 +27,7 @@ import { CustomOrderModal } from './components/CustomOrderModal';
 import { StoryModal } from './components/StoryModal';
 import { CustomerCareModal } from './components/CustomerCareModal';
 import { AskMaryamWidget } from './components/AskMaryamWidget';
+import { MobileDynamicIslandNav } from './components/MobileDynamicIslandNav';
 
 // Helper component to automatically scroll to top on route change
 function ScrollToTop() {
@@ -158,7 +159,7 @@ function MainApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#efe8dc] text-[#333333] flex flex-col font-sans selection:bg-[#2d5a61] selection:text-white pb-14 sm:pb-0">
+    <div className="min-h-screen bg-[#efe8dc] text-[#333333] flex flex-col font-sans selection:bg-[#2d5a61] selection:text-white pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
       <ScrollToTop />
 
       {/* Main Responsive Header */}
@@ -349,6 +350,12 @@ function MainApp() {
         onSelectCategory={handleCategorySelect}
         onOpenCustomOrder={() => setIsCustomOrderOpen(true)}
         onOpenCustomerCare={(tab) => setCustomerCareTab(tab || 'faqs')}
+      />
+
+      {/* Floating Mobile Dynamic Island Navigation */}
+      <MobileDynamicIslandNav
+        cartCount={totalCartCount}
+        wishlistCount={wishlistIds.length}
       />
 
       {/* Floating Stylist Assistant */}
