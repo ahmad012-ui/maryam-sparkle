@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, CheckCircle2, Heart, Send, MessageSquare, Info, ShieldCheck } from 'lucide-react';
 import { HERO_IMAGES } from '../data/products';
+import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 
 export const CustomOrderPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ export const CustomOrderPage: React.FC = () => {
     specialNotes: ''
   });
 
+  const [phoneError, setPhoneError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const gemstoneOptions = [
@@ -44,7 +46,12 @@ export const CustomOrderPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone) return;
+    setPhoneError('');
+    if (!formData.name.trim()) return;
+    if (!formData.phone.trim() || !isValidPhoneNumber(formData.phone)) {
+      setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+      return;
+    }
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -251,10 +258,16 @@ export const CustomOrderPage: React.FC = () => {
                         type="tel"
                         required
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => {
+                          setPhoneError('');
+                          setFormData({ ...formData, phone: sanitizePhoneNumber(e.target.value) });
+                        }}
                         placeholder="+92 300 1234567"
-                        className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                        className={`w-full bg-[#efe8dc]/40 border rounded-xl px-3.5 py-2 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                          phoneError ? 'border-red-500' : 'border-[#e0d8c8]'
+                        }`}
                       />
+                      {phoneError && <p className="text-[11px] text-red-500 mt-1">{phoneError}</p>}
                     </div>
                   </div>
                 </div>

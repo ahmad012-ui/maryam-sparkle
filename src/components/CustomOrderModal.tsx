@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sparkles, CheckCircle2, Heart, Send } from 'lucide-react';
+import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 
 interface CustomOrderModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
     specialNotes: '',
   });
 
+  const [phoneError, setPhoneError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen) return null;
@@ -45,6 +47,12 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setPhoneError('');
+    if (!formData.name.trim()) return;
+    if (!formData.phone.trim() || !isValidPhoneNumber(formData.phone)) {
+      setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+      return;
+    }
     setSubmitted(true);
   };
 
@@ -118,10 +126,16 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
                   type="tel"
                   required
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    setPhoneError('');
+                    setFormData({ ...formData, phone: sanitizePhoneNumber(e.target.value) });
+                  }}
                   placeholder="0300 1234567"
-                  className="w-full bg-white border border-[#e0d8c8] rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#2d5a61]"
+                  className={`w-full bg-white border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#2d5a61] ${
+                    phoneError ? 'border-red-500' : 'border-[#e0d8c8]'
+                  }`}
                 />
+                {phoneError && <p className="text-[11px] text-red-500 mt-1">{phoneError}</p>}
               </div>
             </div>
 

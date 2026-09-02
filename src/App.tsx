@@ -79,9 +79,14 @@ function MainApp() {
     finish?: string,
     customNote?: string
   ) => {
+    const itemSize = size || 'Medium (6.5")';
+    const itemFinish = finish || '18k Gold Finish';
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
-        (item) => item.product.id === product.id && item.selectedSize === (size || 'Medium (6.5")')
+        (item) =>
+          item.product.id === product.id &&
+          item.selectedSize === itemSize &&
+          item.selectedFinish === itemFinish
       );
       if (existingIndex > -1) {
         const updated = [...prev];
@@ -93,8 +98,8 @@ function MainApp() {
         {
           product,
           quantity: 1,
-          selectedSize: size || 'Medium (6.5")',
-          selectedFinish: finish || '18k Gold Finish',
+          selectedSize: itemSize,
+          selectedFinish: itemFinish,
           customNote,
         },
       ];
@@ -102,11 +107,15 @@ function MainApp() {
     setIsCartOpen(true);
   };
 
-  const handleUpdateQuantity = (productId: string, delta: number) => {
+  const handleUpdateQuantity = (productId: string, delta: number, size?: string, finish?: string) => {
     setCartItems((prev) =>
       prev
         .map((item) => {
-          if (item.product.id === productId) {
+          const isMatch =
+            item.product.id === productId &&
+            (!size || item.selectedSize === size) &&
+            (!finish || item.selectedFinish === finish);
+          if (isMatch) {
             const newQty = item.quantity + delta;
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
@@ -116,8 +125,16 @@ function MainApp() {
     );
   };
 
-  const handleRemoveFromCart = (productId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.product.id !== productId));
+  const handleRemoveFromCart = (productId: string, size?: string, finish?: string) => {
+    setCartItems((prev) =>
+      prev.filter((item) => {
+        const isMatch =
+          item.product.id === productId &&
+          (!size || item.selectedSize === size) &&
+          (!finish || item.selectedFinish === finish);
+        return !isMatch;
+      })
+    );
   };
 
   const handleClearCart = () => {

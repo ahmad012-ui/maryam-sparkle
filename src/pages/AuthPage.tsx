@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Lock, Mail, User, Phone, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { authService } from '../services/authService';
+import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
@@ -24,6 +25,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -36,6 +38,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPhoneError('');
+
+    if (!isLogin && phone.trim() && !isValidPhoneNumber(phone)) {
+      setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -125,11 +134,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhoneError('');
+                    setPhone(sanitizePhoneNumber(e.target.value));
+                  }}
                   placeholder="+92 300 1234567"
-                  className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                  className={`w-full bg-[#efe8dc]/40 border rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                    phoneError ? 'border-red-500' : 'border-[#e0d8c8]'
+                  }`}
                 />
               </div>
+              {phoneError && <p className="text-[11px] text-red-500 mt-1">{phoneError}</p>}
             </div>
           )}
 

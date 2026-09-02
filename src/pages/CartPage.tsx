@@ -5,8 +5,8 @@ import { CartItem } from '../types';
 
 interface CartPageProps {
   cart: CartItem[];
-  onUpdateQuantity: (productId: string, quantity: number) => void;
-  onRemoveItem: (productId: string) => void;
+  onUpdateQuantity: (productId: string, delta: number, size?: string, finish?: string) => void;
+  onRemoveItem: (productId: string, size?: string, finish?: string) => void;
 }
 
 export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRemoveItem }) => {
@@ -103,90 +103,93 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           {/* Left Column: Cart Items List (8 cols) */}
           <div className="lg:col-span-8 space-y-4">
-            {cart.map((item) => (
-              <div
-                key={item.product.id}
-                className="bg-[#fdfaf5] rounded-2xl p-4 sm:p-5 border border-[#e0d8c8] shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 justify-between transition-all hover:shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-[#efe8dc] shrink-0 border border-[#e0d8c8]">
-                    <img
-                      src={item.product.image}
-                      alt={item.product.name}
-                      className="w-full h-full object-cover"
-                    />
+            {cart.map((item) => {
+              const itemKey = `${item.product.id}-${item.selectedSize || 'default'}-${item.selectedFinish || 'default'}`;
+              return (
+                <div
+                  key={itemKey}
+                  className="bg-[#fdfaf5] rounded-2xl p-4 sm:p-5 border border-[#e0d8c8] shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 justify-between transition-all hover:shadow-sm"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-[#efe8dc] shrink-0 border border-[#e0d8c8]">
+                      <img
+                        src={item.product.image}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#2d5a61] bg-[#2d5a61]/10 px-2 py-0.5 rounded-md">
+                        {item.product.category}
+                      </span>
+                      <h3 className="font-serif text-base sm:text-lg text-[#333333] mt-1 font-medium">
+                        <Link to={`/product/${item.product.slug}`} className="hover:text-[#2d5a61] transition-colors">
+                          {item.product.name}
+                        </Link>
+                      </h3>
+
+                      {item.selectedSize && (
+                        <p className="text-xs text-[#666666] mt-0.5">
+                          Size: <span className="font-medium text-[#444444]">{item.selectedSize}</span>
+                        </p>
+                      )}
+
+                      {item.selectedFinish && (
+                        <p className="text-xs text-[#666666]">
+                          Finish: <span className="font-medium text-[#444444]">{item.selectedFinish}</span>
+                        </p>
+                      )}
+
+                      <p className="text-sm font-semibold text-[#333333] mt-1 sm:hidden">
+                        Rs. {(item.product.price * item.quantity).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#2d5a61] bg-[#2d5a61]/10 px-2 py-0.5 rounded-md">
-                      {item.product.category}
-                    </span>
-                    <h3 className="font-serif text-base sm:text-lg text-[#333333] mt-1 font-medium">
-                      <Link to={`/product/${item.product.slug}`} className="hover:text-[#2d5a61] transition-colors">
-                        {item.product.name}
-                      </Link>
-                    </h3>
+                  {/* Right side controls on desktop */}
+                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-[#e0d8c8]">
+                    {/* Quantity Counter */}
+                    <div className="flex items-center bg-[#efe8dc]/70 border border-[#e0d8c8] rounded-xl overflow-hidden">
+                      <button
+                        onClick={() => onUpdateQuantity(item.product.id, -1, item.selectedSize, item.selectedFinish)}
+                        className="px-3 py-1.5 text-xs font-bold text-[#444444] hover:bg-[#e0d8c8] transition-colors cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="px-3 py-1.5 text-xs font-bold text-[#333333] min-w-[2rem] text-center">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => onUpdateQuantity(item.product.id, 1, item.selectedSize, item.selectedFinish)}
+                        className="px-3 py-1.5 text-xs font-bold text-[#444444] hover:bg-[#e0d8c8] transition-colors cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
 
-                    {item.selectedSize && (
-                      <p className="text-xs text-[#666666] mt-0.5">
-                        Size: <span className="font-medium text-[#444444]">{item.selectedSize}</span>
+                    {/* Price */}
+                    <div className="hidden sm:block text-right min-w-[90px]">
+                      <p className="text-sm font-bold text-[#333333]">
+                        Rs. {(item.product.price * item.quantity).toLocaleString()}
                       </p>
-                    )}
-
-                    {item.selectedFinish && (
-                      <p className="text-xs text-[#666666]">
-                        Finish: <span className="font-medium text-[#444444]">{item.selectedFinish}</span>
+                      <p className="text-[11px] text-[#888888]">
+                        Rs. {item.product.price.toLocaleString()} each
                       </p>
-                    )}
+                    </div>
 
-                    <p className="text-sm font-semibold text-[#333333] mt-1 sm:hidden">
-                      Rs. {(item.product.price * item.quantity).toLocaleString()}
-                    </p>
+                    {/* Remove action */}
+                    <button
+                      onClick={() => onRemoveItem(item.product.id, item.selectedSize, item.selectedFinish)}
+                      className="p-2 text-[#888888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      title="Remove item"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                {/* Right side controls on desktop */}
-                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-[#e0d8c8]">
-                  {/* Quantity Counter */}
-                  <div className="flex items-center bg-[#efe8dc]/70 border border-[#e0d8c8] rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                      className="px-3 py-1.5 text-xs font-bold text-[#444444] hover:bg-[#e0d8c8] transition-colors cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="px-3 py-1.5 text-xs font-bold text-[#333333] min-w-[2rem] text-center">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                      className="px-3 py-1.5 text-xs font-bold text-[#444444] hover:bg-[#e0d8c8] transition-colors cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  {/* Price */}
-                  <div className="hidden sm:block text-right min-w-[90px]">
-                    <p className="text-sm font-bold text-[#333333]">
-                      Rs. {(item.product.price * item.quantity).toLocaleString()}
-                    </p>
-                    <p className="text-[11px] text-[#888888]">
-                      Rs. {item.product.price.toLocaleString()} each
-                    </p>
-                  </div>
-
-                  {/* Remove action */}
-                  <button
-                    onClick={() => onRemoveItem(item.product.id)}
-                    className="p-2 text-[#888888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                    title="Remove item"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Right Column: Order Summary (4 cols) */}

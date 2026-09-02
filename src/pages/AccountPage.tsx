@@ -20,6 +20,12 @@ import {
 import { UserProfile, Order } from '../types';
 import { authService } from '../services/authService';
 import { orderService } from '../services/orderService';
+import {
+  sanitizePhoneNumber,
+  isValidPhoneNumber,
+  sanitizePostalCode,
+  isValidPostalCode
+} from '../utils/validation';
 
 export const AccountPage: React.FC = () => {
   const navigate = useNavigate();
@@ -30,6 +36,7 @@ export const AccountPage: React.FC = () => {
 
   // Address modal state
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const [newAddress, setNewAddress] = useState({
     label: 'Home',
     fullName: '',
@@ -53,11 +60,30 @@ export const AccountPage: React.FC = () => {
 
   const handleAddAddress = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAddress.fullName || !newAddress.address || !newAddress.phone) return;
+    const errors: Record<string, string> = {};
+
+    if (!newAddress.fullName.trim()) {
+      errors.fullName = 'Full name is required';
+    }
+    if (!newAddress.phone.trim() || !isValidPhoneNumber(newAddress.phone)) {
+      errors.phone = 'Valid phone number required (e.g. 0300 1234567)';
+    }
+    if (!newAddress.address.trim()) {
+      errors.address = 'Street address is required';
+    }
+    if (newAddress.postalCode && !isValidPostalCode(newAddress.postalCode)) {
+      errors.postalCode = 'Postal code must be 4 to 6 digits';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setAddressErrors(errors);
+      return;
+    }
 
     const added = authService.addAddress(newAddress);
     setUser(authService.getCurrentUser());
     setShowAddressModal(false);
+    setAddressErrors({});
     setNewAddress({
       label: 'Home',
       fullName: '',
@@ -352,27 +378,43 @@ export const AccountPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-medium text-[#333333] mb-1">Contact Phone</label>
+                <label className="block font-medium text-[#333333] mb-1">Contact Phone *</label>
                 <input
                   type="tel"
                   required
                   value={newAddress.phone}
-                  onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                  onChange={(e) => {
+                    setAddressErrors((prev) => ({ ...prev, phone: '' }));
+                    setNewAddress({ ...newAddress, phone: sanitizePhoneNumber(e.target.value) });
+                  }}
                   placeholder="+92 300 1234567"
-                  className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-[#333333]"
+                  className={`w-full bg-[#efe8dc]/40 border rounded-xl px-3.5 py-2 text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                    addressErrors.phone ? 'border-red-500' : 'border-[#e0d8c8]'
+                  }`}
                 />
+                {addressErrors.phone && (
+                  <p className="text-[11px] text-red-500 mt-1">{addressErrors.phone}</p>
+                )}
               </div>
 
               <div>
-                <label className="block font-medium text-[#333333] mb-1">Street Address</label>
+                <label className="block font-medium text-[#333333] mb-1">Street Address *</label>
                 <input
                   type="text"
                   required
                   value={newAddress.address}
-                  onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
+                  onChange={(e) => {
+                    setAddressErrors((prev) => ({ ...prev, address: '' }));
+                    setNewAddress({ ...newAddress, address: e.target.value });
+                  }}
                   placeholder="Street / House details"
-                  className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-[#333333]"
+                  className={`w-full bg-[#efe8dc]/40 border rounded-xl px-3.5 py-2 text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                    addressErrors.address ? 'border-red-500' : 'border-[#e0d8c8]'
+                  }`}
                 />
+                {addressErrors.address && (
+                  <p className="text-[11px] text-red-500 mt-1">{addressErrors.address}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -382,17 +424,27 @@ export const AccountPage: React.FC = () => {
                     type="text"
                     value={newAddress.city}
                     onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                    className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-[#333333]"
+                    className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-[#333333] focus:outline-none focus:border-[#2d5a61]"
                   />
                 </div>
                 <div>
                   <label className="block font-medium text-[#333333] mb-1">Postal Code</label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={newAddress.postalCode}
-                    onChange={(e) => setNewAddress({ ...newAddress, postalCode: e.target.value })}
-                    className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-[#333333]"
+                    onChange={(e) => {
+                      setAddressErrors((prev) => ({ ...prev, postalCode: '' }));
+                      setNewAddress({ ...newAddress, postalCode: sanitizePostalCode(e.target.value) });
+                    }}
+                    placeholder="e.g. 75500"
+                    className={`w-full bg-[#efe8dc]/40 border rounded-xl px-3.5 py-2 text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                      addressErrors.postalCode ? 'border-red-500' : 'border-[#e0d8c8]'
+                    }`}
                   />
+                  {addressErrors.postalCode && (
+                    <p className="text-[11px] text-red-500 mt-1">{addressErrors.postalCode}</p>
+                  )}
                 </div>
               </div>
 

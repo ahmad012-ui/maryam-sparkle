@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck } from 'lucide-react';
 import { CartItem } from '../types';
+import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 
 interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
-  onUpdateQuantity: (productId: string, delta: number) => void;
-  onRemoveItem: (productId: string) => void;
+  onUpdateQuantity: (productId: string, delta: number, size?: string, finish?: string) => void;
+  onRemoveItem: (productId: string, size?: string, finish?: string) => void;
   onClearCart: () => void;
 }
 
@@ -36,6 +37,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     paymentMethod: 'cod',
     orderNotes: '',
   });
+  const [phoneError, setPhoneError] = useState('');
 
   if (!isOpen) return null;
 
@@ -69,6 +71,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
   const handleCheckoutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setPhoneError('');
+    if (!isValidPhoneNumber(checkoutData.phone)) {
+      setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+      return;
+    }
     const newOrderId = `MS-${Math.floor(100000 + Math.random() * 900000)}`;
     setOrderId(newOrderId);
     setOrderComplete(true);
@@ -203,10 +210,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   type="tel"
                   required
                   value={checkoutData.phone}
-                  onChange={(e) => setCheckoutData({ ...checkoutData, phone: e.target.value })}
+                  onChange={(e) => {
+                    setPhoneError('');
+                    setCheckoutData({ ...checkoutData, phone: sanitizePhoneNumber(e.target.value) });
+                  }}
                   placeholder="e.g. 0300 1234567"
-                  className="w-full bg-white border border-[#e0d8c8] rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#2d5a61]"
+                  className={`w-full bg-white border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#2d5a61] ${
+                    phoneError ? 'border-red-500' : 'border-[#e0d8c8]'
+                  }`}
                 />
+                {phoneError && <p className="text-[11px] text-red-500 mt-1">{phoneError}</p>}
               </div>
 
               <div>
@@ -316,68 +329,71 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {cartItems.map((item) => (
-              <div
-                key={item.product.id}
-                className="flex gap-3.5 bg-[#fdfaf5] p-3.5 rounded-2xl border border-[#e0d8c8] shadow-2xs"
-              >
-                {/* Product thumbnail */}
-                <img
-                  src={item.product.image}
-                  alt={item.product.name}
-                  className="w-20 h-20 object-cover rounded-xl border border-[#e0d8c8]/50"
-                />
+            {cartItems.map((item) => {
+              const itemKey = `${item.product.id}-${item.selectedSize || 'default'}-${item.selectedFinish || 'default'}`;
+              return (
+                <div
+                  key={itemKey}
+                  className="flex gap-3.5 bg-[#fdfaf5] p-3.5 rounded-2xl border border-[#e0d8c8] shadow-2xs"
+                >
+                  {/* Product thumbnail */}
+                  <img
+                    src={item.product.image}
+                    alt={item.product.name}
+                    className="w-20 h-20 object-cover rounded-xl border border-[#e0d8c8]/50"
+                  />
 
-                {/* Details */}
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-serif text-sm text-[#333333] font-medium leading-tight">
-                        {item.product.name}
-                      </h4>
-                      <button
-                        onClick={() => onRemoveItem(item.product.id)}
-                        className="text-[#888888] hover:text-red-500 p-1 transition-colors"
-                        aria-label="Remove item"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                  {/* Details */}
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-serif text-sm text-[#333333] font-medium leading-tight">
+                          {item.product.name}
+                        </h4>
+                        <button
+                          onClick={() => onRemoveItem(item.product.id, item.selectedSize, item.selectedFinish)}
+                          className="text-[#888888] hover:text-red-500 p-1 transition-colors"
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-[#2d5a61] font-semibold mt-1">
+                        Rs. {item.product.price.toLocaleString()}
+                      </p>
+
+                      {item.selectedSize && (
+                        <span className="text-[10px] text-[#888888]">
+                          Size: {item.selectedSize}
+                        </span>
+                      )}
                     </div>
 
-                    <p className="text-xs text-[#2d5a61] font-semibold mt-1">
-                      Rs. {item.product.price.toLocaleString()}
-                    </p>
-
-                    {item.selectedSize && (
-                      <span className="text-[10px] text-[#888888]">
-                        Size: {item.selectedSize}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Quantity selector */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="flex items-center border border-[#e0d8c8] rounded-full bg-[#efe8dc]/50 px-2 py-0.5">
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, -1)}
-                        className="p-1 hover:text-[#2d5a61] text-[#666666]"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="text-xs font-semibold px-2 text-[#333333]">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, 1)}
-                        className="p-1 hover:text-[#2d5a61] text-[#666666]"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
+                    {/* Quantity selector */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center border border-[#e0d8c8] rounded-full bg-[#efe8dc]/50 px-2 py-0.5">
+                        <button
+                          onClick={() => onUpdateQuantity(item.product.id, -1, item.selectedSize, item.selectedFinish)}
+                          className="p-1 hover:text-[#2d5a61] text-[#666666]"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-xs font-semibold px-2 text-[#333333]">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => onUpdateQuantity(item.product.id, 1, item.selectedSize, item.selectedFinish)}
+                          className="p-1 hover:text-[#2d5a61] text-[#666666]"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {/* Promo Code Form */}
             <form onSubmit={handleApplyPromo} className="pt-2">

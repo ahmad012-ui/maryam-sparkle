@@ -15,6 +15,12 @@ import {
 import { CartItem, Order } from '../types';
 import { orderService } from '../services/orderService';
 import { authService } from '../services/authService';
+import {
+  sanitizePhoneNumber,
+  isValidPhoneNumber,
+  sanitizePostalCode,
+  isValidPostalCode
+} from '../utils/validation';
 
 interface CheckoutPageProps {
   cart: CartItem[];
@@ -75,9 +81,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
     const errors: Record<string, string> = {};
     if (!formData.fullName.trim()) errors.fullName = 'Full name is required';
     if (!formData.email.trim() || !formData.email.includes('@')) errors.email = 'Valid email is required';
-    if (!formData.phone.trim() || formData.phone.length < 10) errors.phone = 'Valid phone number is required';
+    if (!formData.phone.trim() || !isValidPhoneNumber(formData.phone)) {
+      errors.phone = 'Valid phone number is required (e.g. 0300 1234567 or +92 300 1234567)';
+    }
     if (!formData.address.trim()) errors.address = 'Delivery address is required';
     if (!formData.city.trim()) errors.city = 'City is required';
+    if (formData.postalCode && !isValidPostalCode(formData.postalCode)) {
+      errors.postalCode = 'Postal code must be 4 to 6 digits';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -219,7 +230,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, phone: sanitizePhoneNumber(e.target.value) })}
                         placeholder="+92 300 1234567"
                         className={`w-full bg-[#efe8dc]/40 border rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
                           formErrors.phone ? 'border-red-500' : 'border-[#e0d8c8]'
@@ -274,11 +285,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                       <label className="block text-xs font-semibold text-[#333333] mb-1.5">Postal Code</label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         value={formData.postalCode}
-                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, postalCode: sanitizePostalCode(e.target.value) })}
                         placeholder="75500"
-                        className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                        className={`w-full bg-[#efe8dc]/40 border rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                          formErrors.postalCode ? 'border-red-500' : 'border-[#e0d8c8]'
+                        }`}
                       />
+                      {formErrors.postalCode && <p className="text-[11px] text-red-500 mt-1">{formErrors.postalCode}</p>}
                     </div>
 
                     <div className="col-span-2 sm:col-span-1">
@@ -468,24 +483,27 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
 
                 {/* Items List */}
                 <div className="max-h-60 overflow-y-auto space-y-3 pr-1 mb-6 border-b border-[#e0d8c8] pb-6 scrollbar-thin">
-                  {cart.map((item) => (
-                    <div key={item.product.id} className="flex items-center gap-3.5">
-                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#efe8dc] shrink-0 border border-[#e0d8c8]">
-                        <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                  {cart.map((item) => {
+                    const itemKey = `${item.product.id}-${item.selectedSize || 'default'}-${item.selectedFinish || 'default'}`;
+                    return (
+                      <div key={itemKey} className="flex items-center gap-3.5">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#efe8dc] shrink-0 border border-[#e0d8c8]">
+                          <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-serif text-xs text-[#333333] font-medium truncate">
+                            {item.product.name}
+                          </h4>
+                          <p className="text-[11px] text-[#666666]">
+                            Qty: {item.quantity} {item.selectedSize ? `· ${item.selectedSize}` : ''}
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold text-[#333333] shrink-0">
+                          Rs. {(item.product.price * item.quantity).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-serif text-xs text-[#333333] font-medium truncate">
-                          {item.product.name}
-                        </h4>
-                        <p className="text-[11px] text-[#666666]">
-                          Qty: {item.quantity} {item.selectedSize ? `· ${item.selectedSize}` : ''}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-[#333333] shrink-0">
-                        Rs. {(item.product.price * item.quantity).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Subtotal Calculation */}
