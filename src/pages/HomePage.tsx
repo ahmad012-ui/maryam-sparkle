@@ -4,6 +4,7 @@ import { ValueProps } from '../components/ValueProps';
 import { ShopByCollection } from '../components/ShopByCollection';
 import { BestSellers } from '../components/BestSellers';
 import { OurStory } from '../components/OurStory';
+import { InstagramGrid } from '../components/InstagramGrid';
 import { Product, Category } from '../types';
 import { useNavigate } from 'react-router-dom';
 
@@ -80,6 +81,11 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* Our Story Craftsmanship Section */}
       <OurStory onLearnMore={() => navigate('/about')} />
+
+      {/* Instagram Gallery */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-6">
+        <InstagramGrid />
+      </div>
     </div>
   );
 };

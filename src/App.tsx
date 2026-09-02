@@ -15,10 +15,7 @@ import { SearchPage } from './pages/SearchPage';
 import { AccountPage } from './pages/AccountPage';
 import { AuthPage } from './pages/AuthPage';
 import { CustomOrderPage } from './pages/CustomOrderPage';
-import { FAQPage } from './pages/FAQPage';
-import { ShippingPage } from './pages/ShippingPage';
-import { ReturnsPage } from './pages/ReturnsPage';
-import { JewelryCarePage } from './pages/JewelryCarePage';
+import { CustomerCarePage } from './pages/CustomerCarePage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
@@ -288,20 +285,28 @@ function MainApp() {
             element={<CustomOrderPage />}
           />
           <Route
+            path="/customer-care"
+            element={<CustomerCarePage />}
+          />
+          <Route
+            path="/help"
+            element={<CustomerCarePage />}
+          />
+          <Route
             path="/faqs"
-            element={<FAQPage />}
+            element={<CustomerCarePage />}
           />
           <Route
             path="/shipping"
-            element={<ShippingPage />}
+            element={<CustomerCarePage />}
           />
           <Route
             path="/returns"
-            element={<ReturnsPage />}
+            element={<CustomerCarePage />}
           />
           <Route
             path="/jewelry-care"
-            element={<JewelryCarePage />}
+            element={<CustomerCarePage />}
           />
           <Route
             path="/about"

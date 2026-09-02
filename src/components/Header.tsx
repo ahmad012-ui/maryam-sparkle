@@ -438,40 +438,25 @@ export const Header: React.FC<HeaderProps> = ({
                   </NavLink>
                 </div>
 
-                {/* 8. FAQs & Care Guides */}
-                <div className="border-t border-[#e0d8c8]/60 pt-2 flex flex-col gap-1 text-xs text-[#555555]">
-                  <Link
-                    to="/faqs"
+                {/* 8. Consolidated Customer Care & Help */}
+                <div className="border-t border-[#e0d8c8]/60 pt-2">
+                  <NavLink
+                    to="/customer-care"
                     onClick={() => setIsMenuOpen(false)}
-                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
+                    className={({ isActive }) =>
+                      `flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
+                        isActive
+                          ? 'bg-[#2d5a61] text-white font-medium shadow-xs'
+                          : 'text-[#333333] hover:bg-white/60 hover:text-[#2d5a61]'
+                      }`
+                    }
                   >
-                    <span>FAQs & Sizing Guide</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-                  </Link>
-                  <Link
-                    to="/jewelry-care"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
-                  >
-                    <span>Jewelry Care & Cleansing</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-                  </Link>
-                  <Link
-                    to="/shipping"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
-                  >
-                    <span>Shipping Rates & Delivery Times</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-                  </Link>
-                  <Link
-                    to="/returns"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-3 py-1.5 hover:text-[#2d5a61] flex items-center justify-between"
-                  >
-                    <span>7-Day Exchange & Free Repairs</span>
-                    <ChevronRight className="w-3.5 h-3.5 opacity-40" />
-                  </Link>
+                    <div className="flex items-center gap-3">
+                      <HelpCircle className="w-4 h-4 text-[#2d5a61]" />
+                      <span className="font-serif text-lg">Customer Care & Help</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-60" />
+                  </NavLink>
                 </div>
               </nav>
             </div>
