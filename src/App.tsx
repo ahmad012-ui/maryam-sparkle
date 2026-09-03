@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { PRODUCTS, CATEGORIES } from './data/products';
 import { Product, CartItem } from './types';
 import { Header } from './components/Header';
@@ -451,6 +452,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <MainApp />
+      <SpeedInsights />
     </BrowserRouter>
   );
 }
