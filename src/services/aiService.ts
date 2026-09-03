@@ -60,7 +60,7 @@ export const aiService = {
       case 'returns':
         return 'We offer a 7-day hassle-free exchange or repair guarantee. If a piece arrives damaged or requires resizing, we will adjust it for free.';
       case 'care':
-        return 'To preserve gemstone brilliance and 18k gold luster: avoid direct contact with perfumes and lotions, store in our soft microfiber pouch, and gently polish with a clean dry cloth.';
+        return 'To keep your handmade bead jewelry and hardware in beautiful condition: avoid direct contact with perfumes and harsh moisture, store in our soft microfiber pouch, and gently wipe with a clean dry cloth.';
       case 'sizing':
         return 'Standard sizes: Small (6.0"), Medium (6.5"), Large (7.0"). We also craft custom measurements on request at no extra charge!';
       case 'payment':
@@ -114,8 +114,8 @@ export const aiService = {
       }
     }
 
-    // 3. Color or Gemstone query
-    const colors = ['red', 'ruby', 'green', 'aventurine', 'purple', 'lavender', 'amethyst', 'pearl', 'white', 'black', 'onyx', 'turquoise', 'gold', 'citrine'];
+    // 3. Color or style query
+    const colors = ['red', 'ruby', 'crimson', 'green', 'purple', 'lavender', 'white', 'black', 'midnight', 'gold', 'silver', 'blue', 'pink', 'rose'];
     const foundColor = colors.find((c) => q.includes(c));
     if (foundColor) {
       const matched = PRODUCTS.filter(
@@ -128,7 +128,7 @@ export const aiService = {
 
       if (matched.length > 0) {
         return {
-          reply: `I love that aesthetic! Here are our favorite handcrafted pieces featuring **${foundColor}** stones and accents:`,
+          reply: `I love that aesthetic! Here are our favorite handcrafted pieces featuring **${foundColor}** beads and accents:`,
           suggestedProducts: matched.slice(0, 4),
           suggestedActions: [
             { label: `View ${foundColor} collection in shop`, action: 'navigate', payload: `/shop?search=${foundColor}` }
@@ -141,7 +141,7 @@ export const aiService = {
     if (q.includes('anklet') || q.includes('ankle')) {
       const anklets = PRODUCTS.filter((p) => p.category === 'Anklets');
       return {
-        reply: `Our delicate anklets are strung with waterproof thread, natural citrine chips, and soft chime bells — perfect for sunny days and seaside walks.`,
+        reply: `Our delicate anklets are strung with waterproof cord, colorful beads, and charming accents — perfect for sunny days and seaside walks.`,
         suggestedProducts: anklets,
         suggestedActions: [{ label: 'Shop All Anklets', action: 'navigate', payload: '/shop/anklets' }]
       };
@@ -150,7 +150,7 @@ export const aiService = {
     if (q.includes('necklace') || q.includes('choker')) {
       const necklaces = PRODUCTS.filter((p) => p.category === 'Necklaces');
       return {
-        reply: `Our necklaces feature hand-cut rose quartz nuggets, baroque pearls, and artisan hammered clasps designed for graceful layering.`,
+        reply: `Our necklaces feature vibrant glass beads, delicate charms, and linked chain accents designed for graceful layering.`,
         suggestedProducts: necklaces,
         suggestedActions: [{ label: 'Shop All Necklaces', action: 'navigate', payload: '/shop/necklaces' }]
       };
@@ -159,7 +159,7 @@ export const aiService = {
     if (q.includes('ring')) {
       const rings = PRODUCTS.filter((p) => p.category === 'Rings');
       return {
-        reply: `Our micro-bead stacking rings feature natural carnelian and freshwater seed pearls on comfortable elastic bands.`,
+        reply: `Our beaded stacking rings feature vibrant glass and acrylic seed beads on comfortable stretch bands.`,
         suggestedProducts: rings,
         suggestedActions: [{ label: 'Shop Stacking Rings', action: 'navigate', payload: '/shop/rings' }]
       };
@@ -168,7 +168,7 @@ export const aiService = {
     if (q.includes('custom') || q.includes('bespoke') || q.includes('name') || q.includes('birthstone')) {
       const customPieces = PRODUCTS.filter((p) => p.category === 'Custom Pieces');
       return {
-        reply: `We love creating one-of-a-kind bespoke jewelry! Maryam can customize initial charms, preferred birthstones (Ruby, Amethyst, Citrine), and exact wrist sizing.`,
+        reply: `We love creating one-of-a-kind bespoke jewelry! Maryam can customize initial charms, preferred bead colors, and exact sizing.`,
         suggestedProducts: customPieces,
         suggestedActions: [
           { label: 'Open Custom Jewelry Designer', action: 'navigate', payload: '/custom-orders' }
@@ -180,7 +180,7 @@ export const aiService = {
     if (q.includes('care') || q.includes('clean') || q.includes('water') || q.includes('perfume')) {
       const careInfo = await this.getStorePolicy('care');
       return {
-        reply: `💎 **Jewelry Care Guide:**\n\n${careInfo}\n\n*Pro-tip:* Roll elastic bead bracelets gently onto your wrist rather than stretching them widely!`,
+        reply: `✨ **Jewelry Care Guide:**\n\n${careInfo}\n\n*Pro-tip:* Roll elastic bead bracelets gently onto your wrist rather than stretching them widely!`,
         suggestedActions: [{ label: 'Read Full Care Guide', action: 'navigate', payload: '/jewelry-care' }]
       };
     }
@@ -204,7 +204,7 @@ export const aiService = {
     // Default intelligent greeting & popular picks
     const popular = PRODUCTS.filter((p) => p.isBestSeller).slice(0, 3);
     return {
-      reply: `Hello! I'm your **Maryam Sparkle AI Stylist** ✨ I can help you find the perfect gemstone piece, recommend gifts by budget, check live order delivery status, or guide custom bridal stacks. How can I help you today?`,
+      reply: `Hello! I'm your **Maryam Sparkle AI Stylist** ✨ I can help you find the perfect handcrafted beaded piece, recommend gifts by budget, check live order delivery status, or guide custom initial pieces. How can I help you today?`,
       suggestedProducts: popular,
       suggestedActions: [
         { label: 'Show Best Sellers', action: 'navigate', payload: '/shop' },

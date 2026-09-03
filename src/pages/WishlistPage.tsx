@@ -2,17 +2,18 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, ShoppingBag, Trash2, ArrowRight, Sparkles } from 'lucide-react';
 import { Product } from '../types';
+import { SEO } from '../components/SEO';
 
 interface WishlistPageProps {
   wishlist: Product[];
-  onAddToCart: (product: Product) => void;
+  onMoveToBag: (product: Product) => void;
   onRemoveFromWishlist: (product: Product) => void;
   onMoveAllToCart: () => void;
 }
 
 export const WishlistPage: React.FC<WishlistPageProps> = ({
   wishlist,
-  onAddToCart,
+  onMoveToBag,
   onRemoveFromWishlist,
   onMoveAllToCart
 }) => {
@@ -21,12 +22,17 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({
   if (wishlist.length === 0) {
     return (
       <div className="min-h-[70vh] bg-[#efe8dc] flex flex-col items-center justify-center px-6 py-20 text-center">
+        <SEO
+          title="Saved Studio Favorites"
+          description="Review your saved handmade bead jewelry, bracelets, and necklaces in your Maryam Sparkle studio wishlist."
+          canonical="/wishlist"
+        />
         <div className="w-24 h-24 bg-[#fdfaf5] rounded-full flex items-center justify-center mb-6 shadow-sm border border-[#e0d8c8]">
           <Heart className="w-10 h-10 text-[#2d5a61]/60" />
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl text-[#333333] mb-3">Your Wishlist is Empty</h1>
         <p className="text-[#666666] max-w-md mb-8 text-sm sm:text-base leading-relaxed">
-          Save your favorite handmade necklaces, crystal bracelets, and delicate anklets here by tapping the heart icon on any piece.
+          Save your favorite handmade necklaces, bead bracelets, and delicate anklets here by tapping the heart icon on any piece.
         </p>
         <Link
           to="/shop"
@@ -41,6 +47,11 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#efe8dc] py-12 md:py-16">
+      <SEO
+        title="Saved Studio Favorites"
+        description="Review your saved handmade bead jewelry, bracelets, and necklaces in your Maryam Sparkle studio wishlist."
+        canonical="/wishlist"
+      />
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e0d8c8] mb-10">

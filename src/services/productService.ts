@@ -35,7 +35,9 @@ export const productService = {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
+          p.shortDescription?.toLowerCase().includes(q) ||
           p.materials.some((m) => m.toLowerCase().includes(q)) ||
+          p.colors?.some((c) => c.toLowerCase().includes(q)) ||
           p.tags?.some((t) => t.toLowerCase().includes(q)) ||
           p.category.toLowerCase().includes(q)
       );
@@ -55,9 +57,47 @@ export const productService = {
 
     if (filters?.material) {
       const mat = filters.material.toLowerCase();
-      result = result.filter((p) =>
-        p.materials.some((m) => m.toLowerCase().includes(mat))
-      );
+      result = result.filter((p) => {
+        if (mat.includes('gold')) {
+          return (
+            (p.finish?.toLowerCase().includes('gold') ?? false) ||
+            (p.availableFinishes?.some((f) => f.toLowerCase().includes('gold')) ?? false) ||
+            p.materials.some((m) => m.toLowerCase().includes('gold')) ||
+            (p.colors?.some((c) => c.toLowerCase().includes('gold')) ?? false) ||
+            (p.tags?.some((t) => t.toLowerCase().includes('gold')) ?? false)
+          );
+        }
+        if (mat.includes('silver')) {
+          return (
+            (p.finish?.toLowerCase().includes('silver') ?? false) ||
+            (p.availableFinishes?.some((f) => f.toLowerCase().includes('silver')) ?? false) ||
+            p.materials.some((m) => m.toLowerCase().includes('silver') || m.toLowerCase().includes('sterling')) ||
+            (p.colors?.some((c) => c.toLowerCase().includes('silver') || c.toLowerCase().includes('sterling')) ?? false) ||
+            (p.tags?.some((t) => t.toLowerCase().includes('silver') || t.toLowerCase().includes('sterling')) ?? false) ||
+            (p.shortDescription?.toLowerCase().includes('silver') ?? false)
+          );
+        }
+        if (mat.includes('brass')) {
+          return (
+            (p.finish?.toLowerCase().includes('brass') ?? false) ||
+            p.materials.some((m) => m.toLowerCase().includes('brass'))
+          );
+        }
+        if (mat.includes('steel')) {
+          return (
+            (p.finish?.toLowerCase().includes('steel') ?? false) ||
+            p.materials.some((m) => m.toLowerCase().includes('steel'))
+          );
+        }
+        if (mat.includes('pearl')) {
+          return p.materials.some((m) => m.toLowerCase().includes('pearl'));
+        }
+        return (
+          p.materials.some((m) => m.toLowerCase().includes(mat)) ||
+          (p.tags?.some((t) => t.toLowerCase().includes(mat)) ?? false) ||
+          (p.finish?.toLowerCase().includes(mat) ?? false)
+        );
+      });
     }
 
     if (filters?.color) {

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Product, Category } from '../types';
+import { PriceRangeFilter } from '../components/PriceRangeFilter';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -42,28 +43,50 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating' | 'newest'>('featured');
-  const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
-  const [priceRange, setPriceRange] = useState<number>(3000);
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [gridCols, setGridCols] = useState<3 | 4>(3);
 
-  // Extract all unique materials across products
+  const toggleMaterial = (mat: string) => {
+    setSelectedMaterials((prev) =>
+      prev.includes(mat) ? prev.filter((m) => m !== mat) : [...prev, mat]
+    );
+  };
+
+  const clearMaterials = () => {
+    setSelectedMaterials([]);
+  };
+
+  // Dynamic price bounds derived directly from the actual catalog
+  const { catalogMin, catalogMax } = useMemo(() => {
+    if (!products.length) return { catalogMin: 0, catalogMax: 0 };
+    const prices = products
+      .map((p) => p.price)
+      .filter((price) => typeof price === 'number' && !isNaN(price));
+    if (!prices.length) return { catalogMin: 0, catalogMax: 0 };
+    return {
+      catalogMin: Math.min(...prices),
+      catalogMax: Math.max(...prices),
+    };
+  }, [products]);
+
+  const [minPriceFilter, setMinPriceFilter] = useState<number | null>(null);
+  const [maxPriceFilter, setMaxPriceFilter] = useState<number | null>(null);
+
+  const activeMinPrice = minPriceFilter !== null ? minPriceFilter : catalogMin;
+  const activeMaxPrice = maxPriceFilter !== null ? maxPriceFilter : catalogMax;
+
+  // Extract all unique materials dynamically from the actual product catalog data
   const allMaterials = useMemo(() => {
     const set = new Set<string>();
     products.forEach((p) => {
-      p.materials.forEach((m) => {
-        if (m.toLowerCase().includes('quartz')) set.add('Quartz');
-        else if (m.toLowerCase().includes('pearl')) set.add('Freshwater Pearls');
-        else if (m.toLowerCase().includes('aventurine')) set.add('Aventurine');
-        else if (m.toLowerCase().includes('garnet')) set.add('Garnet');
-        else if (m.toLowerCase().includes('onyx')) set.add('Onyx');
-        else if (m.toLowerCase().includes('amethyst')) set.add('Amethyst');
-        else if (m.toLowerCase().includes('gold')) set.add('18K Gold Plated');
-        else if (m.toLowerCase().includes('brass')) set.add('Brass');
+      p.materials?.forEach((m) => {
+        const trimmed = m.trim();
+        if (trimmed) set.add(trimmed);
       });
     });
-    return Array.from(set);
+    return Array.from(set).sort();
   }, [products]);
 
   // Filter and sort products
@@ -73,28 +96,39 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       if (selectedCategory && p.category.toLowerCase() !== selectedCategory.toLowerCase()) {
         return false;
       }
-      // Price filter
-      if (p.price > priceRange) {
+      // Price filter (dynamic catalog range)
+      if (p.price < activeMinPrice || p.price > activeMaxPrice) {
         return false;
       }
       // In stock filter
       if (inStockOnly && !p.inStock) {
         return false;
       }
-      // Material filter
-      if (selectedMaterial) {
-        const hasMaterial = p.materials.some((m) =>
-          m.toLowerCase().includes(selectedMaterial.toLowerCase())
-        );
-        if (!hasMaterial) return false;
+      // Material & Finish filter (multi-select, data-driven matching)
+      if (selectedMaterials.length > 0) {
+        const matches = selectedMaterials.some((selectedMat) => {
+          const selLower = selectedMat.toLowerCase();
+          return (
+            p.materials?.some((m) => m.toLowerCase() === selLower || m.toLowerCase().includes(selLower)) ||
+            (p.finish?.toLowerCase() === selLower || p.finish?.toLowerCase().includes(selLower)) ||
+            (p.availableFinishes?.some((f) => f.toLowerCase() === selLower || f.toLowerCase().includes(selLower)))
+          );
+        });
+        if (!matches) return false;
       }
       // Search query
       if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
+        const query = searchQuery.toLowerCase().trim();
         const matchName = p.name.toLowerCase().includes(query);
         const matchDesc = p.description.toLowerCase().includes(query);
-        const matchTags = p.tags?.some((t) => t.toLowerCase().includes(query));
-        if (!matchName && !matchDesc && !matchTags) return false;
+        const matchShortDesc = p.shortDescription?.toLowerCase().includes(query) ?? false;
+        const matchMaterials = p.materials.some((m) => m.toLowerCase().includes(query));
+        const matchColors = p.colors?.some((c) => c.toLowerCase().includes(query)) ?? false;
+        const matchTags = p.tags?.some((t) => t.toLowerCase().includes(query)) ?? false;
+        const matchCat = p.category.toLowerCase().includes(query);
+        if (!matchName && !matchDesc && !matchShortDesc && !matchMaterials && !matchColors && !matchTags && !matchCat) {
+          return false;
+        }
       }
       return true;
     }).sort((a, b) => {
@@ -104,18 +138,23 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       if (selectedSort === 'newest') return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
       return (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0);
     });
-  }, [products, selectedCategory, priceRange, inStockOnly, selectedMaterial, searchQuery, selectedSort]);
+  }, [products, selectedCategory, activeMinPrice, activeMaxPrice, inStockOnly, selectedMaterials, searchQuery, selectedSort]);
+
+  const isPriceFiltered =
+    (minPriceFilter !== null && minPriceFilter > catalogMin) ||
+    (maxPriceFilter !== null && maxPriceFilter < catalogMax);
 
   const activeFilterCount = (selectedCategory ? 1 : 0) + 
-    (selectedMaterial ? 1 : 0) + 
-    (priceRange < 3000 ? 1 : 0) + 
+    (selectedMaterials.length > 0 ? 1 : 0) + 
+    (isPriceFiltered ? 1 : 0) + 
     (inStockOnly ? 1 : 0) + 
-    (searchQuery ? 1 : 0);
+    (searchQuery.trim() ? 1 : 0);
 
   const handleResetFilters = () => {
     onSelectCategory(null);
-    setSelectedMaterial(null);
-    setPriceRange(3000);
+    setSelectedMaterials([]);
+    setMinPriceFilter(null);
+    setMaxPriceFilter(null);
     setInStockOnly(false);
     setSearchQuery('');
     setSelectedSort('featured');
@@ -178,7 +217,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               id="shop-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by gem, color, or style..."
+              placeholder="Search by bead color, charm, or style..."
               className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-full pl-9 pr-4 py-2 text-xs sm:text-sm text-[#333333] placeholder-[#888888] focus:outline-none focus:ring-1 focus:ring-[#2d5a61] focus:bg-white transition-all"
             />
             {searchQuery && (
@@ -265,42 +304,61 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               )}
             </div>
 
-            {/* Price Filter Slider */}
+            {/* Price Filter Slider & Inputs */}
             <div>
-              <div className="flex items-center justify-between text-xs font-medium text-[#333333] mb-2">
-                <span>Max Price:</span>
-                <span className="font-serif text-sm font-semibold text-[#2d5a61]">Rs. {priceRange.toLocaleString()}</span>
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[#333333] mb-2.5">
+                <span>Price Range</span>
+                {isPriceFiltered && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMinPriceFilter(null);
+                      setMaxPriceFilter(null);
+                    }}
+                    className="text-[11px] text-[#2d5a61] lowercase font-normal hover:underline cursor-pointer"
+                  >
+                    reset
+                  </button>
+                )}
               </div>
-              <input
-                type="range"
-                min="1000"
-                max="3000"
-                step="100"
-                value={priceRange}
-                onChange={(e) => setPriceRange(Number(e.target.value))}
-                className="w-full accent-[#2d5a61] cursor-pointer"
+              <PriceRangeFilter
+                catalogMin={catalogMin}
+                catalogMax={catalogMax}
+                minPrice={activeMinPrice}
+                maxPrice={activeMaxPrice}
+                onChange={(min, max) => {
+                  setMinPriceFilter(min);
+                  setMaxPriceFilter(max);
+                }}
+                idPrefix="desktop-price"
               />
-              <div className="flex justify-between text-[10px] text-[#888888] mt-1">
-                <span>Rs. 1,000</span>
-                <span>Rs. 3,000</span>
-              </div>
             </div>
 
-            {/* Gemstones & Materials */}
+            {/* Materials & Finishes */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-[#333333] mb-3">
-                Gemstone / Material
-              </h3>
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[#333333] mb-3">
+                <span>Material & Finish</span>
+                {selectedMaterials.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearMaterials}
+                    className="text-[11px] text-[#2d5a61] lowercase font-normal hover:underline cursor-pointer"
+                  >
+                    reset
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {allMaterials.map((mat) => {
-                  const isSelected = selectedMaterial === mat;
+                  const isSelected = selectedMaterials.includes(mat);
                   return (
                     <button
                       key={mat}
-                      onClick={() => setSelectedMaterial(isSelected ? null : mat)}
+                      type="button"
+                      onClick={() => toggleMaterial(mat)}
                       className={`text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-[#2d5a61] text-white border-[#2d5a61]'
+                          ? 'bg-[#2d5a61] text-white border-[#2d5a61] font-medium shadow-2xs'
                           : 'bg-white/80 text-[#555555] border-[#e0d8c8] hover:bg-[#efe8dc]'
                       }`}
                     >
@@ -361,36 +419,50 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
                   {/* Price range */}
                   <div>
-                    <div className="flex justify-between text-xs text-[#333333] mb-2 font-medium">
-                      <span>Max Price:</span>
-                      <span className="font-serif font-bold text-[#2d5a61]">Rs. {priceRange}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1000"
-                      max="3000"
-                      step="100"
-                      value={priceRange}
-                      onChange={(e) => setPriceRange(Number(e.target.value))}
-                      className="w-full accent-[#2d5a61]"
+                    <h4 className="text-xs font-semibold uppercase text-[#333333] mb-2.5">Price Range</h4>
+                    <PriceRangeFilter
+                      catalogMin={catalogMin}
+                      catalogMax={catalogMax}
+                      minPrice={activeMinPrice}
+                      maxPrice={activeMaxPrice}
+                      onChange={(min, max) => {
+                        setMinPriceFilter(min);
+                        setMaxPriceFilter(max);
+                      }}
+                      idPrefix="mobile-price"
                     />
                   </div>
 
-                  {/* Materials */}
+                  {/* Materials & Finishes */}
                   <div>
-                    <h4 className="text-xs font-semibold uppercase text-[#333333] mb-2">Gemstones</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {allMaterials.map((mat) => (
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase text-[#333333] mb-2">
+                      <span>Material & Finish</span>
+                      {selectedMaterials.length > 0 && (
                         <button
-                          key={mat}
-                          onClick={() => setSelectedMaterial(selectedMaterial === mat ? null : mat)}
-                          className={`text-xs px-2.5 py-1 rounded-full border ${
-                            selectedMaterial === mat ? 'bg-[#2d5a61] text-white' : 'bg-white'
-                          }`}
+                          type="button"
+                          onClick={clearMaterials}
+                          className="text-[11px] text-[#2d5a61] lowercase font-normal hover:underline cursor-pointer"
                         >
-                          {mat}
+                          reset
                         </button>
-                      ))}
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allMaterials.map((mat) => {
+                        const isSelected = selectedMaterials.includes(mat);
+                        return (
+                          <button
+                            key={mat}
+                            type="button"
+                            onClick={() => toggleMaterial(mat)}
+                            className={`text-xs px-2.5 py-1 rounded-full border cursor-pointer ${
+                              isSelected ? 'bg-[#2d5a61] text-white font-medium border-[#2d5a61]' : 'bg-white text-[#555555] border-[#e0d8c8]'
+                            }`}
+                          >
+                            {mat}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 

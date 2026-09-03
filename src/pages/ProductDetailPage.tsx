@@ -53,6 +53,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       if (found) {
         setProduct(found);
         setSelectedImage(found.images?.[0] || found.image);
+        const initialFinish = found.finish || found.availableFinishes?.[0] || '18K Gold Plated';
+        setSelectedFinish(initialFinish);
         const related = await productService.getRelatedProducts(found.id, 4);
         setRelatedProducts(related);
       }
@@ -292,27 +294,38 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
 
             {/* Metal Finish selection */}
-            <div>
-              <span className="text-xs font-medium text-[#333333] mb-2 block">
-                Metal Charm Finish:
-              </span>
-              <div className="flex gap-3">
-                {['18K Gold Plated', 'Sterling Silver Hue', 'Antique Brass'].map((finish) => (
-                  <button
-                    key={finish}
-                    type="button"
-                    onClick={() => setSelectedFinish(finish)}
-                    className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
-                      selectedFinish === finish
-                        ? 'border-[#2d5a61] bg-[#fdfaf5] text-[#2d5a61] ring-2 ring-[#2d5a61]/20 font-semibold'
-                        : 'border-[#e0d8c8] bg-[#fdfaf5] text-[#555555] hover:border-[#2d5a61]/40'
-                    }`}
-                  >
-                    {finish}
-                  </button>
-                ))}
+            {product.availableFinishes && product.availableFinishes.length > 1 ? (
+              <div>
+                <span className="text-xs font-medium text-[#333333] mb-2 block">
+                  Select Metal Charm Finish:
+                </span>
+                <div className="flex gap-3">
+                  {product.availableFinishes.map((finish) => (
+                    <button
+                      key={finish}
+                      type="button"
+                      onClick={() => setSelectedFinish(finish)}
+                      className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all cursor-pointer ${
+                        selectedFinish === finish
+                          ? 'border-[#2d5a61] bg-[#fdfaf5] text-[#2d5a61] ring-2 ring-[#2d5a61]/20 font-semibold'
+                          : 'border-[#e0d8c8] bg-[#fdfaf5] text-[#555555] hover:border-[#2d5a61]/40'
+                      }`}
+                    >
+                      {finish}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : product.finish ? (
+              <div>
+                <span className="text-xs font-medium text-[#333333] mb-1.5 block">
+                  Hardware & Metal Finish:
+                </span>
+                <span className="inline-block py-1.5 px-3.5 text-xs font-semibold rounded-xl border border-[#e0d8c8] bg-[#fdfaf5] text-[#2d5a61]">
+                  {product.finish}
+                </span>
+              </div>
+            ) : null}
 
             {/* Quantity Selector */}
             <div className="flex items-center gap-4">
@@ -450,6 +463,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     </div>
                   ))}
                 </div>
+                <div className="pt-3 border-t border-[#e0d8c8]/70 flex flex-wrap items-center gap-2 text-xs text-[#666666]">
+                  <span className="font-semibold text-[#333333]">Available Hardware Finishes:</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#2d5a61] font-medium">
+                    18K Gold Plated
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#2d5a61] font-medium">
+                    Sterling Silver Hue
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#666666]">
+                    Antique Brass
+                  </span>
+                </div>
               </div>
             )}
 
@@ -465,9 +490,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             {activeTab === 'care' && (
               <div className="space-y-4">
                 <p>{product.careInstructions || 'Keep away from direct water, alcohol, perfumes and chlorine pools.'}</p>
-                <ul className="list-disc pl-5 space-y-1 text-xs md:text-sm text-[#555555]">
+                <ul className="list-disc pl-5 space-y-1.5 text-xs md:text-sm text-[#555555]">
                   <li>Store separately in the provided soft microfiber pouch.</li>
-                  <li>Wipe gently with a soft dry cotton cloth after wearing.</li>
+                  <li><strong>For 18K Gold Plated pieces:</strong> Wipe gently with a soft dry cotton cloth after wearing to maintain radiant luster.</li>
+                  <li><strong>For Sterling Silver & Silver Finishes:</strong> Store dry in an airtight pouch to prevent natural oxidation; gently polish with a silver cloth as needed.</li>
                   <li>Roll bracelets on and off gently rather than pulling on elastic cords.</li>
                 </ul>
               </div>

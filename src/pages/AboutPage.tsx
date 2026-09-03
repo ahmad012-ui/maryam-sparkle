@@ -21,13 +21,13 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
                 <span>Our Artisan Heritage</span>
               </div>
               <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#2d5a61] leading-[1.15]">
-                Jewelry Crafted with Soul, Intention & Nature&apos;s Treasures
+                Jewelry Crafted with Soul, Care & Radiant Color
               </h1>
               <p className="text-[#555555] text-base sm:text-lg font-light leading-relaxed">
-                Maryam Sparkle began as an intimate pursuit of tranquility—threading tiny gemstones, natural baroque pearls, and shimmering crystals onto delicate silk and gold wires.
+                Maryam Sparkle began as an intimate pursuit of tranquility—hand-threading colorful glass and acrylic beads, playful charms, and delicate linked chains.
               </p>
               <p className="text-[#666666] text-sm sm:text-base font-light leading-relaxed">
-                Today, our studio in Pakistan creates heirloom-worthy, everyday treasures designed to accompany you through every milestone, celebration, and quiet cup of morning tea.
+                Today, our studio in Pakistan creates charming, everyday treasures designed to accompany you through every milestone, celebration, and quiet cup of morning tea.
               </p>
               <div className="pt-4 flex flex-wrap gap-4">
                 <Link
@@ -80,7 +80,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
           <div className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-serif text-3xl md:text-4xl text-[#2d5a61] mb-3">Our Guiding Values</h2>
             <p className="text-[#666666] text-sm md:text-base font-light">
-              We reject mass-produced fast fashion in favor of slow, meaningful craftsmanship that respects both nature and your skin.
+              We reject mass-produced fast fashion in favor of slow, meaningful craftsmanship with hand-selected beads and durable finishes.
             </p>
           </div>
 
@@ -89,9 +89,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
               <div className="w-12 h-12 rounded-xl bg-[#2d5a61]/10 flex items-center justify-center text-[#2d5a61]">
                 <Gem className="w-6 h-6" />
               </div>
-              <h3 className="font-serif text-lg text-[#2d5a61] font-semibold">Authentic Gemstones</h3>
+              <h3 className="font-serif text-lg text-[#2d5a61] font-semibold">Artisan Beads & Charms</h3>
               <p className="text-xs sm:text-sm text-[#666666] leading-relaxed">
-                We hand-select genuine natural stones—amethyst, quartz, garnet, aventurine, and cultured freshwater baroque pearls.
+                We hand-select vibrant, smooth glass and acrylic beads paired with whimsical charms and delicate chains.
               </p>
             </div>
 
@@ -99,9 +99,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
               <div className="w-12 h-12 rounded-xl bg-[#2d5a61]/10 flex items-center justify-center text-[#2d5a61]">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="font-serif text-lg text-[#2d5a61] font-semibold">Hypoallergenic Metals</h3>
+              <h3 className="font-serif text-lg text-[#2d5a61] font-semibold">Quality Hardware</h3>
               <p className="text-xs sm:text-sm text-[#666666] leading-relaxed">
-                Crafted with 18k gold-filled brass, 925 sterling silver, and surgical steel components designed for sensitive skin.
+                Crafted with durable gold-tone and silver-tone findings, clasps, and jump rings designed for comfortable everyday wear.
               </p>
             </div>
 
@@ -121,7 +121,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
               </div>
               <h3 className="font-serif text-lg text-[#2d5a61] font-semibold">Bespoke Customization</h3>
               <p className="text-xs sm:text-sm text-[#666666] leading-relaxed">
-                Whether you need a custom wrist measurement, specific birthstones, or a bridal set, Maryam creates custom orders with care.
+                Whether you need a custom wrist measurement, custom initials, or specific bead color pairings, Maryam handcrafts custom orders with care.
               </p>
             </div>
           </div>
@@ -134,7 +134,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2d5a61]">Behind the Workbench</span>
           <h2 className="font-serif text-3xl md:text-4xl text-[#2d5a61] mt-2 mb-3">Our Crafting Journey</h2>
           <p className="text-[#666666] text-sm md:text-base font-light">
-            How a raw gemstone transforms into your everyday talisman.
+            How colorful beads and charms transform into your favorite everyday stack.
           </p>
         </div>
 
@@ -144,9 +144,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
             <div className="w-10 h-10 rounded-full bg-[#2d5a61] text-white flex items-center justify-center font-serif text-sm mb-4">
               1
             </div>
-            <h3 className="font-serif text-lg text-[#2d5a61] mb-2 font-semibold">Gemstone Curation</h3>
+            <h3 className="font-serif text-lg text-[#2d5a61] mb-2 font-semibold">Bead Selection</h3>
             <p className="text-xs text-[#666666] leading-relaxed">
-              We sort through hundreds of natural stones to pick gems with the cleanest cuts, richest inclusions, and vibrant clarity.
+              We sort through colorful glass and acrylic beads to choose the smoothest shapes, brightest tones, and rich vibrant shades.
             </p>
           </div>
 
@@ -157,7 +157,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
             </div>
             <h3 className="font-serif text-lg text-[#2d5a61] mb-2 font-semibold">Design & Patterning</h3>
             <p className="text-xs text-[#666666] leading-relaxed">
-              Balancing color harmonies, talismanic charms, and spacer sizes on our wooden jewelry design boards.
+              Balancing color harmonies, delightful charms, and bead spacers on our jewelry design boards.
             </p>
           </div>
 
@@ -168,7 +168,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
             </div>
             <h3 className="font-serif text-lg text-[#2d5a61] mb-2 font-semibold">Precision Hand-Threading</h3>
             <p className="text-xs text-[#666666] leading-relaxed">
-              Using reinforced high-tensile stretch cords or 49-strand stainless steel wires for exceptional longevity and comfort.
+              Using reinforced high-tensile stretch cords or durable linked chains for exceptional longevity and comfort.
             </p>
           </div>
 
@@ -179,63 +179,63 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
             </div>
             <h3 className="font-serif text-lg text-[#2d5a61] mb-2 font-semibold">Quality & Gift Wrapping</h3>
             <p className="text-xs text-[#666666] leading-relaxed">
-              Polished with a jeweler&apos;s cloth, sealed in our signature pouch, and inscribed with a personalized handwritten thank you.
+              Inspected for clasp and cord strength, packed into our signature pouch, and inscribed with a personalized handwritten thank you.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Gemstone Meaning Guide */}
+      {/* Bead Styles & Finishes Guide */}
       <section className="py-16 bg-[#2d5a61] text-white">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Compass className="w-8 h-8 text-[#D4B982] mx-auto mb-3" />
-            <h2 className="font-serif text-3xl md:text-4xl text-[#fdfaf5]">Gemstones in Our Atelier</h2>
+            <h2 className="font-serif text-3xl md:text-4xl text-[#fdfaf5]">Materials in Our Atelier</h2>
             <p className="text-white/80 text-sm md:text-base font-light mt-2">
-              Each stone carries distinct energy, grounding qualities, and ancient symbolism.
+              Every curated element brings vibrant color, playful charm, and handcrafted character to your stack.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white/10 backdrop-blur-xs p-6 rounded-2xl border border-white/15 space-y-2">
-              <div className="text-[#D4B982] font-serif text-xl font-medium">Ruby Quartz</div>
+              <div className="text-[#D4B982] font-serif text-xl font-medium">Colored Glass Beads</div>
               <p className="text-xs text-white/80 leading-relaxed">
-                Symbolizes passion, courage, and vitality. Its rich red hues stimulate creativity and bring uplifting warmth.
+                Smooth, glossy beads in radiant shades that catch the light effortlessly and bring uplifting energy to everyday outfits.
               </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-6 rounded-2xl border border-white/15 space-y-2">
-              <div className="text-[#D4B982] font-serif text-xl font-medium">Green Aventurine</div>
+              <div className="text-[#D4B982] font-serif text-xl font-medium">Delightful Charms</div>
               <p className="text-xs text-white/80 leading-relaxed">
-                Known as the &ldquo;Stone of Opportunity.&rdquo; Attracts prosperity, optimism, and emotional harmony.
+                Whimsical stars, hearts, floral motifs, and custom initial pendants that add personal storytelling to each piece.
               </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-6 rounded-2xl border border-white/15 space-y-2">
-              <div className="text-[#D4B982] font-serif text-xl font-medium">Freshwater Baroque Pearl</div>
+              <div className="text-[#D4B982] font-serif text-xl font-medium">Lustrous Acrylic Accents</div>
               <p className="text-xs text-white/80 leading-relaxed">
-                Emblematic of organic beauty and purity. No two baroque pearls are identical, making every piece one-of-a-kind.
+                Lightweight, durable beads offering vibrant pastel tones, pearlescent sheens, and comfortable all-day layering.
               </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-6 rounded-2xl border border-white/15 space-y-2">
-              <div className="text-[#D4B982] font-serif text-xl font-medium">Amethyst</div>
+              <div className="text-[#D4B982] font-serif text-xl font-medium">Gold-Tone Hardware</div>
               <p className="text-xs text-white/80 leading-relaxed">
-                A serene lilac gemstone renowned for relieving stress, cultivating mindfulness, and enhancing inner wisdom.
+                Warm, sunny clasps, jump rings, and linked chain accents that bring a polished shine to warm-toned bead stacks.
               </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-6 rounded-2xl border border-white/15 space-y-2">
-              <div className="text-[#D4B982] font-serif text-xl font-medium">Matte Black Onyx</div>
+              <div className="text-[#D4B982] font-serif text-xl font-medium">Silver-Tone Hardware</div>
               <p className="text-xs text-white/80 leading-relaxed">
-                A powerful grounding crystal that absorbs negative energy and fosters emotional stamina during busy days.
+                Cool, sleek metallic clasps and chain components that offer a clean, modern contrast against vibrant color palettes.
               </p>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-6 rounded-2xl border border-white/15 space-y-2">
-              <div className="text-[#D4B982] font-serif text-xl font-medium">Golden Citrine</div>
+              <div className="text-[#D4B982] font-serif text-xl font-medium">Linked Chain Accents</div>
               <p className="text-xs text-white/80 leading-relaxed">
-                The sunshine stone of joy and abundance. Radiant golden tones reflect warmth and confidence.
+                Delicate, lightweight cable links and extenders allowing comfortable fit adjustment and layered styling.
               </p>
             </div>
           </div>

@@ -14,6 +14,8 @@ export interface Product {
   materials: string[];
   dimensions?: string;
   colors?: string[];
+  finish?: string;
+  availableFinishes?: string[];
   stock: number;
   sku?: string;
   rating?: number;

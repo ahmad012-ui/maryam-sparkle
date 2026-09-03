@@ -46,9 +46,9 @@ function MainApp() {
 
   // Initial cart items (3 items matching the design badge)
   const [cartItems, setCartItems] = useState<CartItem[]>([
-    { product: PRODUCTS[0], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: '18k Gold Finish' },
-    { product: PRODUCTS[1], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: '18k Gold Finish' },
-    { product: PRODUCTS[2], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Sterling Silver Finish' },
+    { product: PRODUCTS[0], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Gold-Tone' },
+    { product: PRODUCTS[1], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Gold-Tone' },
+    { product: PRODUCTS[2], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Silver-Tone' },
   ]);
 
   const [wishlistIds, setWishlistIds] = useState<string[]>([PRODUCTS[0].id]);

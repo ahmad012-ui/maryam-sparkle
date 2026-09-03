@@ -19,15 +19,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   isWishlisted,
   onToggleWishlist,
 }) => {
+  const defaultFinish = product?.finish || product?.availableFinishes?.[0] || '18K Gold Plated';
   const [selectedSize, setSelectedSize] = useState('Medium (6.5")');
-  const [selectedFinish, setSelectedFinish] = useState('18k Gold Finish');
+  const [selectedFinish, setSelectedFinish] = useState(defaultFinish);
   const [customNote, setCustomNote] = useState('');
   const [addedAnimation, setAddedAnimation] = useState(false);
+
+  React.useEffect(() => {
+    if (product) {
+      const initial = product.finish || product.availableFinishes?.[0] || '18K Gold Plated';
+      setSelectedFinish(initial);
+    }
+  }, [product]);
 
   if (!isOpen || !product) return null;
 
   const sizes = ['Small (6.0")', 'Medium (6.5")', 'Large (7.0")', 'Custom Fit'];
-  const finishes = ['18k Gold Finish', 'Sterling Silver Finish', 'Antique Brass'];
+  const finishes = product.availableFinishes && product.availableFinishes.length > 0
+    ? product.availableFinishes
+    : product.finish
+    ? [product.finish]
+    : ['18K Gold Plated', 'Sterling Silver'];
 
   const handleAdd = () => {
     onAddToCart(product, selectedSize, selectedFinish, customNote);

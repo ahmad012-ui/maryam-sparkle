@@ -8,6 +8,7 @@ interface WishlistDrawerProps {
   wishlistProducts: Product[];
   onRemoveFromWishlist: (product: Product) => void;
   onMoveToBag: (product: Product) => void;
+  onMoveAllToBag?: () => void;
 }
 
 export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
@@ -16,6 +17,7 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
   wishlistProducts,
   onRemoveFromWishlist,
   onMoveToBag,
+  onMoveAllToBag,
 }) => {
   if (!isOpen) return null;
 
@@ -103,6 +105,21 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
             </div>
           )}
         </div>
+
+        {wishlistProducts.length > 0 && onMoveAllToBag && (
+          <div className="p-4 bg-[#fdfaf5] border-t border-[#e0d8c8]">
+            <button
+              onClick={() => {
+                onMoveAllToBag();
+                onClose();
+              }}
+              className="w-full bg-[#2d5a61] hover:bg-[#1e3c41] text-white py-3 rounded-full text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Move All to Bag ({wishlistProducts.length})</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -450,6 +450,13 @@ export const CustomerCarePage: React.FC = () => {
                     <strong>For 18K Gold Plated Findings:</strong> Use a specialized gold polishing cloth with light circular motions. Never use abrasive scrubbing sponges or harsh bleach solutions.
                   </p>
                 </div>
+
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                  <p>
+                    <strong>For Sterling Silver & Silver Finish Pieces:</strong> Store in a sealed dry pouch away from excess humidity. If natural oxidation or slight tarnishing occurs, gently wipe with a silver polishing cloth to immediately restore its brilliant cool luster.
+                  </p>
+                </div>
               </div>
             </div>
 

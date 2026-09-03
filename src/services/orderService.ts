@@ -40,14 +40,14 @@ const INITIAL_DEMO_ORDERS: Order[] = [
           price: 1850,
           image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe',
           images: [],
-          description: 'An enchanting handcrafted bracelet crafted with natural faceted ruby quartz crystal beads.',
-          materials: ['Natural Ruby Quartz', '18K Gold Plated Brass'],
+          description: 'An enchanting handcrafted bracelet strung with crimson glass beads and a charming star motif.',
+          materials: ['Beads', 'Gold-Tone Hardware', 'Charms'],
           stock: 12,
           inStock: true
         },
         quantity: 1,
         selectedSize: 'Medium (6.5")',
-        selectedFinish: '18K Gold'
+        selectedFinish: 'Gold-Tone'
       },
       {
         product: {
@@ -58,14 +58,14 @@ const INITIAL_DEMO_ORDERS: Order[] = [
           price: 1650,
           image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ',
           images: [],
-          description: 'Cultured freshwater baroque pearls carefully placed on a delicate 14k gold-filled chain.',
-          materials: ['Freshwater Pearls', '14k Gold-Filled Chain'],
+          description: 'Delicate luminous beads gracefully strung on linked chain with gold-tone hardware.',
+          materials: ['Beads', 'Gold-Tone Hardware', 'Chain'],
           stock: 16,
           inStock: true
         },
         quantity: 1,
         selectedSize: 'Standard',
-        selectedFinish: '14k Gold Filled'
+        selectedFinish: 'Gold-Tone'
       }
     ],
     subtotal: 3500,
@@ -89,7 +89,7 @@ const INITIAL_DEMO_ORDERS: Order[] = [
       {
         status: 'confirmed',
         title: 'Artisan Confirmed',
-        description: 'Gemstones and components verified in Maryam Sparkle Studio.',
+        description: 'Beads and hardware components verified in Maryam Sparkle Studio.',
         date: 'March 1, 2026 · 12:15 PM',
         completed: true,
         current: false
@@ -166,7 +166,7 @@ const INITIAL_DEMO_ORDERS: Order[] = [
           image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP',
           images: [],
           description: 'Inspired by morning dew in spring gardens.',
-          materials: ['Green Aventurine', 'Pressed Glass Seed Beads'],
+          materials: ['Beads', 'Gold-Tone Hardware', 'Chain', 'Charms'],
           stock: 9,
           inStock: true
         },

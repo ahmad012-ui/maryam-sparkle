@@ -158,7 +158,7 @@ export const CustomerCareModal: React.FC<CustomerCareModalProps> = ({
               <div className="bg-[#efe8dc]/60 p-4 rounded-2xl border border-[#e0d8c8] text-xs space-y-2">
                 <h5 className="font-bold text-[#333333]">Jewelry Care Instructions:</h5>
                 <p>1. Avoid exposing elastic gemstone pieces to harsh chlorine, perfumes, or acetone.</p>
-                <p>2. Gently polish gold-filled accents with a microfiber polishing cloth.</p>
+                <p>2. Gently polish gold-plated and sterling silver accents with a soft microfiber polishing cloth.</p>
                 <p>3. Store in the complimentary velvet Maryam Sparkle pouch when not in use.</p>
               </div>
             </div>
