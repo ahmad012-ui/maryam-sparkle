@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PRODUCTS } from '../data/products';
+import { orderService } from '../services/orderService';
+import { Order } from '../types';
 
 interface TrackingOrder {
   id: string;
@@ -258,6 +260,57 @@ const SAMPLE_ORDERS: TrackingOrder[] = [
   }
 ];
 
+function convertOrderToTrackingOrder(ord: Order): TrackingOrder {
+  const stepMap: Record<string, number> = {
+    placed: 1,
+    confirmed: 2,
+    processing: 3,
+    shipped: 4,
+    out_for_delivery: 5,
+    delivered: 6
+  };
+  const statusLabels: Record<string, string> = {
+    placed: 'Order Placed & Queued',
+    confirmed: 'Artisan Confirmed',
+    processing: 'Handcrafted & Packed',
+    shipped: 'Dispatched with Courier',
+    out_for_delivery: 'Out for Delivery',
+    delivered: 'Delivered'
+  };
+
+  return {
+    id: ord.orderNumber,
+    customerName: ord.customer.fullName,
+    phone: ord.customer.phone,
+    destinationCity: `${ord.shippingAddress.city}, ${ord.shippingAddress.province || 'Pakistan'}`,
+    address: `${ord.shippingAddress.address}, ${ord.shippingAddress.city}`,
+    orderDate: new Date(ord.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    estimatedDelivery: ord.estimatedDelivery || 'In 2-3 business days',
+    carrier: ord.courierName || 'TCS Express Logistics',
+    trackingNumber: ord.trackingNumber || `TCS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+    paymentMethod: ord.paymentMethod.title,
+    paymentStatus: ord.paymentStatus === 'paid' ? 'Paid' : 'Pending Cash on Delivery',
+    currentStep: stepMap[ord.status] || 1,
+    statusText: statusLabels[ord.status] || ord.status.replace('_', ' ').toUpperCase(),
+    statusDescription: ord.timeline?.find((t) => t.current)?.description || 'Your jewelry order is being processed by our atelier.',
+    items: ord.items.map((it) => ({
+      productId: it.product.id,
+      productName: it.product.name,
+      image: it.product.image,
+      quantity: it.quantity,
+      price: it.product.price,
+      size: it.selectedSize || 'Standard',
+      finish: it.selectedFinish || 'Natural'
+    })),
+    timeline: (ord.timeline || []).map((tl) => ({
+      title: tl.title,
+      description: tl.description,
+      timestamp: tl.date,
+      completed: tl.completed
+    }))
+  };
+}
+
 export const TrackOrderPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [searchInput, setSearchInput] = useState('');
@@ -266,23 +319,34 @@ export const TrackOrderPage: React.FC = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Initial load check from URL query parameter (e.g., /track?id=MS-8291)
+  // Initial load check from URL query parameter (e.g., /track?order=MS-8291 or /track?id=MS-8291)
   useEffect(() => {
-    const idFromUrl = searchParams.get('id');
-    if (idFromUrl) {
-      setSearchInput(idFromUrl);
-      handleSearchQuery(idFromUrl);
+    const orderQuery = searchParams.get('order') || searchParams.get('id') || searchParams.get('orderId');
+    if (orderQuery) {
+      setSearchInput(orderQuery);
+      handleSearchQuery(orderQuery);
     }
   }, [searchParams]);
 
-  const handleSearchQuery = (query: string) => {
+  const handleSearchQuery = async (query: string) => {
     const cleanQuery = query.trim().toUpperCase();
     if (!cleanQuery) return;
 
     setHasSearched(true);
     setErrorMessage('');
 
-    // Check predefined sample orders
+    // 1. Check real saved orders in orderService (for both guest and logged in orders)
+    try {
+      const realOrder = await orderService.getOrder(cleanQuery);
+      if (realOrder) {
+        setActiveOrder(convertOrderToTrackingOrder(realOrder));
+        return;
+      }
+    } catch (err) {
+      console.error('Error fetching order from storage:', err);
+    }
+
+    // 2. Check predefined sample orders
     const matched = SAMPLE_ORDERS.find(
       (o) =>
         o.id.toUpperCase() === cleanQuery ||
@@ -292,9 +356,11 @@ export const TrackOrderPage: React.FC = () => {
 
     if (matched) {
       setActiveOrder(matched);
-    } else {
-      // Create a simulated live order for any entered order ID (e.g. MS-1234 or phone number)
-      const dynamicOrder: TrackingOrder = {
+      return;
+    }
+
+    // 3. Fallback dynamically generated order if not in storage
+    const dynamicOrder: TrackingOrder = {
         id: cleanQuery.startsWith('MS-') ? cleanQuery : `MS-${cleanQuery.slice(-4) || '5501'}`,
         customerName: 'Valued Sparkle Patron',
         phone: cleanQuery.startsWith('03') ? cleanQuery : '0300-1234567',
@@ -360,7 +426,6 @@ export const TrackOrderPage: React.FC = () => {
         ]
       };
       setActiveOrder(dynamicOrder);
-    }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {

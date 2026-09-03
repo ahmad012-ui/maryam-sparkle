@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ShieldCheck,
@@ -10,9 +10,13 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
-  AlertCircle
+  AlertCircle,
+  User,
+  MapPin,
+  LogOut,
+  ArrowRight
 } from 'lucide-react';
-import { CartItem, Order } from '../types';
+import { CartItem, Order, UserProfile, UserAddress } from '../types';
 import { orderService } from '../services/orderService';
 import { authService } from '../services/authService';
 import {
@@ -29,8 +33,25 @@ interface CheckoutPageProps {
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart }) => {
   const navigate = useNavigate();
-  const currentUser = authService.getCurrentUser();
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
+
+  // Listen to auth changes (login/logout/demo)
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const user = authService.getCurrentUser();
+      setCurrentUser(user);
+    };
+
+    window.addEventListener('auth-change', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    return () => {
+      window.removeEventListener('auth-change', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
+
   const defaultAddress = currentUser?.addresses.find((a) => a.isDefault) || currentUser?.addresses[0];
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(defaultAddress?.id || null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -50,6 +71,59 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
   const [couponCode, setCouponCode] = useState('SPARKLE10');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // When selected address changes for logged-in user
+  const handleSelectSavedAddress = (addr: UserAddress) => {
+    setSelectedAddressId(addr.id);
+    setFormData((prev) => ({
+      ...prev,
+      fullName: addr.fullName,
+      phone: addr.phone,
+      address: addr.address,
+      city: addr.city,
+      postalCode: addr.postalCode || prev.postalCode
+    }));
+    // Clear any address errors
+    setFormErrors((prev) => {
+      const next = { ...prev };
+      delete next.fullName;
+      delete next.phone;
+      delete next.address;
+      delete next.city;
+      delete next.postalCode;
+      return next;
+    });
+  };
+
+  const handleUseCustomAddress = () => {
+    setSelectedAddressId('custom');
+    setFormData((prev) => ({
+      ...prev,
+      address: '',
+      city: 'Karachi',
+      postalCode: '75500'
+    }));
+  };
+
+  // Switch to guest checkout by logging out
+  const handleLogoutToGuest = () => {
+    authService.logout();
+    setSelectedAddressId(null);
+    setFormData({
+      fullName: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: 'Karachi',
+      postalCode: '75500',
+      province: 'Sindh',
+      country: 'Pakistan',
+      deliveryMethod: formData.deliveryMethod,
+      paymentMethod: formData.paymentMethod,
+      notes: formData.notes
+    });
+    setFormErrors({});
+  };
 
   // Subtotal calculations
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -189,6 +263,53 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   <span className="text-xs text-[#666666]">Step 1 of 3</span>
                 </div>
 
+                {/* Logged in vs Guest Mode Status Banner */}
+                {currentUser ? (
+                  <div className="mb-5 p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 text-emerald-900">
+                      <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-emerald-950">
+                          Signed in as {currentUser.name}
+                        </p>
+                        <p className="text-[11px] text-emerald-700">{currentUser.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogoutToGuest}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-rose-200 text-rose-700 rounded-xl text-[11px] font-semibold hover:bg-rose-50 transition-colors cursor-pointer self-start sm:self-auto shadow-2xs"
+                      title="Switch to guest checkout"
+                    >
+                      <LogOut className="w-3 h-3" />
+                      <span>Logout / Guest Checkout</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mb-5 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-start sm:items-center gap-2.5 text-amber-900">
+                      <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0 mt-0.5 sm:mt-0">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-amber-950">Guest Checkout</p>
+                        <p className="text-[11px] text-amber-800">
+                          No account or login required. Simply provide your name, phone, and delivery address below.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/login"
+                      className="text-[11px] font-semibold text-[#2d5a61] hover:underline shrink-0 whitespace-nowrap self-start sm:self-auto flex items-center gap-1"
+                    >
+                      <span>Have an account? Sign In</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-[#333333] mb-1.5">
@@ -198,7 +319,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                       type="text"
                       value={formData.fullName}
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      placeholder="e.g. Sara Siddiqui"
+                      placeholder="e.g. Ayesha Khan"
                       className={`w-full bg-[#efe8dc]/40 border rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
                         formErrors.fullName ? 'border-red-500' : 'border-[#e0d8c8]'
                       }`}
@@ -215,7 +336,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="sara@example.com"
+                        placeholder="e.g. name@example.com"
                         className={`w-full bg-[#efe8dc]/40 border rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
                           formErrors.email ? 'border-red-500' : 'border-[#e0d8c8]'
                         }`}
@@ -252,6 +373,68 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   <span className="text-xs text-[#666666]">Step 2 of 3</span>
                 </div>
 
+                {/* Saved Address Selection for Logged-In Users */}
+                {currentUser && currentUser.addresses && currentUser.addresses.length > 0 && (
+                  <div className="mb-6 pb-5 border-b border-[#e0d8c8]">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <label className="block text-xs font-semibold text-[#333333] flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#2d5a61]" />
+                        <span>Use a Saved Address</span>
+                      </label>
+                      <span className="text-[11px] text-[#666666]">
+                        {currentUser.addresses.length} saved
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {currentUser.addresses.map((addr) => {
+                        const isSelected = selectedAddressId === addr.id;
+                        return (
+                          <button
+                            key={addr.id}
+                            type="button"
+                            onClick={() => handleSelectSavedAddress(addr)}
+                            className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-[#2d5a61] bg-[#efe8dc]/60 ring-2 ring-[#2d5a61]/25'
+                                : 'border-[#e0d8c8] bg-white/70 hover:bg-[#efe8dc]/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[11px] font-bold text-[#2d5a61] uppercase tracking-wide">
+                                {addr.label}
+                              </span>
+                              {addr.isDefault && (
+                                <span className="text-[9px] bg-[#2d5a61]/10 text-[#2d5a61] font-semibold px-1.5 py-0.5 rounded">
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-semibold text-[#333333] truncate">{addr.fullName}</p>
+                            <p className="text-[11px] text-[#666666] line-clamp-1">{addr.address}</p>
+                            <p className="text-[10px] text-[#888888]">
+                              {addr.city}, {addr.postalCode} · {addr.phone}
+                            </p>
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={handleUseCustomAddress}
+                        className={`p-3 rounded-2xl border border-dashed text-left transition-all cursor-pointer flex flex-col items-center justify-center text-center ${
+                          selectedAddressId === 'custom'
+                            ? 'border-[#2d5a61] bg-[#efe8dc]/60 ring-2 ring-[#2d5a61]/25'
+                            : 'border-[#e0d8c8] bg-white/40 hover:bg-[#efe8dc]/30'
+                        }`}
+                      >
+                        <span className="text-xs font-semibold text-[#2d5a61]">+ Enter Custom Address</span>
+                        <span className="text-[10px] text-[#777777]">Ship to a different location</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-[#333333] mb-1.5">
@@ -277,8 +460,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="Karachi"
-                        className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                        className={`w-full bg-[#efe8dc]/40 border rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
+                          formErrors.city ? 'border-red-500' : 'border-[#e0d8c8]'
+                        }`}
                       />
+                      {formErrors.city && <p className="text-[11px] text-red-500 mt-1">{formErrors.city}</p>}
                     </div>
 
                     <div>

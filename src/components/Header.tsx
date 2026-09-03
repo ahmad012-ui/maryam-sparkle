@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Menu, 
   Search, 
@@ -15,12 +15,14 @@ import {
   MessageCircle,
   Package,
   User,
+  LogOut,
   HelpCircle,
   ShieldCheck,
   RotateCcw
 } from 'lucide-react';
-import { Category } from '../types';
+import { Category, UserProfile } from '../types';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import { authService } from '../services/authService';
 
 interface HeaderProps {
   cartCount: number;
@@ -51,8 +53,26 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isShopExpanded, setIsShopExpanded] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setCurrentUser(authService.getCurrentUser());
+    };
+    window.addEventListener('auth-change', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    return () => {
+      window.removeEventListener('auth-change', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsMenuOpen(false);
+  };
 
   const handleCategoryClick = (slug: string | null) => {
     setIsMenuOpen(false);
@@ -101,10 +121,34 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right: Currency Indicator & Account */}
           <div className="hidden sm:flex items-center gap-3 text-[11px] text-white/90">
-            <Link to="/account" className="hover:text-[#D4B982] flex items-center gap-1">
-              <User className="w-3 h-3" />
-              <span>My Account</span>
-            </Link>
+            {currentUser ? (
+              <div className="flex items-center gap-2">
+                <Link to="/account" className="hover:text-[#D4B982] flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  <span className="truncate max-w-[110px]">{currentUser.name.split(' ')[0]}</span>
+                </Link>
+                <span className="text-white/30">•</span>
+                <button
+                  onClick={handleLogout}
+                  className="hover:text-rose-300 flex items-center gap-1 text-[10px] transition-colors cursor-pointer"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-2.5 h-2.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link to="/login" className="hover:text-[#D4B982] flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  <span>Sign In</span>
+                </Link>
+                <span className="text-white/30">•</span>
+                <Link to="/track" className="hover:text-[#D4B982]">
+                  Guest Track
+                </Link>
+              </div>
+            )}
             <span className="text-white/30">•</span>
             <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] font-semibold text-[#D4B982]">
               PKR (Rs.)
@@ -377,8 +421,60 @@ export const Header: React.FC<HeaderProps> = ({
                   </NavLink>
                 </div>
 
-                {/* 5. Account & Orders */}
+                {/* 5. Account & Orders with Proper Logout */}
                 <div className="border-t border-[#e0d8c8]/60 pt-2">
+                  {currentUser ? (
+                    <div className="mb-2 p-3 bg-white/70 rounded-2xl border border-[#e0d8c8] shadow-2xs">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-[#2d5a61] text-white flex items-center justify-center font-serif text-sm font-bold shrink-0 shadow-2xs">
+                            {currentUser.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-serif text-xs font-bold text-[#333333] truncate">
+                              {currentUser.name}
+                            </p>
+                            <p className="text-[10px] text-[#666666] truncate">
+                              {currentUser.email}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleLogout}
+                          className="shrink-0 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title="Log out of your account"
+                        >
+                          <LogOut className="w-3 h-3 text-rose-600" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-2 p-3 bg-white/40 rounded-2xl border border-[#e0d8c8]/80 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs text-[#555555]">
+                        <User className="w-3.5 h-3.5 text-[#2d5a61]" />
+                        <span className="font-medium">Guest Mode</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Link
+                          to="/login"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="font-semibold text-[#2d5a61] hover:underline"
+                        >
+                          Sign In
+                        </Link>
+                        <span className="text-[#a09888]">•</span>
+                        <Link
+                          to="/register"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="font-semibold text-[#2d5a61] hover:underline"
+                        >
+                          Register
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
                   <NavLink
                     to="/account"
                     onClick={() => setIsMenuOpen(false)}
@@ -392,7 +488,9 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <User className="w-4 h-4 text-[#2d5a61]" />
-                      <span className="font-serif text-lg">My Account & Orders</span>
+                      <span className="font-serif text-lg">
+                        {currentUser ? 'My Account & Orders' : 'Account & Sign In'}
+                      </span>
                     </div>
                     <ChevronRight className="w-4 h-4 opacity-60" />
                   </NavLink>

@@ -56,7 +56,23 @@ export const AccountPage: React.FC = () => {
       setOrders(allOrders);
     }
     loadUserOrders();
+
+    const handleAuthChange = () => {
+      setUser(authService.getCurrentUser());
+      loadUserOrders();
+    };
+    window.addEventListener('auth-change', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    return () => {
+      window.removeEventListener('auth-change', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
   }, []);
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate('/');
+  };
 
   const handleAddAddress = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,14 +119,28 @@ export const AccountPage: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-[70vh] bg-[#efe8dc] flex flex-col items-center justify-center px-6 py-20 text-center">
-        <h2 className="font-serif text-3xl text-[#333333] mb-4">Please Sign In</h2>
-        <p className="text-[#666666] mb-6">Log in to view your orders and saved shipping addresses.</p>
-        <Link
-          to="/login"
-          className="bg-[#2d5a61] text-white px-8 py-3 rounded-full text-xs font-semibold hover:bg-[#1e3c41]"
-        >
-          Go to Login
-        </Link>
+        <div className="w-16 h-16 rounded-full bg-white/60 border border-[#e0d8c8] flex items-center justify-center text-[#2d5a61] mb-4 shadow-2xs">
+          <User className="w-8 h-8" />
+        </div>
+        <h2 className="font-serif text-3xl text-[#333333] mb-2">Account Sign In</h2>
+        <p className="text-xs text-[#666666] max-w-sm mb-6 leading-relaxed">
+          Log in to view your order history, manage saved delivery addresses, or access VIP perks.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <Link
+            to="/login"
+            className="w-full sm:w-auto bg-[#2d5a61] text-white px-8 py-3 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-all shadow-xs"
+          >
+            Sign In to Account
+          </Link>
+          <Link
+            to="/track"
+            className="w-full sm:w-auto bg-white border border-[#e0d8c8] text-[#333333] px-6 py-3 rounded-xl text-xs font-semibold hover:bg-[#fdfaf5] transition-all flex items-center justify-center gap-2"
+          >
+            <Truck className="w-3.5 h-3.5 text-[#2d5a61]" />
+            <span>Track Guest Order</span>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -152,6 +182,14 @@ export const AccountPage: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5" />
               <span>New Custom Request</span>
             </Link>
+            <button
+              onClick={handleLogout}
+              className="bg-white border border-rose-200 text-rose-700 px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-rose-50 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Log out of your account"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
 
@@ -339,6 +377,21 @@ export const AccountPage: React.FC = () => {
                   value={user.phone}
                   className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-[#333333]"
                 />
+              </div>
+
+              <div className="pt-4 mt-6 border-t border-[#e0d8c8] flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-[#333333]">Account Session</p>
+                  <p className="text-[11px] text-[#666666]">End your active session on this browser device.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out</span>
+                </button>
               </div>
             </div>
           </div>

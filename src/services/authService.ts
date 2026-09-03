@@ -1,71 +1,120 @@
 import { UserProfile, UserAddress } from '../types';
 
 const USER_STORAGE_KEY = 'maryam_sparkle_user_v1';
-
-const DEMO_USER: UserProfile = {
-  id: 'usr-001',
-  name: 'Sara Siddiqui',
-  email: 'sara.siddiqui@example.com',
-  phone: '+92 300 1234567',
-  joinedDate: 'January 2026',
-  addresses: [
-    {
-      id: 'addr-1',
-      label: 'Home',
-      fullName: 'Sara Siddiqui',
-      phone: '+92 300 1234567',
-      address: 'House 18-B, Street 4, Defense Phase 5',
-      city: 'Karachi',
-      postalCode: '75500',
-      isDefault: true
-    },
-    {
-      id: 'addr-2',
-      label: 'Studio / Office',
-      fullName: 'Sara Siddiqui',
-      phone: '+92 300 1234567',
-      address: 'Suite 204, Creative Square, Clifton Block 2',
-      city: 'Karachi',
-      postalCode: '75600',
-      isDefault: false
-    }
-  ]
-};
+const AUTH_STATUS_KEY = 'maryam_sparkle_auth_status_v1';
 
 export const authService = {
   getCurrentUser(): UserProfile | null {
     try {
+      if (typeof window === 'undefined') return null;
+
+      // If user has explicitly logged out, respect guest status
+      if (localStorage.getItem(AUTH_STATUS_KEY) === 'logged_out') {
+        return null;
+      }
       const raw = localStorage.getItem(USER_STORAGE_KEY);
       if (!raw) {
-        // initialize demo user by default for seamless browsing experience
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(DEMO_USER));
-        return DEMO_USER;
+        return null;
       }
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      // Clean up legacy fake demo user if found in browser storage
+      if (parsed?.id === 'usr-001' || parsed?.email === 'sara.siddiqui@example.com') {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        return null;
+      }
+      return parsed;
     } catch {
-      return DEMO_USER;
+      return null;
     }
   },
 
-  updateProfile(updates: Partial<UserProfile>): UserProfile {
-    const current = this.getCurrentUser() || DEMO_USER;
+  isLoggedIn(): boolean {
+    return this.getCurrentUser() !== null;
+  },
+
+  logout(): void {
+    try {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.setItem(AUTH_STATUS_KEY, 'logged_out');
+      window.dispatchEvent(new Event('auth-change'));
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  },
+
+  login(credentials: { email: string; name?: string; phone?: string }): UserProfile {
+    try {
+      localStorage.removeItem(AUTH_STATUS_KEY);
+      const trimmedEmail = credentials.email.trim();
+      const derivedName =
+        credentials.name?.trim() ||
+        (trimmedEmail.split('@')[0]
+          ? trimmedEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+          : 'Valued Patron');
+
+      const fullUser: UserProfile = {
+        id: `usr-${Date.now()}`,
+        name: derivedName,
+        email: trimmedEmail,
+        phone: credentials.phone?.trim() || '',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        addresses: []
+      };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(fullUser));
+      window.dispatchEvent(new Event('auth-change'));
+      return fullUser;
+    } catch (err) {
+      console.error('Login error:', err);
+      throw err;
+    }
+  },
+
+  register(data: { name: string; email: string; phone?: string }): UserProfile {
+    try {
+      localStorage.removeItem(AUTH_STATUS_KEY);
+      const fullUser: UserProfile = {
+        id: `usr-${Date.now()}`,
+        name: data.name.trim(),
+        email: data.email.trim(),
+        phone: data.phone?.trim() || '',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        addresses: []
+      };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(fullUser));
+      window.dispatchEvent(new Event('auth-change'));
+      return fullUser;
+    } catch (err) {
+      console.error('Register error:', err);
+      throw err;
+    }
+  },
+
+  updateProfile(updates: Partial<UserProfile>): UserProfile | null {
+    const current = this.getCurrentUser();
+    if (!current) {
+      return null;
+    }
     const updated: UserProfile = { ...current, ...updates };
     try {
+      localStorage.removeItem(AUTH_STATUS_KEY);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event('auth-change'));
     } catch (err) {
-      console.error(err);
+      console.error('Update profile error:', err);
     }
     return updated;
   },
 
-  addAddress(address: Omit<UserAddress, 'id'>): UserAddress {
-    const current = this.getCurrentUser() || DEMO_USER;
+  addAddress(address: Omit<UserAddress, 'id'>): UserAddress | null {
+    const current = this.getCurrentUser();
+    if (!current) return null;
+
     const newAddr: UserAddress = {
       ...address,
       id: `addr-${Date.now()}`
     };
 
-    let updatedAddresses = [...current.addresses];
+    let updatedAddresses = [...(current.addresses || [])];
     if (newAddr.isDefault) {
       updatedAddresses = updatedAddresses.map((a) => ({ ...a, isDefault: false }));
     }
@@ -76,8 +125,10 @@ export const authService = {
   },
 
   deleteAddress(addressId: string): void {
-    const current = this.getCurrentUser() || DEMO_USER;
-    const filtered = current.addresses.filter((a) => a.id !== addressId);
+    const current = this.getCurrentUser();
+    if (!current) return;
+    const filtered = (current.addresses || []).filter((a) => a.id !== addressId);
     this.updateProfile({ addresses: filtered });
   }
 };
+

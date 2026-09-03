@@ -248,7 +248,7 @@ export const CustomOrderPage: React.FC = () => {
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Sara Siddiqui"
+                        placeholder="e.g. Ayesha Khan"
                         className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]"
                       />
                     </div>

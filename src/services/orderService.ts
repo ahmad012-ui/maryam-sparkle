@@ -269,15 +269,24 @@ export const orderService = {
    */
   async getOrder(lookupQuery: string): Promise<Order | null> {
     const cleanQuery = lookupQuery.trim().toUpperCase();
+    const cleanDigits = lookupQuery.replace(/\D/g, '');
     const orders = getStoredOrders();
 
-    const matched = orders.find(
-      (o) =>
-        o.orderNumber.toUpperCase() === cleanQuery ||
-        o.id.toUpperCase() === cleanQuery ||
-        o.customer.email.toLowerCase() === lookupQuery.trim().toLowerCase() ||
-        o.customer.phone.replace(/\s+/g, '') === lookupQuery.trim().replace(/\s+/g, '')
-    );
+    const matched = orders.find((o) => {
+      const oNum = o.orderNumber.toUpperCase();
+      const oId = o.id.toUpperCase();
+      const oTrack = (o.trackingNumber || '').toUpperCase();
+      const oEmail = o.customer.email.toLowerCase();
+      const oPhoneDigits = o.customer.phone.replace(/\D/g, '');
+
+      return (
+        oNum === cleanQuery ||
+        oId === cleanQuery ||
+        oTrack === cleanQuery ||
+        oEmail === lookupQuery.trim().toLowerCase() ||
+        (cleanDigits.length >= 7 && oPhoneDigits.includes(cleanDigits))
+      );
+    });
 
     return matched || null;
   },

@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck, Truck, User } from 'lucide-react';
 import { CartItem } from '../types';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
+import { authService } from '../services/authService';
+import { orderService } from '../services/orderService';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -38,6 +41,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     orderNotes: '',
   });
   const [phoneError, setPhoneError] = useState('');
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+
+  const currentUser = authService.getCurrentUser();
+
+  // Prefill when drawer opens if logged in
+  useEffect(() => {
+    if (isOpen) {
+      const user = authService.getCurrentUser();
+      if (user) {
+        const defAddr = user.addresses.find((a) => a.isDefault) || user.addresses[0];
+        setCheckoutData((prev) => ({
+          ...prev,
+          fullName: defAddr?.fullName || user.name || prev.fullName,
+          phone: defAddr?.phone || user.phone || prev.phone,
+          city: defAddr?.city || prev.city,
+          address: defAddr?.address || prev.address
+        }));
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -69,17 +92,60 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
     if (!isValidPhoneNumber(checkoutData.phone)) {
       setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
       return;
     }
-    const newOrderId = `MS-${Math.floor(100000 + Math.random() * 900000)}`;
-    setOrderId(newOrderId);
-    setOrderComplete(true);
-    onClearCart();
+
+    if (!checkoutData.fullName.trim() || !checkoutData.address.trim()) {
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+
+    try {
+      const newOrder = await orderService.createOrder({
+        customer: {
+          fullName: checkoutData.fullName.trim(),
+          email: currentUser?.email || `${checkoutData.phone.replace(/\D/g, '')}@sparkleguest.pk`,
+          phone: checkoutData.phone.trim()
+        },
+        shippingAddress: {
+          address: checkoutData.address.trim(),
+          city: checkoutData.city,
+          postalCode: '54000',
+          country: 'Pakistan'
+        },
+        deliveryMethod: {
+          id: 'standard',
+          title: 'Standard Tracked Delivery (2-4 Days)',
+          cost: shippingFee,
+          estimatedDays: '2-4 Days'
+        },
+        paymentMethod: {
+          id: checkoutData.paymentMethod as any,
+          title: checkoutData.paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Direct Bank / Mobile Wallet'
+        },
+        items: [...cartItems],
+        subtotal,
+        shippingCost: shippingFee,
+        discount: discountAmount,
+        couponCode: appliedDiscount > 0 ? promoCode : undefined,
+        total: grandTotal,
+        notes: checkoutData.orderNotes
+      });
+
+      setOrderId(newOrder.orderNumber);
+      setOrderComplete(true);
+      onClearCart();
+    } catch (err) {
+      console.error('Error creating order from drawer:', err);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   return (
@@ -167,16 +233,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                setOrderComplete(false);
-                setIsCheckingOut(false);
-                onClose();
-              }}
-              className="bg-[#2d5a61] text-white px-8 py-3 rounded-full font-medium text-sm hover:bg-[#1e3c41] transition-colors w-full"
-            >
-              Continue Shopping
-            </button>
+            <div className="w-full space-y-2.5">
+              <Link
+                to={`/track?order=${orderId}`}
+                onClick={() => {
+                  setOrderComplete(false);
+                  setIsCheckingOut(false);
+                  onClose();
+                }}
+                className="w-full bg-[#2d5a61] text-white py-3 rounded-full font-medium text-xs hover:bg-[#1e3c41] transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+              >
+                <Truck className="w-4 h-4" />
+                <span>Track Live Progress ({orderId})</span>
+              </Link>
+              <button
+                onClick={() => {
+                  setOrderComplete(false);
+                  setIsCheckingOut(false);
+                  onClose();
+                }}
+                className="w-full bg-white border border-[#e0d8c8] text-[#333333] px-8 py-2.5 rounded-full font-medium text-xs hover:bg-[#efe8dc]/50 transition-colors cursor-pointer"
+              >
+                Continue Shopping
+              </button>
+            </div>
           </div>
         ) : isCheckingOut ? (
           <div className="flex-1 overflow-y-auto p-6">
@@ -190,6 +270,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 ← Back to bag
               </button>
             </div>
+
+            {/* Guest vs Member indicator */}
+            {currentUser ? (
+              <div className="mb-4 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-[11px] text-emerald-800">
+                <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Signed in as <strong>{currentUser.name}</strong></span>
+              </div>
+            ) : (
+              <div className="mb-4 p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-[11px] text-amber-800">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span><strong>Guest Checkout:</strong> Enter name, phone & delivery address below.</span>
+              </div>
+            )}
 
             <form onSubmit={handleCheckoutSubmit} className="space-y-4 text-xs">
               <div>

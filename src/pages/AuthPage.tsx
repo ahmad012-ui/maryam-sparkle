@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Lock, Mail, User, Phone, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Lock, Mail, User, Phone, Sparkles, Chrome, AlertCircle } from 'lucide-react';
 import { authService } from '../services/authService';
-import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
+import {
+  sanitizePhoneNumber,
+  isValidPhoneNumber,
+  isValidEmail,
+  isValidFullName,
+  isValidPassword
+} from '../utils/validation';
 
 interface AuthPageProps {
   initialMode?: 'login' | 'register';
@@ -10,10 +16,10 @@ interface AuthPageProps {
 
 /**
  * AuthPage provides client-side login and registration interfaces
- * architected for future seamless connection to a Laravel + MySQL backend API:
+ * architected for future seamless connection to a backend API:
  * - POST /api/v1/auth/login -> { email, password }
  * - POST /api/v1/auth/register -> { name, email, phone, password }
- * - Uses standard token/session storage.
+ * - Social OAuth buttons preserved for Google authentication integration.
  */
 export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => {
   const navigate = useNavigate();
@@ -25,7 +31,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [phoneError, setPhoneError] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [oauthNotice, setOauthNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -34,14 +41,60 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
     } else if (location.pathname === '/login') {
       setIsLogin(true);
     }
+    setErrors({});
+    setOauthNotice(null);
   }, [location.pathname]);
+
+  const handleOAuthClick = () => {
+    // Keep button in UI for future integration without making fake/non-functional auth calls
+    setOauthNotice('Google OAuth login will be activated once backend service integration is completed.');
+    setTimeout(() => {
+      setOauthNotice(null);
+    }, 4500);
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Email validation
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      newErrors.email = 'Email address is required.';
+    } else if (!isValidEmail(trimmedEmail)) {
+      newErrors.email = 'Please enter a valid email address (e.g. name@example.com).';
+    }
+
+    // Password validation
+    if (!password) {
+      newErrors.password = 'Password is required.';
+    } else if (!isValidPassword(password, 6)) {
+      newErrors.password = 'Password must be at least 6 characters long.';
+    }
+
+    // Additional validation for Register
+    if (!isLogin) {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        newErrors.name = 'Full name is required.';
+      } else if (!isValidFullName(trimmedName)) {
+        newErrors.name = 'Please enter a valid full name (at least 2 letters, no special symbols).';
+      }
+
+      const trimmedPhone = phone.trim();
+      if (trimmedPhone && !isValidPhoneNumber(trimmedPhone)) {
+        newErrors.phone = 'Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567).';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPhoneError('');
+    setOauthNotice(null);
 
-    if (!isLogin && phone.trim() && !isValidPhoneNumber(phone)) {
-      setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
+    if (!validateForm()) {
       return;
     }
 
@@ -49,28 +102,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
 
     try {
       if (isLogin) {
-        // Ready for Laravel Sanctum API: POST /api/login
-        authService.updateProfile({
-          email: email || 'sara.siddiqui@example.com',
-          name: name || (email.split('@')[0] ? email.split('@')[0].replace('.', ' ') : 'Studio Guest')
+        authService.login({
+          email: email.trim(),
+          name: name.trim() || undefined,
+          phone: phone.trim() || undefined
         });
       } else {
-        // Ready for Laravel Sanctum API: POST /api/register
-        authService.updateProfile({
-          name: name || 'Sara Siddiqui',
-          email: email || 'sara@example.com',
-          phone: phone || '+92 300 1234567'
+        authService.register({
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined
         });
       }
       navigate('/account');
+    } catch {
+      setErrors({ form: 'An unexpected error occurred. Please try again.' });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleDemoLogin = () => {
-    authService.getCurrentUser(); // ensures demo profile is ready
-    navigate('/account');
   };
 
   return (
@@ -92,38 +141,96 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
           </p>
         </div>
 
+        {/* OAuth Social Buttons (for future integration) */}
+        <div className="space-y-2.5 mb-6">
+          <button
+            type="button"
+            onClick={handleOAuthClick}
+            className="w-full bg-white hover:bg-[#efe8dc]/40 text-[#333333] border border-[#e0d8c8] py-2.5 px-4 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2.5 cursor-pointer shadow-2xs"
+          >
+            <Chrome className="w-4 h-4 text-[#2d5a61]" />
+            <span>Continue with Google</span>
+          </button>
+
+          {oauthNotice && (
+            <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-xl text-[11px] text-amber-800 text-center leading-relaxed">
+              {oauthNotice}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-[#e0d8c8]" />
+          </div>
+          <div className="relative flex justify-center text-[10px] uppercase tracking-wider">
+            <span className="bg-[#fdfaf5] px-3 text-[#888888] font-medium">Or continue with email</span>
+          </div>
+        </div>
+
+        {/* General Form Error */}
+        {errors.form && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errors.form}</span>
+          </div>
+        )}
+
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 text-xs">
           {!isLogin && (
             <div>
-              <label className="block font-medium text-[#333333] mb-1">Full Name</label>
+              <label className="block font-medium text-[#333333] mb-1">Full Name *</label>
               <div className="relative">
                 <User className="w-4 h-4 text-[#888888] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Sara Siddiqui"
-                  className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
+                  }}
+                  placeholder="e.g. Ayesha Khan"
+                  className={`w-full bg-[#efe8dc]/40 border rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none transition-colors ${
+                    errors.name
+                      ? 'border-red-400 focus:border-red-500 ring-1 ring-red-400/20'
+                      : 'border-[#e0d8c8] focus:border-[#2d5a61]'
+                  }`}
                 />
               </div>
+              {errors.name && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                  <span>{errors.name}</span>
+                </p>
+              )}
             </div>
           )}
 
           <div>
-            <label className="block font-medium text-[#333333] mb-1">Email Address</label>
+            <label className="block font-medium text-[#333333] mb-1">Email Address *</label>
             <div className="relative">
               <Mail className="w-4 h-4 text-[#888888] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
-                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="sara@example.com"
-                className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                }}
+                placeholder="e.g. name@example.com"
+                className={`w-full bg-[#efe8dc]/40 border rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none transition-colors ${
+                  errors.email
+                    ? 'border-red-400 focus:border-red-500 ring-1 ring-red-400/20'
+                    : 'border-[#e0d8c8] focus:border-[#2d5a61]'
+                }`}
               />
             </div>
+            {errors.email && (
+              <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                <span>{errors.email}</span>
+              </p>
+            )}
           </div>
 
           {!isLogin && (
@@ -135,32 +242,49 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
                   type="tel"
                   value={phone}
                   onChange={(e) => {
-                    setPhoneError('');
                     setPhone(sanitizePhoneNumber(e.target.value));
+                    if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
                   }}
-                  placeholder="+92 300 1234567"
-                  className={`w-full bg-[#efe8dc]/40 border rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none focus:border-[#2d5a61] ${
-                    phoneError ? 'border-red-500' : 'border-[#e0d8c8]'
+                  placeholder="e.g. 0300 1234567 or +92 300 1234567"
+                  className={`w-full bg-[#efe8dc]/40 border rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none transition-colors ${
+                    errors.phone
+                      ? 'border-red-400 focus:border-red-500 ring-1 ring-red-400/20'
+                      : 'border-[#e0d8c8] focus:border-[#2d5a61]'
                   }`}
                 />
               </div>
-              {phoneError && <p className="text-[11px] text-red-500 mt-1">{phoneError}</p>}
+              {errors.phone && (
+                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                  <span>{errors.phone}</span>
+                </p>
+              )}
             </div>
           )}
 
           <div>
-            <label className="block font-medium text-[#333333] mb-1">Password</label>
+            <label className="block font-medium text-[#333333] mb-1">Password *</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-[#888888] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none focus:border-[#2d5a61]"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+                }}
+                placeholder="At least 6 characters"
+                className={`w-full bg-[#efe8dc]/40 border rounded-xl pl-10 pr-3.5 py-2.5 text-[#333333] focus:outline-none transition-colors ${
+                  errors.password
+                    ? 'border-red-400 focus:border-red-500 ring-1 ring-red-400/20'
+                    : 'border-[#e0d8c8] focus:border-[#2d5a61]'
+                }`}
               />
             </div>
+            {errors.password && (
+              <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                <span>{errors.password}</span>
+              </p>
+            )}
           </div>
 
           <button
@@ -172,20 +296,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
           </button>
         </form>
 
-        {/* Demo Fast Login */}
-        <div className="mt-6 pt-5 border-t border-[#e0d8c8] text-center">
-          <button
-            type="button"
-            onClick={handleDemoLogin}
-            className="w-full bg-[#efe8dc] hover:bg-[#e0d8c8] text-[#2d5a61] py-2.5 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#D4B982]" />
-            <span>Instant Demo Account Sign-In</span>
-          </button>
-        </div>
-
         {/* Toggle Login / Register */}
-        <div className="mt-5 text-center text-xs text-[#666666]">
+        <div className="mt-6 pt-5 border-t border-[#e0d8c8] text-center text-xs text-[#666666]">
           {isLogin ? (
             <p>
               Don&apos;t have an account?{' '}
@@ -220,3 +332,4 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
     </div>
   );
 };
+
