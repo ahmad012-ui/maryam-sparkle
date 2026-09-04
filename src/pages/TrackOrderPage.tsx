@@ -20,6 +20,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { PRODUCTS } from '../data/products';
 import { orderService } from '../services/orderService';
 import { Order } from '../types';
+import { SEO } from '../components/SEO';
 
 interface TrackingOrder {
   id: string;
@@ -449,6 +450,11 @@ export const TrackOrderPage: React.FC = () => {
 
   return (
     <div className="bg-[#efe8dc] min-h-screen py-8 md:py-14">
+      <SEO
+        title="Track Your Order"
+        description="Track your Maryam Sparkle handmade jewelry delivery status, TCS courier updates, and estimated arrival."
+        canonical="/track"
+      />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Page Header */}
         <div className="text-center max-w-2xl mx-auto">

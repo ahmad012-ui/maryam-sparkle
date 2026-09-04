@@ -7,6 +7,7 @@ import { OurStory } from '../components/OurStory';
 import { InstagramGrid } from '../components/InstagramGrid';
 import { Product, Category } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 
 interface HomePageProps {
   products: Product[];
@@ -47,6 +48,13 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <div className="space-y-0">
+      <SEO
+        title="Maryam Sparkle | Handmade Jewellery Studio"
+        description="Discover artisanal handmade beaded bracelets, dainty necklaces, gemstone rings, and custom bespoke jewelry crafted with love in Pakistan."
+        canonical="/"
+        keywords="handmade jewellery, bead bracelets, custom jewellery Pakistan, Maryam Sparkle, artisanal jewelry, dainty necklaces"
+      />
+
       {/* Hero Section */}
       <Hero
         onShopNow={handleShopNow}

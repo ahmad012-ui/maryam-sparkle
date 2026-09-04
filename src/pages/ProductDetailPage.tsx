@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
+import { SEO } from '../components/SEO';
 
 interface ProductDetailPageProps {
   wishlistIds: string[];
@@ -121,6 +122,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#efe8dc] pb-24">
+      <SEO
+        title={product.name}
+        description={product.shortDescription || product.description}
+        ogType="product"
+        ogImage={images[0] || product.image}
+        canonical={`/product/${product.slug}`}
+        productPrice={product.price}
+        productCurrency="PKR"
+        productAvailability={product.inStock ? 'in stock' : 'out of stock'}
+        keywords={`${product.name}, ${product.category}, Maryam Sparkle, handmade jewelry Pakistan, ${product.materials.join(', ')}`}
+      />
+
       {/* Added to Bag Toast Notification */}
       {addedToast && (
         <div className="fixed top-24 right-6 z-50 bg-[#2d5a61] text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-white/20 animate-fade-in">

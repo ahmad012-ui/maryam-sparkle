@@ -269,7 +269,7 @@ function MainApp() {
             element={
               <WishlistPage
                 wishlist={wishlistProducts}
-                onAddToCart={handleAddToCart}
+                onMoveToBag={handleMoveToBag}
                 onRemoveFromWishlist={handleToggleWishlist}
                 onMoveAllToCart={handleMoveAllWishlistToBag}
               />
@@ -399,6 +399,7 @@ function MainApp() {
         wishlistProducts={wishlistProducts}
         onRemoveFromWishlist={handleToggleWishlist}
         onMoveToBag={handleMoveToBag}
+        onMoveAllToBag={handleMoveAllWishlistToBag}
       />
 
       {/* Product Detail Modal */}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, CheckCircle2, Heart, Send, MessageSquare, Info, ShieldCheck } from 'lucide-react';
 import { HERO_IMAGES } from '../data/products';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
+import { SEO } from '../components/SEO';
 
 export const CustomOrderPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -72,6 +73,11 @@ export const CustomOrderPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#efe8dc] py-12 md:py-20">
+      <SEO
+        title="Custom Jewelry & Bespoke Orders"
+        description="Design personalized bead bracelets, necklaces, and gemstone jewelry with Maryam Sparkle in Pakistan."
+        canonical="/custom-orders"
+      />
       <div className="max-w-4xl mx-auto px-6 md:px-10">
         {/* Header */}
         <div className="text-center mb-12">

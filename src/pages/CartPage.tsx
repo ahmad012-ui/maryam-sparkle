@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Truck, Sparkles, Tag, ArrowLeft } from 'lucide-react';
 import { CartItem } from '../types';
+import { SEO } from '../components/SEO';
 
 interface CartPageProps {
   cart: CartItem[];
@@ -40,6 +41,12 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
   if (cart.length === 0) {
     return (
       <div className="min-h-[70vh] bg-[#efe8dc] flex flex-col items-center justify-center px-6 py-20 text-center">
+        <SEO
+          title="Shopping Bag"
+          description="Your shopping bag at Maryam Sparkle handmade jewelry studio."
+          canonical="/cart"
+          noindex={true}
+        />
         <div className="w-24 h-24 bg-[#fdfaf5] rounded-full flex items-center justify-center mb-6 shadow-sm border border-[#e0d8c8]">
           <ShoppingBag className="w-10 h-10 text-[#2d5a61]/60" />
         </div>
@@ -60,6 +67,12 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
 
   return (
     <div className="min-h-screen bg-[#efe8dc] py-10 md:py-16">
+      <SEO
+        title="Shopping Bag"
+        description="Review your handmade jewelry selections and checkout at Maryam Sparkle."
+        canonical="/cart"
+        noindex={true}
+      />
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e0d8c8] mb-8">

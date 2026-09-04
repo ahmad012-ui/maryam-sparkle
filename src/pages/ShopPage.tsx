@@ -17,6 +17,7 @@ import {
   Star
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 
 interface ShopPageProps {
   products: Product[];
@@ -162,6 +163,12 @@ export const ShopPage: React.FC<ShopPageProps> = ({
 
   return (
     <div className="bg-[#efe8dc] min-h-screen py-8 md:py-12">
+      <SEO
+        title={selectedCategory ? `${selectedCategory} Collection` : 'Handmade Jewelry Catalog'}
+        description={`Explore handcrafted ${selectedCategory ? selectedCategory.toLowerCase() : 'beaded bracelets, anklets, and necklaces'} made with natural gemstones, freshwater pearls, and delicate finishes.`}
+        canonical={selectedCategory ? `/shop?category=${selectedCategory}` : '/shop'}
+        keywords={`handmade jewelry, ${selectedCategory || 'bracelets, necklaces, anklets'}, bead jewelry shop, Maryam Sparkle`}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Breadcrumbs & Header */}
         <div className="mb-8 md:mb-12 text-center max-w-2xl mx-auto">

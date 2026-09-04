@@ -120,7 +120,7 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => onAddToCart(product)}
+                  onClick={() => onMoveToBag(product)}
                   className="flex-1 bg-[#2d5a61] text-white py-2.5 rounded-full text-xs font-medium flex items-center justify-center gap-2 hover:bg-[#1e3c41] transition-colors cursor-pointer shadow-2xs"
                 >
                   <ShoppingBag className="w-3.5 h-3.5" />

@@ -15,6 +15,7 @@ import {
 import { FAQS } from '../data/products';
 import { Link } from 'react-router-dom';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
+import { SEO } from '../components/SEO';
 
 interface ContactPageProps {
   onOpenCustomOrder: () => void;
@@ -86,6 +87,11 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
 
   return (
     <div className="bg-[#efe8dc] min-h-screen py-10 md:py-16">
+      <SEO
+        title="Contact Us & Studio Assistance"
+        description="Get in touch with Maryam Sparkle jewelry studio. Reach out via WhatsApp, phone, or email for order queries and custom requests in Pakistan."
+        canonical="/contact"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Page Header */}
         <div className="text-center max-w-2xl mx-auto">

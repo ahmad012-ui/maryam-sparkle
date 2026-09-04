@@ -2,6 +2,7 @@ import React from 'react';
 import { HERO_IMAGES, INSTAGRAM_POSTS } from '../data/products';
 import { Sparkles, Heart, Gem, ShieldCheck, Leaf, Award, ArrowRight, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 
 interface AboutPageProps {
   onOpenCustomOrder: () => void;
@@ -10,6 +11,11 @@ interface AboutPageProps {
 export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
   return (
     <div className="bg-[#efe8dc] min-h-screen">
+      <SEO
+        title="Our Story & Studio Craft"
+        description="Learn about Maryam Sparkle, our handmade artisanal jewelry studio in Pakistan, crafting mindful beaded bracelets, necklaces, and bespoke pieces."
+        canonical="/about"
+      />
       {/* Hero Banner with Arch Layout */}
       <section className="relative py-16 md:py-24 border-b border-[#e0d8c8] overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
