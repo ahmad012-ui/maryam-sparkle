@@ -14,6 +14,11 @@ import { WishlistPage } from './pages/WishlistPage';
 import { SearchPage } from './pages/SearchPage';
 import { AccountPage } from './pages/AccountPage';
 import { AuthPage } from './pages/AuthPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { VerifyOtpPage } from './pages/VerifyOtpPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { PasswordResetSuccessPage } from './pages/PasswordResetSuccessPage';
+import { PasswordResetProvider } from './context/PasswordResetContext';
 import { CustomOrderPage } from './pages/CustomOrderPage';
 import { CustomerCarePage } from './pages/CustomerCarePage';
 import { AboutPage } from './pages/AboutPage';
@@ -299,6 +304,22 @@ function MainApp() {
             element={<AuthPage initialMode="register" />}
           />
           <Route
+            path="/forgot-password"
+            element={<ForgotPasswordPage />}
+          />
+          <Route
+            path="/verify-otp"
+            element={<VerifyOtpPage />}
+          />
+          <Route
+            path="/reset-password"
+            element={<ResetPasswordPage />}
+          />
+          <Route
+            path="/password-reset-success"
+            element={<PasswordResetSuccessPage />}
+          />
+          <Route
             path="/custom-orders"
             element={<CustomOrderPage />}
           />
@@ -451,7 +472,9 @@ function MainApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <MainApp />
+      <PasswordResetProvider>
+        <MainApp />
+      </PasswordResetProvider>
     </BrowserRouter>
   );
 }

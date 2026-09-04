@@ -31,11 +31,45 @@ export function isValidFullName(name: string): boolean {
 }
 
 /**
- * Password validation: must be at least 6 characters in length
+ * Password validation: must be at least minLength characters in length
  */
 export function isValidPassword(password: string, minLength: number = 6): boolean {
   if (!password || typeof password !== 'string') return false;
   return password.length >= minLength;
+}
+
+export interface PasswordRequirementsResult {
+  isValid: boolean;
+  hasMinLength: boolean;
+  hasLetter: boolean;
+  hasNumber: boolean;
+}
+
+/**
+ * Validates password against standard security guidelines:
+ * - At least 8 characters long
+ * - Contains at least one letter (a-z, A-Z)
+ * - Contains at least one digit (0-9)
+ */
+export function validatePasswordRequirements(password: string, minLength: number = 8): PasswordRequirementsResult {
+  const pwd = password || '';
+  const hasMinLength = pwd.length >= minLength;
+  const hasLetter = /[a-zA-Z]/.test(pwd);
+  const hasNumber = /[0-9]/.test(pwd);
+
+  return {
+    isValid: hasMinLength && hasLetter && hasNumber,
+    hasMinLength,
+    hasLetter,
+    hasNumber
+  };
+}
+
+/**
+ * Validates 6-digit verification code format (strictly digits 0-9)
+ */
+export function isValidOtpCode(otp: string): boolean {
+  return /^\d{6}$/.test((otp || '').trim());
 }
 
 /**

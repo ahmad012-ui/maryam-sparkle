@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Lock, Mail, User, Phone, Sparkles, Chrome, AlertCircle } from 'lucide-react';
 import { authService } from '../services/authService';
 import {
@@ -262,7 +262,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
           )}
 
           <div>
-            <label className="block font-medium text-[#333333] mb-1">Password *</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-medium text-[#333333]">Password *</label>
+              {isLogin && (
+                <Link
+                  to="/forgot-password"
+                  className="text-[11px] font-semibold text-[#2d5a61] hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-[#888888] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
