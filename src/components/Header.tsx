@@ -305,7 +305,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-full bg-white/80 border border-[#e0d8c8] rounded-full px-4 py-2.5 text-xs text-[#666666] flex items-center gap-2.5 hover:bg-white transition-colors cursor-pointer shadow-inner"
               >
                 <Search className="w-4 h-4 text-[#888888]" />
-                <span>Search jewelry, gemstones, styles...</span>
+                <span>Search jewelry, beads, charms, styles...</span>
               </button>
 
               {/* Pages & Main Navigation Links */}

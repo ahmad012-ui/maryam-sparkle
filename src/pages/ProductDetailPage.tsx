@@ -41,7 +41,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>('Medium (6.5")');
-  const [selectedFinish, setSelectedFinish] = useState<string>('18K Gold Plated');
+  const [selectedFinish, setSelectedFinish] = useState<string>('Gold-Tone');
   const [activeTab, setActiveTab] = useState<'description' | 'materials' | 'sizing' | 'care' | 'shipping'>('description');
   const [addedToast, setAddedToast] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -54,7 +54,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       if (found) {
         setProduct(found);
         setSelectedImage(found.images?.[0] || found.image);
-        const initialFinish = found.finish || found.availableFinishes?.[0] || '18K Gold Plated';
+        const initialFinish = found.finish || found.availableFinishes?.[0] || 'Gold-Tone';
         setSelectedFinish(initialFinish);
         const related = await productService.getRelatedProducts(found.id, 4);
         setRelatedProducts(related);
@@ -403,7 +403,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-[#333333]">100% Genuine Gemstones & Craftsmanship</h4>
+                <h4 className="text-xs font-semibold text-[#333333]">100% Handcrafted Artistry & Quality</h4>
                 <p className="text-[11px] text-[#666666]">Individually hand-threaded with durable tensile stretch cord.</p>
               </div>
             </div>
@@ -428,7 +428,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           <div className="flex flex-wrap gap-2 md:gap-4 border-b border-[#e0d8c8] pb-4 mb-6">
             {[
               { id: 'description', label: 'Artisan Story & Description' },
-              { id: 'materials', label: 'Gemstones & Materials' },
+              { id: 'materials', label: 'Materials & Finishes' },
               { id: 'sizing', label: 'Dimensions & Sizing' },
               { id: 'care', label: 'Jewelry Care & Longevity' },
               { id: 'shipping', label: 'Shipping & Returns' }
@@ -455,9 +455,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="pt-2">
                   <h5 className="font-semibold text-[#333333] mb-2">Studio Highlights:</h5>
                   <ul className="list-disc pl-5 space-y-1 text-xs md:text-sm text-[#555555]">
-                    <li>Every bead is individually inspected for color harmony and crystal clarity.</li>
-                    <li>Comes packed in our signature linen dust bag and embossed keepsake box.</li>
-                    <li>Handcrafted by Maryam and her studio artisans in Karachi.</li>
+                    <li>Every bead is individually inspected for color harmony and luster.</li>
+                    <li>Comes packed in our signature linen dust bag and keepsake box.</li>
+                    <li>Handcrafted by Maryam and her studio team in Karachi.</li>
                   </ul>
                 </div>
               </div>
@@ -466,7 +466,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             {activeTab === 'materials' && (
               <div className="space-y-4">
                 <p>
-                  We source natural crystals, cultured freshwater pearls, and tarnish-resistant findings to ensure every piece shines through seasons of daily wear.
+                  We source vibrant glass and crystal beads, acrylic pearls, and tarnish-resistant hardware to ensure every piece shines through seasons of daily wear.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   {product.materials.map((mat, i) => (
@@ -477,16 +477,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   ))}
                 </div>
                 <div className="pt-3 border-t border-[#e0d8c8]/70 flex flex-wrap items-center gap-2 text-xs text-[#666666]">
-                  <span className="font-semibold text-[#333333]">Available Hardware Finishes:</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#2d5a61] font-medium">
-                    18K Gold Plated
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#2d5a61] font-medium">
-                    Sterling Silver Hue
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#666666]">
-                    Antique Brass
-                  </span>
+                  <span className="font-semibold text-[#333333]">Hardware Finishes:</span>
+                  {(product.availableFinishes && product.availableFinishes.length > 0
+                    ? product.availableFinishes
+                    : product.finish
+                    ? [product.finish]
+                    : ['Gold-Tone', 'Silver-Tone']
+                  ).map((finishItem, idx) => (
+                    <span key={idx} className="px-2.5 py-0.5 rounded-full bg-[#fdfaf5] border border-[#e0d8c8] text-[#2d5a61] font-medium">
+                      {finishItem}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -505,8 +506,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <p>{product.careInstructions || 'Keep away from direct water, alcohol, perfumes and chlorine pools.'}</p>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs md:text-sm text-[#555555]">
                   <li>Store separately in the provided soft microfiber pouch.</li>
-                  <li><strong>For 18K Gold Plated pieces:</strong> Wipe gently with a soft dry cotton cloth after wearing to maintain radiant luster.</li>
-                  <li><strong>For Sterling Silver & Silver Finishes:</strong> Store dry in an airtight pouch to prevent natural oxidation; gently polish with a silver cloth as needed.</li>
+                  <li><strong>For Gold-Tone pieces:</strong> Wipe gently with a soft dry cotton cloth after wearing to maintain radiant luster.</li>
+                  <li><strong>For Silver-Tone pieces:</strong> Store dry in an airtight pouch to protect against humidity and preserve finish.</li>
                   <li>Roll bracelets on and off gently rather than pulling on elastic cords.</li>
                 </ul>
               </div>

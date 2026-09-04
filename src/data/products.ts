@@ -251,8 +251,8 @@ export const PRODUCTS: Product[] = [
     inStock: true
   },
   {
-    id: 'sunlit-citrine-anklet',
-    slug: 'sunlit-citrine-anklet',
+    id: 'sunlit-golden-charm-anklet',
+    slug: 'sunlit-golden-charm-anklet',
     name: 'Sunlit Golden Charm Anklet',
     category: 'Anklets',
     price: 1450,
@@ -283,7 +283,7 @@ export const PRODUCTS: Product[] = [
   },
   {
     id: 'ocean-wave-anklet',
-    slug: 'ocean-wave-turquoise-anklet',
+    slug: 'ocean-wave-beaded-anklet',
     name: 'Ocean Wave Beaded Anklet',
     category: 'Anklets',
     price: 1550,
@@ -293,9 +293,9 @@ export const PRODUCTS: Product[] = [
     images: [
       'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP'
     ],
-    description: 'Vibrant turquoise-colored glass beads combined with acrylic mini shell beads and waterproof cord for sunny beach days and summer escapes.',
-    shortDescription: 'Turquoise-colored glass beads with miniature shell beads on waterproof cord.',
-    materials: ['Beads'],
+    description: 'Vibrant teal-colored glass beads combined with acrylic mini shell beads and waterproof cord for sunny beach days and summer escapes.',
+    shortDescription: 'Teal-colored glass beads with miniature shell beads on waterproof cord.',
+    materials: ['Beads', 'Waterproof Cord'],
     dimensions: '8.5" to 10.5" adjustable sliding knot.',
     isFeatured: false,
     isBestSeller: false,
@@ -312,8 +312,8 @@ export const PRODUCTS: Product[] = [
     inStock: true
   },
   {
-    id: 'celestial-quartz-necklace',
-    slug: 'celestial-rose-quartz-choker',
+    id: 'celestial-rose-choker',
+    slug: 'celestial-rose-choker',
     name: 'Celestial Rose Choker',
     category: 'Necklaces',
     price: 2450,

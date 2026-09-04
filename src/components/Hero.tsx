@@ -68,7 +68,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
           <div className="absolute bottom-4 sm:bottom-6 right-0 sm:right-2 md:-right-4 translate-y-2 w-[210px] sm:w-[250px] md:w-[270px] h-[210px] sm:h-[250px] md:h-[270px] rounded-full overflow-hidden border-[6px] md:border-[8px] border-[#efe8dc] z-20 shadow-2xl transition-transform duration-500 hover:scale-105">
             <img
               src={HERO_IMAGES.circle}
-              alt="Close up of beaded gemstone bracelet with leaf charm"
+              alt="Close up of beaded bracelet with leaf charm"
               className="w-full h-full object-cover"
               loading="eager"
             />

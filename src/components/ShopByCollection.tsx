@@ -22,7 +22,7 @@ export const ShopByCollection: React.FC<ShopByCollectionProps> = ({
             Shop by Collection
           </h2>
           <p className="text-xs md:text-sm text-[#666666] mt-1">
-            Curated handcrafted sets crafted from raw gemstones, pearls, and crystals.
+            Curated handcrafted sets featuring colorful beads, delicate chains, and whimsical charms.
           </p>
         </div>
 

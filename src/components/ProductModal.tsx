@@ -19,7 +19,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   isWishlisted,
   onToggleWishlist,
 }) => {
-  const defaultFinish = product?.finish || product?.availableFinishes?.[0] || '18K Gold Plated';
+  const defaultFinish = product?.finish || product?.availableFinishes?.[0] || 'Gold-Tone';
   const [selectedSize, setSelectedSize] = useState('Medium (6.5")');
   const [selectedFinish, setSelectedFinish] = useState(defaultFinish);
   const [customNote, setCustomNote] = useState('');
@@ -27,7 +27,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   React.useEffect(() => {
     if (product) {
-      const initial = product.finish || product.availableFinishes?.[0] || '18K Gold Plated';
+      const initial = product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
       setSelectedFinish(initial);
     }
   }, [product]);
@@ -39,7 +39,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     ? product.availableFinishes
     : product.finish
     ? [product.finish]
-    : ['18K Gold Plated', 'Sterling Silver'];
+    : ['Gold-Tone', 'Silver-Tone'];
 
   const handleAdd = () => {
     onAddToCart(product, selectedSize, selectedFinish, customNote);

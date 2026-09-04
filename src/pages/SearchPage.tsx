@@ -135,13 +135,13 @@ export const SearchPage: React.FC<SearchPageProps> = ({
         {loading ? (
           <div className="min-h-[40vh] flex flex-col items-center justify-center">
             <Sparkles className="w-8 h-8 text-[#2d5a61] animate-spin mb-3" />
-            <p className="font-serif text-sm text-[#444444]">Filtering handcrafted gemstones...</p>
+            <p className="font-serif text-sm text-[#444444]">Filtering handcrafted jewelry...</p>
           </div>
         ) : products.length === 0 ? (
           <div className="bg-[#fdfaf5] rounded-3xl p-12 text-center border border-[#e0d8c8] max-w-xl mx-auto my-8">
             <h3 className="font-serif text-2xl text-[#333333] mb-3">No matching pieces found</h3>
             <p className="text-xs text-[#666666] mb-6">
-              Try searching with different gemstones (like "quartz" or "pearl") or explore our complete catalog.
+              Try searching with different styles (like "ruby star", "beaded", or "charm") or explore our complete catalog.
             </p>
             <button
               onClick={() => {

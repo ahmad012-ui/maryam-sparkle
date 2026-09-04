@@ -48,15 +48,15 @@ export const StoryModal: React.FC<StoryModalProps> = ({ isOpen, onClose, onExplo
           </p>
 
           <p>
-            Every single bead, crystal, and freshwater pearl is hand-selected in our studio. From testing high-tensile stretch cords that never lose elasticity to hand-wrapping wire loops with 18k gold-plated findings, no two pieces are identical.
+            Every single bead, crystal glass accent, and charm is hand-selected in our studio. From testing high-tensile stretch cords that never lose elasticity to hand-wrapping wire loops with durable gold- and silver-tone findings, no two pieces are identical.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             <div className="bg-[#efe8dc]/70 p-4 rounded-2xl border border-[#e0d8c8]">
-              <Gem className="w-6 h-6 text-[#2d5a61] mb-2" />
-              <h4 className="font-serif text-sm font-semibold text-[#333333] mb-1">Ethical Gemstones</h4>
+              <Sparkles className="w-6 h-6 text-[#2d5a61] mb-2" />
+              <h4 className="font-serif text-sm font-semibold text-[#333333] mb-1">Artisanal Quality</h4>
               <p className="text-xs text-[#666666]">
-                Natural amethyst, raw citrine, quartz and baroque pearls chosen for natural luster.
+                Vibrant beads, delicate chains, and whimsical charms chosen for style and durability.
               </p>
             </div>
 

@@ -165,7 +165,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
     <div className="bg-[#efe8dc] min-h-screen py-8 md:py-12">
       <SEO
         title={selectedCategory ? `${selectedCategory} Collection` : 'Handmade Jewelry Catalog'}
-        description={`Explore handcrafted ${selectedCategory ? selectedCategory.toLowerCase() : 'beaded bracelets, anklets, and necklaces'} made with natural gemstones, freshwater pearls, and delicate finishes.`}
+        description={`Explore handcrafted ${selectedCategory ? selectedCategory.toLowerCase() : 'beaded bracelets, anklets, necklaces, and delicate chains'} featuring vibrant beads, charming pendants, and tarnish-resistant gold- and silver-tone hardware.`}
         canonical={selectedCategory ? `/shop?category=${selectedCategory}` : '/shop'}
         keywords={`handmade jewelry, ${selectedCategory || 'bracelets, necklaces, anklets'}, bead jewelry shop, Maryam Sparkle`}
       />
@@ -181,7 +181,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             Artisanal Collections
           </h1>
           <p className="text-sm sm:text-base text-[#666666] leading-relaxed font-light">
-            Every piece is lovingly hand-threaded, knotted, and beaded in our studio using natural gemstones, freshwater pearls, and tarnish-resistant finishes.
+            Every piece is lovingly hand-crafted in our studio using vibrant beads, delicate linked chains, charming pendants, and tarnish-resistant hardware.
           </p>
         </div>
 

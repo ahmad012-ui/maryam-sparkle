@@ -82,7 +82,7 @@ export const Footer: React.FC<FooterProps> = () => {
             </Link>
 
             <p className="text-xs sm:text-sm text-[#666666] leading-relaxed max-w-sm font-light">
-              Handmade jewelry, made with intention. Natural gemstones, cultured freshwater pearls, and delicate crystal beads crafted piece-by-piece in our atelier.
+              Handmade jewelry, made with intention. Vibrant beads, delicate chains, and sparkling charms crafted piece-by-piece in our atelier.
             </p>
 
             <div className="pt-2 text-xs text-[#888888]">

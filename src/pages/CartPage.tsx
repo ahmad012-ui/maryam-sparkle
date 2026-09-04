@@ -52,7 +52,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl text-[#333333] mb-3">Your Shopping Bag is Empty</h1>
         <p className="text-[#666666] max-w-md mb-8 text-sm sm:text-base leading-relaxed">
-          Looks like you haven't added any handmade gemstone treasures to your bag yet. Explore our latest arrivals or stackable bracelets!
+          Looks like you haven't added any handmade jewelry treasures to your bag yet. Explore our latest arrivals or stackable bracelets!
         </p>
         <Link
           to="/shop"

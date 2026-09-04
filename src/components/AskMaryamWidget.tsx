@@ -72,7 +72,7 @@ export const AskMaryamWidget: React.FC<AskMaryamWidgetProps> = ({
         {
           id: (Date.now() + 1).toString(),
           sender: 'maryam',
-          text: 'Every handmade piece in our Karachi studio is crafted with natural gemstones. Let me know if you would like custom sizes or special gift packaging!',
+          text: 'Every handmade piece in our Karachi studio is crafted with vibrant beads, chains, and charms. Let me know if you would like custom sizes or special gift packaging!',
           recommendedProducts: products.slice(0, 2),
         },
       ]);

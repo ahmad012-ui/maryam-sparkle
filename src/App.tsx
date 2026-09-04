@@ -80,7 +80,7 @@ function MainApp() {
     customNote?: string
   ) => {
     const itemSize = size || 'Medium (6.5")';
-    const itemFinish = finish || '18k Gold Finish';
+    const itemFinish = finish || product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
         (item) =>

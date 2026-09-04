@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Sparkles, CheckCircle2, Heart, Send, MessageSquare, Info, ShieldCheck } from 'lucide-react';
+import { Sparkles, CheckCircle2, Heart, Send, MessageSquare, Info, ShieldCheck, Image as ImageIcon } from 'lucide-react';
 import { HERO_IMAGES } from '../data/products';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { SEO } from '../components/SEO';
+import { ReferenceImageUpload, ReferenceImageFile } from '../components/ReferenceImageUpload';
 
 export const CustomOrderPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,27 +12,28 @@ export const CustomOrderPage: React.FC = () => {
     phone: '',
     jewelryType: 'Bracelet Stack',
     wristSize: '6.5 inches (Medium)',
-    metalFinish: '18K Gold Plated',
+    metalFinish: 'Gold-Tone Hardware',
     budgetRange: 'Rs. 2,000 - Rs. 3,500',
-    preferredStones: ['Ruby Quartz', 'Freshwater Pearls'],
+    preferredStones: ['Glass Crystal Beads', 'Acrylic Pearls'],
     initialsOrWord: '',
     specialNotes: ''
   });
 
+  const [referenceImages, setReferenceImages] = useState<ReferenceImageFile[]>([]);
   const [phoneError, setPhoneError] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const gemstoneOptions = [
-    'Ruby Quartz',
-    'Green Aventurine',
-    'Rose Quartz',
-    'Amethyst',
-    'Matte Black Onyx',
-    'Freshwater Pearls',
-    'Turquoise',
-    'Golden Citrine',
-    'Carnelian',
-    'Mother of Pearl'
+  const beadOptions = [
+    'Glass Crystal Beads',
+    'Acrylic Pearls',
+    'Ruby-Red Glass Beads',
+    'Emerald Green Beads',
+    'Sage Glass Beads',
+    'Amber Glass Beads',
+    'Mini Shell Beads',
+    'Pastel Seed Beads',
+    'Deep Black Onyx-Style Beads',
+    'Rainbow Floral Beads'
   ];
 
   const handleToggleStone = (stone: string) => {
@@ -53,6 +55,14 @@ export const CustomOrderPage: React.FC = () => {
       setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
       return;
     }
+
+    // Structure the submission data preserving File objects for future Laravel API integration
+    // When connecting Laravel:
+    // const postData = new FormData();
+    // Object.entries(formData).forEach(([k, v]) => postData.append(k, Array.isArray(v) ? JSON.stringify(v) : v));
+    // referenceImages.forEach((img) => postData.append('reference_images[]', img.file));
+    // await fetch('/api/custom-orders', { method: 'POST', body: postData });
+
     setSubmitted(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -62,11 +72,11 @@ export const CustomOrderPage: React.FC = () => {
 - Name: ${formData.name}
 - Type: ${formData.jewelryType}
 - Size: ${formData.wristSize}
-- Gemstones: ${formData.preferredStones.join(', ')}
-- Metal: ${formData.metalFinish}
+- Beads/Components: ${formData.preferredStones.join(', ')}
+- Hardware Finish: ${formData.metalFinish}
 - Initials/Name: ${formData.initialsOrWord || 'None'}
 - Budget: ${formData.budgetRange}
-- Notes: ${formData.specialNotes || 'None'}`;
+- Notes: ${formData.specialNotes || 'None'}${referenceImages.length > 0 ? `\n- Reference Images: ${referenceImages.length} image(s) to share in chat` : ''}`;
 
     return `https://wa.me/923001234567?text=${encodeURIComponent(text)}`;
   };
@@ -75,7 +85,7 @@ export const CustomOrderPage: React.FC = () => {
     <div className="min-h-screen bg-[#efe8dc] py-12 md:py-20">
       <SEO
         title="Custom Jewelry & Bespoke Orders"
-        description="Design personalized bead bracelets, necklaces, and gemstone jewelry with Maryam Sparkle in Pakistan."
+        description="Design personalized bead bracelets, necklaces, and anklets with Maryam Sparkle in Pakistan."
         canonical="/custom-orders"
       />
       <div className="max-w-4xl mx-auto px-6 md:px-10">
@@ -89,7 +99,7 @@ export const CustomOrderPage: React.FC = () => {
             Design Your Custom Jewelry
           </h1>
           <p className="text-sm md:text-base text-[#666666] max-w-xl mx-auto leading-relaxed">
-            Have a dream gemstone palette, wedding favor idea, or personalized name charm in mind? Maryam handcrafts one-of-a-kind bespoke pieces tailored to your style.
+            Have a dream bead color palette, wedding favor idea, sketch, or personalized charm in mind? Maryam handcrafts one-of-a-kind bespoke pieces tailored to your style.
           </p>
         </div>
 
@@ -101,9 +111,28 @@ export const CustomOrderPage: React.FC = () => {
             <h2 className="font-serif text-2xl sm:text-3xl text-[#333333] mb-3">
               Request Received, {formData.name}!
             </h2>
-            <p className="text-xs md:text-sm text-[#666666] mb-8 leading-relaxed">
-              Maryam will review your selected gemstones and reach out via WhatsApp / SMS within 12 hours with stone mockups and exact delivery timelines.
+            <p className="text-xs md:text-sm text-[#666666] mb-4 leading-relaxed">
+              Maryam will review your selected preferences and reach out via WhatsApp / SMS within 12 hours with layout mockups and exact delivery timelines.
             </p>
+
+            {referenceImages.length > 0 && (
+              <div className="bg-[#efe8dc]/50 rounded-2xl p-4 mb-6 border border-[#e0d8c8] text-left">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#2d5a61] mb-2">
+                  <ImageIcon className="w-4 h-4" />
+                  <span>{referenceImages.length} Reference {referenceImages.length === 1 ? 'Image' : 'Images'} Attached:</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {referenceImages.map((img) => (
+                    <img
+                      key={img.id}
+                      src={img.previewUrl}
+                      alt={img.name}
+                      className="w-14 h-14 rounded-lg object-cover border border-[#e0d8c8]"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
@@ -117,8 +146,11 @@ export const CustomOrderPage: React.FC = () => {
               </a>
 
               <button
-                onClick={() => setSubmitted(false)}
-                className="w-full sm:w-auto text-[#2d5a61] border border-[#2d5a61]/40 px-6 py-3.5 rounded-full text-xs font-semibold hover:bg-[#2d5a61]/10 transition-colors"
+                onClick={() => {
+                  setSubmitted(false);
+                  setReferenceImages([]);
+                }}
+                className="w-full sm:w-auto text-[#2d5a61] border border-[#2d5a61]/40 px-6 py-3.5 rounded-full text-xs font-semibold hover:bg-[#2d5a61]/10 transition-colors cursor-pointer"
               >
                 Create Another Design
               </button>
@@ -154,13 +186,13 @@ export const CustomOrderPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 2. Gemstone Selection */}
+                {/* 2. Bead & Component Selection */}
                 <div>
                   <label className="block text-xs font-semibold text-[#333333] mb-2">
-                    2. Select your favorite Gemstones & Beads (Choose multiple):
+                    2. Select your favorite Beads & Components (Choose multiple):
                   </label>
                   <div className="flex flex-wrap gap-2">
-                    {gemstoneOptions.map((stone) => {
+                    {beadOptions.map((stone) => {
                       const isSelected = formData.preferredStones.includes(stone);
                       return (
                         <button
@@ -200,16 +232,16 @@ export const CustomOrderPage: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-[#333333] mb-1.5">
-                      4. Metal Charm Finish
+                      4. Hardware Finish
                     </label>
                     <select
                       value={formData.metalFinish}
                       onChange={(e) => setFormData({ ...formData, metalFinish: e.target.value })}
                       className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-3.5 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]"
                     >
-                      <option>18K Gold Plated</option>
-                      <option>Sterling Silver Hue</option>
-                      <option>Antique Brass</option>
+                      <option>Gold-Tone Hardware</option>
+                      <option>Silver-Tone Hardware</option>
+                      <option>Waterproof / Sliding Cord</option>
                       <option>No Metal / Pure Beads</option>
                     </select>
                   </div>
@@ -238,12 +270,22 @@ export const CustomOrderPage: React.FC = () => {
                     rows={3}
                     value={formData.specialNotes}
                     onChange={(e) => setFormData({ ...formData, specialNotes: e.target.value })}
-                    placeholder="e.g. Matching an emerald green silk Eid dress, or need 5 matching bridal party bracelets with rose quartz."
+                    placeholder="e.g. Matching an emerald green silk Eid dress, or need 5 matching bridal party bracelets with ruby-red beads."
                     className="w-full bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]"
                   />
                 </div>
 
-                {/* 6. Contact Details */}
+                {/* 6. Reference Images Upload (Optional) */}
+                <div className="pt-2 border-t border-[#e0d8c8]/80">
+                  <ReferenceImageUpload
+                    images={referenceImages}
+                    onChange={setReferenceImages}
+                    maxFiles={6}
+                    maxFileSizeMB={5}
+                  />
+                </div>
+
+                {/* 7. Contact Details */}
                 <div className="pt-4 border-t border-[#e0d8c8] space-y-4">
                   <h3 className="font-serif text-base text-[#333333]">Your Contact Details</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -297,7 +339,7 @@ export const CustomOrderPage: React.FC = () => {
                 </div>
                 <h3 className="font-serif text-lg text-[#333333] mb-2 font-medium">Bespoke Studio Promise</h3>
                 <p className="text-xs text-[#666666] leading-relaxed mb-4">
-                  Every custom order is threaded and set personally by Maryam. We share photos of your stone layout before final stringing so you can tweak beads!
+                  Every custom order is threaded and set personally by Maryam. We share photos of your bead layout before final stringing so you can tweak components!
                 </p>
                 <div className="space-y-2 text-xs text-[#555555] border-t border-[#e0d8c8] pt-4">
                   <div className="flex items-center gap-2">
