@@ -190,6 +190,11 @@ export const Footer: React.FC<FooterProps> = () => {
                   Saved Wishlist
                 </Link>
               </li>
+              <li>
+                <Link to="/admin" className="hover:text-[#2d5a61] transition-colors font-medium text-[#2d5a61]">
+                  Studio Admin
+                </Link>
+              </li>
             </ul>
           </div>
 

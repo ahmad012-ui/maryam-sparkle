@@ -169,6 +169,13 @@ export const AccountPage: React.FC = () => {
 
           <div className="flex flex-wrap gap-2.5">
             <Link
+              to="/admin"
+              className="bg-white border border-[#2d5a61]/30 text-[#2d5a61] px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#2d5a61]/5 transition-colors flex items-center gap-1.5 shadow-2xs"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#c59d5f]" />
+              <span>Studio Admin</span>
+            </Link>
+            <Link
               to="/track"
               className="bg-[#2d5a61] text-white px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors flex items-center gap-1.5 shadow-xs"
             >

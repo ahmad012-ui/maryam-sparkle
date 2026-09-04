@@ -150,7 +150,16 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
             <span className="text-white/30">•</span>
-            <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] font-semibold text-[#D4B982]">
+            <Link
+              to="/admin"
+              className="bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[10px] font-semibold text-[#D4B982] transition-colors flex items-center gap-1 border border-white/10"
+              title="Open Admin Management Dashboard"
+            >
+              <ShieldCheck className="w-2.5 h-2.5" />
+              <span>Admin Studio</span>
+            </Link>
+            <span className="text-white/30">•</span>
+            <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] font-semibold text-white/80">
               PKR (Rs.)
             </span>
           </div>
@@ -493,6 +502,23 @@ export const Header: React.FC<HeaderProps> = ({
                       </span>
                     </div>
                     <ChevronRight className="w-4 h-4 opacity-60" />
+                  </NavLink>
+                </div>
+
+                {/* Studio Management / Admin */}
+                <div className="border-t border-[#e0d8c8]/60 pt-2">
+                  <NavLink
+                    to="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-all bg-[#2d5a61]/10 border border-[#2d5a61]/20 text-[#2d5a61] hover:bg-[#2d5a61]/15"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="w-4 h-4 text-[#c59d5f]" />
+                      <span className="font-serif text-lg font-medium">Admin Studio Dashboard</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider bg-[#2d5a61] text-white px-2 py-0.5 rounded-full">
+                      Studio
+                    </span>
                   </NavLink>
                 </div>
 

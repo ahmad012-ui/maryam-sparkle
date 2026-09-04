@@ -33,6 +33,7 @@ import { StoryModal } from './components/StoryModal';
 import { CustomerCareModal } from './components/CustomerCareModal';
 import { AskMaryamWidget } from './components/AskMaryamWidget';
 import { MobileDynamicIslandNav } from './components/MobileDynamicIslandNav';
+import { AdminApp } from './admin';
 
 // Helper component to automatically scroll to top on route change
 function ScrollToTop() {
@@ -67,6 +68,16 @@ function MainApp() {
   const [isCustomOrderOpen, setIsCustomOrderOpen] = useState(false);
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [customerCareTab, setCustomerCareTab] = useState<string | null>(null);
+
+  // If visiting /admin, render dedicated admin dashboard
+  if (location.pathname.startsWith('/admin')) {
+    return (
+      <>
+        <ScrollToTop />
+        <AdminApp onBackToStore={() => navigate('/')} />
+      </>
+    );
+  }
 
   // Sync category query parameter from URL (e.g. /shop?category=bracelets)
   useEffect(() => {
