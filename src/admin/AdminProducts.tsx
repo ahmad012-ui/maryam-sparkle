@@ -252,7 +252,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
           </div>
 
           {/* Stock Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
             {(['All', 'InStock', 'LowStock', 'OutOfStock'] as const).map((mode) => (
               <button
                 key={mode}
@@ -276,7 +276,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
         </div>
 
         {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-gray-100 dark:border-gray-800 pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto pt-2 border-t border-gray-100 dark:border-gray-800 pb-1 no-scrollbar">
           <span className="text-xs text-gray-400 font-medium whitespace-nowrap mr-1">Category:</span>
           {categories.map((cat) => (
             <button

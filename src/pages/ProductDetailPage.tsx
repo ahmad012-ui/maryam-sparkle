@@ -147,7 +147,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
       {/* Breadcrumbs Navigation */}
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-5">
-        <nav className="flex items-center gap-2 text-xs text-[#666666] font-medium overflow-x-auto whitespace-nowrap">
+        <nav className="flex items-center gap-2 text-xs text-[#666666] font-medium overflow-x-auto whitespace-nowrap no-scrollbar">
           <Link to="/" className="hover:text-[#2d5a61] transition-colors">Home</Link>
           <ChevronRight className="w-3.5 h-3.5 text-[#888888]" />
           <Link to="/shop" className="hover:text-[#2d5a61] transition-colors">Shop</Link>
@@ -166,7 +166,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         <div className="lg:col-span-7 flex flex-col-reverse md:flex-row gap-4">
           {/* Thumbnails */}
           {images.length > 1 && (
-            <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto max-h-[540px] pb-2 md:pb-0 scrollbar-thin">
+            <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto max-h-[540px] pb-2 md:pb-0 no-scrollbar md:scrollbar-thin">
               {images.map((img, idx) => (
                 <button
                   key={idx}

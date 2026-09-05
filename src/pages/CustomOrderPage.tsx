@@ -121,7 +121,7 @@ export const CustomOrderPage: React.FC = () => {
                   <ImageIcon className="w-4 h-4" />
                   <span>{referenceImages.length} Reference {referenceImages.length === 1 ? 'Image' : 'Images'} Attached:</span>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                   {referenceImages.map((img) => (
                     <img
                       key={img.id}

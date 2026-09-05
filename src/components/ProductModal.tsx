@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Heart, ShoppingBag, Sparkles, Check, ShieldCheck, Truck, RefreshCw, Star } from 'lucide-react';
+import { X, Heart, ShoppingBag, Sparkles, Check, ShieldCheck, Truck, RefreshCw, Star, ChevronLeft, ChevronRight, Images } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductModalProps {
@@ -24,11 +24,20 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [selectedFinish, setSelectedFinish] = useState(defaultFinish);
   const [customNote, setCustomNote] = useState('');
   const [addedAnimation, setAddedAnimation] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const galleryImages = (product?.images && product.images.length > 0)
+    ? product.images
+    : product?.image
+    ? [product.image]
+    : [];
+  const currentImage = galleryImages[activeImageIndex] || product?.image || '';
 
   React.useEffect(() => {
     if (product) {
       const initial = product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
       setSelectedFinish(initial);
+      setActiveImageIndex(0);
     }
   }, [product]);
 
@@ -50,6 +59,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     }, 900);
   };
 
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1));
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveImageIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0));
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative bg-[#fdfaf5] rounded-[32px] max-w-3xl w-full overflow-hidden shadow-2xl border border-[#e0d8c8] my-8 animate-in fade-in zoom-in-95 duration-200">
@@ -63,14 +82,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
-          {/* Left: Visual Artwork Preview */}
-          <div className="relative aspect-square md:aspect-auto md:h-full bg-[#efe8dc] flex items-center justify-center p-6 sm:p-8">
-            <div className="relative w-full h-full max-h-[380px] rounded-2xl overflow-hidden shadow-md border-4 border-[#efe8dc]">
+          {/* Left: Visual Artwork Preview & Gallery Switcher */}
+          <div className="relative bg-[#efe8dc] flex flex-col items-center justify-center p-6 sm:p-8">
+            <div className="relative w-full aspect-square max-h-[380px] rounded-2xl overflow-hidden shadow-md border-4 border-[#efe8dc] group">
               <img
-                src={product.image}
+                src={currentImage}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-all duration-300"
               />
+
+              {/* Wishlist Button */}
               <button
                 onClick={() => onToggleWishlist(product)}
                 className={`absolute top-3 right-3 p-2.5 rounded-full transition-all shadow-md z-10 ${
@@ -81,7 +102,53 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               >
                 <Heart className="w-5 h-5" fill={isWishlisted ? 'currentColor' : 'none'} />
               </button>
+
+              {/* Arrow navigation if multiple images */}
+              {galleryImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handlePrevImage}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextImage}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <span className="absolute bottom-2.5 left-2.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium backdrop-blur-xs flex items-center gap-1">
+                    <Images className="w-2.5 h-2.5" />
+                    {activeImageIndex + 1} / {galleryImages.length}
+                  </span>
+                </>
+              )}
             </div>
+
+            {/* Thumbnail selector strip if more than 1 image */}
+            {galleryImages.length > 1 && (
+              <div className="flex items-center gap-2 mt-3 overflow-x-auto max-w-full pb-1 px-1 no-scrollbar">
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    className={`relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
+                      idx === activeImageIndex
+                        ? 'border-[#2d5a61] shadow-md scale-105'
+                        : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Right: Product Details & Customization Options */}

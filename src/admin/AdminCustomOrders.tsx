@@ -333,7 +333,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
                 </div>
 
                 {req.referenceImages && req.referenceImages.length > 0 ? (
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                     {req.referenceImages.map((img, i) => (
                       <div
                         key={i}

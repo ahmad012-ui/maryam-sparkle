@@ -69,6 +69,15 @@ function MainApp() {
   const [isStoryOpen, setIsStoryOpen] = useState(false);
   const [customerCareTab, setCustomerCareTab] = useState<string | null>(null);
 
+  // Sync category query parameter from URL (e.g. /shop?category=bracelets)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const catParam = params.get('category');
+    if (catParam) {
+      setSelectedCategory(catParam);
+    }
+  }, [location.search]);
+
   // If visiting /admin, render dedicated admin dashboard
   if (location.pathname.startsWith('/admin')) {
     return (
@@ -78,15 +87,6 @@ function MainApp() {
       </>
     );
   }
-
-  // Sync category query parameter from URL (e.g. /shop?category=bracelets)
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const catParam = params.get('category');
-    if (catParam) {
-      setSelectedCategory(catParam);
-    }
-  }, [location.search]);
 
   // Cart operations
   const handleAddToCart = (
