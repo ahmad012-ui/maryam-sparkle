@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Gem,
   Plus,
@@ -135,6 +135,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
     });
     setShowModal(true);
   };
+
+  useEffect(() => {
+    if (isAddModalOpen) {
+      handleOpenAdd();
+    }
+  }, [isAddModalOpen]);
 
   const handleOpenEdit = (prod: AdminProduct) => {
     setEditingProduct(prod);
