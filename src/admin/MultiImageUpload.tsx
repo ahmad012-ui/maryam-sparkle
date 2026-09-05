@@ -7,11 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Link as LinkIcon,
   Eye,
   AlertCircle,
-  Check,
 } from 'lucide-react';
+import {
+  uploadImageFile,
+  validateImageFile,
+} from '../services/imageUploadService';
 
 interface MultiImageUploadProps {
   images: string[];
@@ -26,71 +28,65 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
   onChange,
   maxImages = 10,
   label = 'Product Photography & Gallery',
-  description = 'Upload multiple high-resolution photos. The first image will be used as the primary storefront cover.',
+  description = 'Upload high-resolution photos. The first image will be used as the primary storefront cover.',
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [urlInput, setUrlInput] = useState('');
-  const [showUrlInput, setShowUrlInput] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to process multiple File objects
-  const handleFiles = (files: FileList | File[]) => {
+  // Direct File -> FormData -> Laravel Storage -> URL upload handler
+  const handleFiles = async (files: FileList | File[]) => {
     setErrorMessage(null);
-    const validFiles: File[] = [];
+    const incomingFiles: File[] = Array.from(files);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.type.startsWith('image/')) {
-        validFiles.push(file);
-      } else {
-        setErrorMessage('Only image files (JPEG, PNG, WEBP, GIF) are allowed.');
+    if (incomingFiles.length === 0) return;
+
+    // Check available slot capacity
+    if (images.length >= maxImages) {
+      setErrorMessage(`Maximum limit of ${maxImages} images already reached.`);
+      return;
+    }
+
+    const availableSlots = maxImages - images.length;
+    const filesToConsider = incomingFiles.slice(0, availableSlots);
+
+    if (incomingFiles.length > availableSlots) {
+      setErrorMessage(`Only ${availableSlots} more image slot${availableSlots > 1 ? 's' : ''} available (limit: ${maxImages}).`);
+    }
+
+    // Validate each file strictly: JPG, PNG, WEBP only; max 10MB; reject GIF and others
+    const validFiles: File[] = [];
+    for (const file of filesToConsider) {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        setErrorMessage(validation.error || 'Invalid image file.');
+        return;
       }
+      validFiles.push(file);
     }
 
     if (validFiles.length === 0) return;
 
-    if (images.length + validFiles.length > maxImages) {
-      setErrorMessage(`Maximum limit of ${maxImages} images reached.`);
+    setIsUploading(true);
+
+    try {
+      // Upload actual File objects to backend storage and retrieve resulting URLs
+      const uploadPromises = validFiles.map((file) => uploadImageFile(file, 'products'));
+      const uploadedUrls = await Promise.all(uploadPromises);
+
+      // Pass resulting URLs to parent state (no base64 strings generated or stored)
+      onChange([...images, ...uploadedUrls]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to upload images to storage.';
+      setErrorMessage(message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
-
-    const availableSlots = maxImages - images.length;
-    const filesToProcess = validFiles.slice(0, availableSlots);
-
-    if (filesToProcess.length === 0) return;
-
-    setIsProcessing(true);
-    const readers = filesToProcess.map((file) => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            resolve(e.target.result as string);
-          } else {
-            reject(new Error('Failed to read file'));
-          }
-        };
-        reader.onerror = () => reject(new Error('Error reading file'));
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(readers)
-      .then((newBase64Images) => {
-        onChange([...images, ...newBase64Images]);
-      })
-      .catch((err) => {
-        console.error('Error processing images:', err);
-        setErrorMessage('Failed to process some images.');
-      })
-      .finally(() => {
-        setIsProcessing(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -112,34 +108,6 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFiles(e.dataTransfer.files);
     }
-  };
-
-  const handleAddUrl = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!urlInput.trim()) return;
-
-    // Support comma or newline separated URLs
-    const urls = urlInput
-      .split(/[\n,]+/)
-      .map((u) => u.trim())
-      .filter((u) => u.length > 0 && (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:image')));
-
-    if (urls.length === 0) {
-      setErrorMessage('Please enter a valid image URL (e.g. https://...)');
-      return;
-    }
-
-    if (images.length + urls.length > maxImages) {
-      setErrorMessage(`Maximum limit of ${maxImages} images reached.`);
-    }
-
-    const availableSlots = maxImages - images.length;
-    const urlsToAdd = urls.slice(0, availableSlots);
-
-    onChange([...images, ...urlsToAdd]);
-    setUrlInput('');
-    setShowUrlInput(false);
-    setErrorMessage(null);
   };
 
   const handleRemoveImage = (index: number) => {
@@ -174,7 +142,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Header Label and Stats */}
+      {/* Header Label and Counter */}
       <div className="flex items-center justify-between">
         <div>
           <label className="block text-xs font-bold text-gray-800 dark:text-gray-200">
@@ -188,50 +156,10 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
           <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
             {images.length} / {maxImages} photos
           </span>
-          <button
-            type="button"
-            onClick={() => setShowUrlInput(!showUrlInput)}
-            className="text-[11px] text-[#2d5a61] dark:text-[#c59d5f] hover:underline flex items-center gap-1 font-medium"
-          >
-            <LinkIcon className="w-3 h-3" />
-            <span>{showUrlInput ? 'Hide URL' : 'Add via URL'}</span>
-          </button>
         </div>
       </div>
 
-      {/* Optional URL input box */}
-      {showUrlInput && (
-        <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 space-y-2 animate-in fade-in">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="Paste image web link (or comma separated URLs)"
-              className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-[#2d5a61]"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddUrl();
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => handleAddUrl()}
-              className="px-3 py-1.5 bg-[#2d5a61] hover:bg-[#1e3c41] text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Add</span>
-            </button>
-          </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">
-            Tip: You can paste direct links from Unsplash, Google Drive image links, or CDN URLs.
-          </p>
-        </div>
-      )}
-
-      {/* Drag & Drop Upload Zone */}
+      {/* Drag & Drop Upload Zone (Direct file upload only) */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -247,7 +175,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/*"
+          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
           onChange={(e) => {
             if (e.target.files && e.target.files.length > 0) {
               handleFiles(e.target.files);
@@ -258,7 +186,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
 
         <div className="flex flex-col items-center justify-center gap-2">
           <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 shadow-xs border border-gray-200 dark:border-gray-700 flex items-center justify-center text-[#2d5a61] dark:text-[#c59d5f]">
-            {isProcessing ? (
+            {isUploading ? (
               <div className="w-6 h-6 border-2 border-[#2d5a61] border-t-transparent rounded-full animate-spin" />
             ) : (
               <Upload className="w-6 h-6" />
@@ -266,10 +194,18 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-              <span className="text-[#2d5a61] dark:text-[#c59d5f] hover:underline">
-                Click to browse files
-              </span>{' '}
-              or drag and drop multiple pictures
+              {isUploading ? (
+                <span className="text-[#2d5a61] dark:text-[#c59d5f]">
+                  Uploading to storage...
+                </span>
+              ) : (
+                <>
+                  <span className="text-[#2d5a61] dark:text-[#c59d5f] hover:underline">
+                    Click to browse files
+                  </span>{' '}
+                  or drag and drop multiple pictures
+                </>
+              )}
             </p>
             <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
               JPG, PNG, WEBP up to 10MB each. Select multiple files at once.
@@ -294,7 +230,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
               const isCover = idx === 0;
               return (
                 <div
-                  key={`${imgUrl.slice(0, 30)}-${idx}`}
+                  key={`${imgUrl.slice(0, 40)}-${idx}`}
                   className={`group relative rounded-xl overflow-hidden border transition-all duration-200 aspect-square bg-gray-100 dark:bg-gray-800 ${
                     isCover
                       ? 'border-[#2d5a61] ring-2 ring-[#2d5a61]/30 dark:border-[#c59d5f] dark:ring-[#c59d5f]/30'
@@ -303,11 +239,18 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
                 >
                   <img
                     src={imgUrl}
-                    alt={`Jewelry product image ${idx + 1}`}
+                    alt={`Product photo ${idx + 1}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1611591475819-797de2338ec8?w=500&auto=format&fit=crop&q=60';
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.img-error-fallback')) {
+                        const fallback = document.createElement('div');
+                        fallback.className = 'img-error-fallback w-full h-full flex flex-col items-center justify-center p-2 text-center text-gray-400 bg-gray-100 dark:bg-gray-800';
+                        fallback.innerHTML = '<span class="text-[10px]">Image preview unavailable</span>';
+                        parent.appendChild(fallback);
+                      }
                     }}
                   />
 
@@ -438,7 +381,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
             </button>
             <img
               src={previewImage}
-              alt="Enlarged jewelry view"
+              alt="Enlarged view"
               className="max-w-full max-h-[80vh] object-contain rounded-xl mx-auto"
             />
           </div>

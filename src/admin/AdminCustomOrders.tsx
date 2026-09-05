@@ -25,6 +25,21 @@ interface AdminCustomOrdersProps {
   onCloseAddModal?: () => void;
 }
 
+const EMPTY_CUSTOM_ORDER_FORM: Partial<AdminCustomOrder> = {
+  customerName: '',
+  email: '',
+  phone: '',
+  jewelryType: '',
+  preferredStones: [],
+  wristSize: '',
+  metalFinish: '',
+  budgetRange: '',
+  quoteAmount: undefined,
+  notes: '',
+  status: 'New Request',
+  referenceImages: [],
+};
+
 export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
   customOrders,
   onSaveCustomOrders,
@@ -38,20 +53,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
 
   // Modal for new bespoke order
   const [showAddModal, setShowAddModal] = useState(isAddModalOpen);
-  const [formData, setFormData] = useState<Partial<AdminCustomOrder>>({
-    customerName: '',
-    email: '',
-    phone: '+92 ',
-    jewelryType: 'Custom Stacking Bracelet Set',
-    preferredStones: ['Freshwater Pearl', 'Rose Quartz'],
-    wristSize: 'Standard (6.5")',
-    metalFinish: '18K Gold Plated',
-    budgetRange: 'PKR 4,000 - PKR 6,000',
-    quoteAmount: 5000,
-    notes: 'Customer contacted via WhatsApp for custom color palette matching an outfit.',
-    status: 'New Request',
-    referenceImages: [],
-  });
+  const [formData, setFormData] = useState<Partial<AdminCustomOrder>>(EMPTY_CUSTOM_ORDER_FORM);
 
   const statuses: AdminCustomOrder['status'][] = [
     'New Request',
@@ -94,15 +96,15 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
       requestNumber: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName: formData.customerName,
       email: formData.email || '',
-      phone: formData.phone || '+92 300 0000000',
+      phone: formData.phone || '',
       jewelryType: formData.jewelryType || 'Custom Piece',
       preferredStones: Array.isArray(formData.preferredStones)
         ? formData.preferredStones
-        : ['Freshwater Pearl'],
-      wristSize: formData.wristSize || 'Standard',
-      metalFinish: formData.metalFinish || '18K Gold Plated',
+        : [],
+      wristSize: formData.wristSize || '',
+      metalFinish: formData.metalFinish || '',
       notes: formData.notes || '',
-      budgetRange: formData.budgetRange || 'PKR 3,000 - PKR 5,000',
+      budgetRange: formData.budgetRange || '',
       date: new Date().toISOString().split('T')[0],
       status: formData.status || 'New Request',
       quoteAmount: formData.quoteAmount,

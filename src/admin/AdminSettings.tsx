@@ -295,12 +295,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
           </div>
 
           <MultiImageUpload
-            images={
-              formData.bannerImages || [
-                'https://images.unsplash.com/photo-1611591475819-797de2338ec8?w=1200&auto=format&fit=crop&q=80',
-                'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=1200&auto=format&fit=crop&q=80',
-              ]
-            }
+            images={formData.bannerImages || []}
             onChange={(newImages) =>
               setFormData({ ...formData, bannerImages: newImages })
             }
