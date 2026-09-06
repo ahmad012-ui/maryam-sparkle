@@ -273,7 +273,6 @@ const INITIAL_CUSTOMERS: AdminCustomer[] = [
     totalOrders: 4,
     totalSpent: 18200,
     status: 'VIP',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
   },
   {
     id: 'c-02',
@@ -285,7 +284,6 @@ const INITIAL_CUSTOMERS: AdminCustomer[] = [
     totalOrders: 3,
     totalSpent: 12400,
     status: 'VIP',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80',
   },
   {
     id: 'c-03',
@@ -297,7 +295,6 @@ const INITIAL_CUSTOMERS: AdminCustomer[] = [
     totalOrders: 2,
     totalSpent: 6200,
     status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80',
   },
   {
     id: 'c-04',
@@ -309,7 +306,6 @@ const INITIAL_CUSTOMERS: AdminCustomer[] = [
     totalOrders: 1,
     totalSpent: 1650,
     status: 'New',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
   },
   {
     id: 'c-05',
@@ -321,7 +317,6 @@ const INITIAL_CUSTOMERS: AdminCustomer[] = [
     totalOrders: 2,
     totalSpent: 16950,
     status: 'VIP',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80',
   },
 ];
 

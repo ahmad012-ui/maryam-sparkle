@@ -38,34 +38,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onOpenNewCustomOrder,
   onSelectOrder,
 }) => {
-  // Weekly revenue data for bar chart
-  const weeklyData = [
-    { day: 'Mon', revenue: 38400, orders: 8 },
-    { day: 'Tue', revenue: 52100, orders: 11 },
-    { day: 'Wed', revenue: 44300, orders: 9 },
-    { day: 'Thu', revenue: 61800, orders: 14 },
-    { day: 'Fri', revenue: 78500, orders: 17 },
-    { day: 'Sat', revenue: 92400, orders: 21 },
-    { day: 'Sun', revenue: 84900, orders: 19 },
-  ];
-
-  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
-
-  // Calculations
+  // Real calculations directly from actual records
   const totalRevenue = orders.reduce((sum, ord) => sum + ord.totalAmount, 0);
-  const activeCustomRequests = customOrders.filter(
-    (c) => c.status === 'New Request' || c.status === 'Quote Sent' || c.status === 'In Production'
+  const deliveredCount = orders.filter((o) => o.orderStatus === 'Delivered').length;
+  const inFulfillmentCount = orders.filter(
+    (o) => o.orderStatus !== 'Delivered' && o.orderStatus !== 'Cancelled'
   ).length;
-  const lowStockCount = products.filter((p) => p.stock <= 5).length;
-  const todayOrders = orders.filter((o) => o.date === '2026-09-03').length || 2;
+  const avgOrderValue = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
 
-  // Category sales share
-  const categoriesShare = [
-    { name: 'Bracelets', count: 48, percentage: 42, color: 'bg-[#2d5a61]' },
-    { name: 'Necklaces', count: 32, percentage: 28, color: 'bg-[#c59d5f]' },
-    { name: 'Rings', count: 18, percentage: 16, color: 'bg-emerald-600' },
-    { name: 'Anklets', count: 16, percentage: 14, color: 'bg-rose-500' },
-  ];
+  const activeCustomRequests = customOrders.filter(
+    (c) => c.status !== 'Completed' && c.status !== 'Declined'
+  ).length;
+  const lowStockProducts = products.filter((p) => p.stock <= 5);
+  const totalStockUnits = products.reduce((sum, p) => sum + p.stock, 0);
+
+  // Dynamic order status breakdown from actual orders
+  const statusCounts: Record<AdminOrder['orderStatus'], number> = {
+    Placed: orders.filter((o) => o.orderStatus === 'Placed').length,
+    Confirmed: orders.filter((o) => o.orderStatus === 'Confirmed').length,
+    Processing: orders.filter((o) => o.orderStatus === 'Processing').length,
+    Shipped: orders.filter((o) => o.orderStatus === 'Shipped').length,
+    Delivered: orders.filter((o) => o.orderStatus === 'Delivered').length,
+    Cancelled: orders.filter((o) => o.orderStatus === 'Cancelled').length,
+  };
+
+  // Dynamic category distribution from actual catalog
+  const categoryStats = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach((p) => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    const total = products.length || 1;
+    return Object.entries(counts)
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [products]);
 
   const getStatusBadge = (status: AdminOrder['orderStatus']) => {
     switch (status) {
@@ -108,7 +119,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-[#2d5a61]/10 text-[#2d5a61] dark:bg-[#2d5a61]/30 dark:text-teal-300 border border-[#2d5a61]/20">
               Studio Intelligence
             </span>
-            <span className="text-xs text-gray-400">• September 2026</span>
           </div>
           <h2 className="font-serif text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Maryam Sparkle Studio Overview
@@ -135,7 +145,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* 4 Stat Metric Cards (reusing Material Dashboard layout) */}
+      {/* 4 Stat Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
         {/* Card 1: Total Revenue */}
         <div className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-2xs relative overflow-hidden transition-all hover:shadow-xs">
@@ -153,15 +163,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
-            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              +14%
+            <span className="text-gray-600 dark:text-gray-300 font-medium">
+              {orders.length > 0 ? `Avg PKR ${avgOrderValue.toLocaleString()} / order` : 'No orders recorded'}
             </span>
-            <span className="text-gray-400">vs. last month</span>
+            <span className="text-gray-400">{orders.length} order(s)</span>
           </div>
         </div>
 
-        {/* Card 2: Total Orders */}
+        {/* Card 2: Store Orders */}
         <div className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-2xs relative overflow-hidden transition-all hover:shadow-xs">
           <div className="flex justify-between items-start">
             <div>
@@ -169,7 +178,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Store Orders
               </p>
               <h3 className="font-serif text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {orders.length} Dispatched
+                {orders.length} Total
               </h3>
             </div>
             <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-gray-900 to-gray-700 dark:from-gray-800 dark:to-gray-600 text-white flex items-center justify-center shadow-md shadow-gray-900/20">
@@ -177,10 +186,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
-            <span className="text-gray-600 dark:text-gray-300 font-medium">
-              <span className="font-bold text-[#2d5a61] dark:text-teal-400">{todayOrders}</span> today
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+              {deliveredCount} delivered
             </span>
-            <span className="text-gray-400">98% fulfillment</span>
+            <span className="text-amber-600 dark:text-amber-400 font-medium">
+              {inFulfillmentCount} in progress
+            </span>
           </div>
         </div>
 
@@ -230,10 +241,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
             <span
               className={`font-medium ${
-                lowStockCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600'
+                lowStockProducts.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
               }`}
             >
-              {lowStockCount > 0 ? `${lowStockCount} items low stock` : 'Inventory healthy'}
+              {lowStockProducts.length > 0 ? `${lowStockProducts.length} low stock` : 'Inventory healthy'}
             </span>
             <button
               onClick={() => onNavigateTab('products')}
@@ -245,116 +256,112 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* Visual Charts & Category Distribution Section */}
+      {/* Real Breakdown Section: Order Lifecycle & Category Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Weekly Revenue Interactive Chart */}
+        {/* Order Lifecycle Pipeline */}
         <div className="lg:col-span-2 bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 sm:p-6 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="font-serif text-base font-bold text-gray-900 dark:text-white">
-                Weekly Studio Sales Volume
+                Order Fulfillment Lifecycle
               </h4>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Daily sales performance and confirmed jewelry orders
+                Live distribution of registered orders across production & courier stages
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#2d5a61]" />
-              <span className="text-xs text-gray-500 dark:text-gray-400">Revenue (PKR)</span>
-            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+              {orders.length} Total Orders
+            </span>
           </div>
 
-          {/* Pure React SVG Bar Chart */}
-          <div className="h-64 pt-4 flex items-end justify-between gap-3 sm:gap-6 border-b border-gray-100 dark:border-gray-800 pb-2 relative">
-            {weeklyData.map((item, index) => {
-              const maxVal = 100000;
-              const heightPercent = Math.min(100, Math.round((item.revenue / maxVal) * 100));
-              const isHovered = hoveredBarIndex === index;
-
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+            {(
+              [
+                { label: 'Placed', count: statusCounts.Placed, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900' },
+                { label: 'Confirmed', count: statusCounts.Confirmed, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900' },
+                { label: 'Processing', count: statusCounts.Processing, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900' },
+                { label: 'Shipped', count: statusCounts.Shipped, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-900' },
+                { label: 'Delivered', count: statusCounts.Delivered, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900' },
+                { label: 'Cancelled', count: statusCounts.Cancelled, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800' },
+              ] as const
+            ).map((stage) => {
+              const pct = orders.length > 0 ? Math.round((stage.count / orders.length) * 100) : 0;
               return (
-                <div
-                  key={item.day}
-                  className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer relative"
-                  onMouseEnter={() => setHoveredBarIndex(index)}
-                  onMouseLeave={() => setHoveredBarIndex(null)}
-                >
-                  {/* Tooltip on hover */}
-                  {isHovered && (
-                    <div className="absolute -top-12 z-20 bg-gray-900 text-white text-[11px] py-1 px-2.5 rounded-lg shadow-lg whitespace-nowrap animate-in fade-in">
-                      <p className="font-semibold">PKR {item.revenue.toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-300">{item.orders} orders</p>
-                    </div>
-                  )}
-
-                  {/* Bar */}
-                  <div className="w-full max-w-[42px] bg-gray-100 dark:bg-gray-800/80 rounded-t-xl overflow-hidden flex items-end h-full">
+                <div key={stage.label} className={`p-3.5 rounded-xl border ${stage.bg} space-y-1`}>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{stage.label}</span>
+                    <span className={`font-bold ${stage.color}`}>{stage.count}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
                     <div
-                      style={{ height: `${heightPercent}%` }}
-                      className={`w-full rounded-t-xl transition-all duration-300 ${
-                        isHovered
-                          ? 'bg-[#c59d5f] shadow-md shadow-[#c59d5f]/30'
-                          : 'bg-gradient-to-t from-[#2d5a61] to-[#43838d]'
-                      }`}
+                      className={`h-full rounded-full transition-all duration-300 ${stage.color.replace('text-', 'bg-')}`}
+                      style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-2">
-                    {item.day}
-                  </span>
+                  <span className="text-[10px] text-gray-400 block text-right">{pct}% of orders</span>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-center justify-between pt-3 text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-gray-400" />
-              Updated 5 minutes ago
+          <div className="mt-5 pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-[#2d5a61] dark:text-teal-400" />
+              {inFulfillmentCount} order(s) currently require packing or dispatch
             </span>
-            <span className="font-medium text-gray-700 dark:text-gray-300">
-              Peak day: Saturday (PKR 92,400)
-            </span>
+            <button
+              onClick={() => onNavigateTab('orders')}
+              className="text-[#2d5a61] dark:text-teal-400 font-semibold hover:underline text-left sm:text-right"
+            >
+              Open Orders Registry →
+            </button>
           </div>
         </div>
 
-        {/* Category Share & Best Sellers */}
+        {/* Catalog Categories Breakdown */}
         <div className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 sm:p-6 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-serif text-base font-bold text-gray-900 dark:text-white">
-                Sales by Category
+                Catalog by Category
               </h4>
-              <span className="text-xs text-gray-400">Past 30 days</span>
+              <span className="text-xs text-gray-400">{products.length} Products</span>
             </div>
 
-            <div className="space-y-4">
-              {categoriesShare.map((cat) => (
-                <div key={cat.name} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-gray-700 dark:text-gray-200">{cat.name}</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {cat.percentage}% ({cat.count} orders)
-                    </span>
+            <div className="space-y-3.5">
+              {categoryStats.length === 0 ? (
+                <p className="text-xs text-gray-400 py-4 text-center">No products in catalog yet.</p>
+              ) : (
+                categoryStats.map((cat) => (
+                  <div key={cat.name} className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium text-gray-700 dark:text-gray-200">{cat.name}</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {cat.count} design{cat.count === 1 ? '' : 's'} ({cat.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#2d5a61] dark:bg-teal-500 rounded-full transition-all duration-300"
+                        style={{ width: `${cat.percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${cat.color} rounded-full transition-all duration-500`}
-                      style={{ width: `${cat.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
-          {/* Quick Studio Highlight */}
-          <div className="mt-6 p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30">
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200 mb-1">
-              <Sparkles className="w-4 h-4 text-[#c59d5f]" />
-              <span>Trending Studio Demand</span>
+          <div className="mt-5 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 text-xs">
+            <div className="flex justify-between items-center text-gray-600 dark:text-gray-300 mb-1">
+              <span className="font-medium">Total In-Stock Units:</span>
+              <span className="font-bold text-gray-900 dark:text-white">{totalStockUnits}</span>
             </div>
-            <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
-              Pearl and aventurine stacking bracelets represent 42% of revenue this week. Consider stocking additional raw gold hematite spacers.
-            </p>
+            {lowStockProducts.length > 0 && (
+              <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                {lowStockProducts.length} product(s) have 5 or fewer items remaining.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -488,7 +495,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
-                    Stones: {req.preferredStones.join(', ')} • {req.wristSize}
+                    Materials: {req.preferredStones.join(', ')} • {req.wristSize}
                   </p>
 
                   <div className="mt-2 pt-2 border-t border-gray-50 dark:border-gray-800/60 flex items-center justify-between text-[10px]">

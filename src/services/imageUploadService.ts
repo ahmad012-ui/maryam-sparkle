@@ -1,14 +1,16 @@
 /**
  * Image Upload Service for Laravel Backend Integration
- * Architecture: File -> FormData -> Laravel Storage -> URL -> Database
+ * Architecture: File -> FormData -> Laravel Storage (/api/v1/media/upload) -> URL -> Database
  *
  * Requirements:
  * - Direct file upload only (no base64 / data URL conversion)
  * - Strict whitelist: .jpg, .jpeg, .png, .webp only (GIF and others rejected)
- * - Strict max file size: 10MB exactly
+ * - Strict max file size: 5MB per image
+ * - Never return blob URLs as persisted storage URLs
+ * - Backend upload failures throw descriptive errors for UX handling
  */
 
-export const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB max
 export const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'] as const;
 export const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
@@ -18,7 +20,7 @@ export interface ImageValidationResult {
 }
 
 /**
- * Validates file against strict format whitelist and 10MB size limit.
+ * Validates file against strict format whitelist and 5MB size limit.
  * Explicitly rejects GIF, SVG, BMP, and any unsupported file types.
  */
 export function validateImageFile(file: File): ImageValidationResult {
@@ -26,12 +28,12 @@ export function validateImageFile(file: File): ImageValidationResult {
     return { valid: false, error: 'No file provided.' };
   }
 
-  // Check file size (10MB)
+  // Check file size (5MB limit)
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
     const sizeInMb = (file.size / (1024 * 1024)).toFixed(1);
     return {
       valid: false,
-      error: `"${file.name}" is ${sizeInMb}MB, exceeding the 10MB limit. Please upload a file up to 10MB.`,
+      error: `"${file.name}" is ${sizeInMb}MB, exceeding the 5MB limit. Please upload images up to 5MB.`,
     };
   }
 
@@ -55,7 +57,7 @@ export function validateImageFile(file: File): ImageValidationResult {
   if (!isExtAllowed || !isMimeAllowed) {
     return {
       valid: false,
-      error: `"${file.name}" is not a supported image type. Only JPG, PNG, and WEBP formats are accepted.`,
+      error: `"${file.name}" is not a supported format (${ext || 'unknown'}). Only JPG, JPEG, PNG, and WEBP are accepted.`,
     };
   }
 
@@ -63,15 +65,42 @@ export function validateImageFile(file: File): ImageValidationResult {
 }
 
 /**
+ * Creates a temporary local Object URL solely for browser image preview.
+ * This URL must NEVER be saved to the database or treated as a persisted image.
+ */
+export function createLocalPreviewUrl(file: File): string {
+  if (typeof window !== 'undefined' && window.URL && window.URL.createObjectURL) {
+    return window.URL.createObjectURL(file);
+  }
+  return '';
+}
+
+/**
+ * Revokes a temporary local preview Object URL to free memory.
+ */
+export function revokeLocalPreviewUrl(previewUrl: string): void {
+  if (typeof window !== 'undefined' && window.URL && window.URL.revokeObjectURL && previewUrl.startsWith('blob:')) {
+    try {
+      window.URL.revokeObjectURL(previewUrl);
+    } catch {
+      // Ignore revocation errors
+    }
+  }
+}
+
+/**
  * Uploads a File directly to the Laravel backend via multipart/form-data.
- * Flow: File -> FormData -> Laravel (/api/v1/media/upload) -> Storage -> URL -> DB
+ * Flow: File -> FormData -> Laravel (/api/v1/media/upload) -> Storage -> Public URL -> DB
+ *
+ * NOTE: If the backend is unavailable or returns an error, this throws an Error.
+ * It NEVER falls back to returning a blob: URL or pretending persistence succeeded.
  *
  * @param file The File object selected by the user
- * @param folder Optional storage subfolder (default: 'products')
- * @returns The resolved public storage URL string
+ * @param folder Storage subfolder (default: 'products')
+ * @returns The resolved public storage URL from Laravel
  */
 export async function uploadImageFile(file: File, folder: string = 'products'): Promise<string> {
-  // Validate before sending
+  // Validate before upload
   const validation = validateImageFile(file);
   if (!validation.valid) {
     throw new Error(validation.error || 'Invalid image file');
@@ -81,40 +110,42 @@ export async function uploadImageFile(file: File, folder: string = 'products'): 
   formData.append('file', file);
   formData.append('folder', folder);
 
+  let response: Response;
   try {
-    const response = await fetch('/api/v1/media/upload', {
+    response = await fetch('/api/v1/media/upload', {
       method: 'POST',
       body: formData,
       headers: {
         Accept: 'application/json',
-        // Content-Type is intentionally omitted so the browser sets multipart/form-data with boundary
+        // Content-Type is omitted so browser sets multipart/form-data with boundary
       },
     });
-
-    if (response.ok) {
-      const result = await response.json();
-      if (result?.url && typeof result.url === 'string') {
-        return result.url;
-      }
-      if (result?.data?.url && typeof result.data.url === 'string') {
-        return result.data.url;
-      }
-    }
   } catch {
-    // Backend endpoint not active yet in development/preview mode
+    throw new Error(
+      `Cannot reach Laravel media upload endpoint (/api/v1/media/upload). The image "${file.name}" has not been persisted to the server.`
+    );
   }
 
-  /**
-   * Documented stub for local/preview environment when Laravel backend is not yet reachable:
-   * Returns a standard browser Object URL (blob:...) referencing the raw File handle in memory.
-   * This provides an instant, zero-latency image URL for preview and form state
-   * WITHOUT generating, converting, or storing any base64 data URLs.
-   */
-  if (typeof window !== 'undefined' && window.URL && window.URL.createObjectURL) {
-    return window.URL.createObjectURL(file);
+  if (!response.ok) {
+    let errorDetail = `Server responded with status ${response.status}`;
+    try {
+      const errJson = await response.json();
+      if (errJson?.message) {
+        errorDetail = errJson.message;
+      }
+    } catch {
+      // Ignore json parse error
+    }
+    throw new Error(`Upload failed for "${file.name}": ${errorDetail}`);
   }
 
-  // Fallback storage URL representation if window.URL is unavailable
-  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return `/storage/${folder}/${Date.now()}_${sanitized}`;
+  const result = await response.json();
+  const resolvedUrl = result?.url || result?.data?.url;
+
+  if (typeof resolvedUrl === 'string' && resolvedUrl.trim() && !resolvedUrl.startsWith('blob:')) {
+    return resolvedUrl.trim();
+  }
+
+  throw new Error(`Invalid response received from upload endpoint for "${file.name}".`);
 }
+

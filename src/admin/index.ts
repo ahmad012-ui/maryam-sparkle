@@ -7,7 +7,6 @@ export { AdminCustomOrders } from './AdminCustomOrders';
 export { AdminCustomers } from './AdminCustomers';
 export { AdminNotifications } from './AdminNotifications';
 export { AdminSettings } from './AdminSettings';
-export { AdminConfigurator } from './AdminConfigurator';
 export { MultiImageUpload } from './MultiImageUpload';
 export * from './types';
 export * from './adminData';

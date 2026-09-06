@@ -47,6 +47,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
     return matchesSearch && matchesStatus;
   });
 
+  const VALID_TRANSITIONS: Record<AdminOrder['orderStatus'], AdminOrder['orderStatus'][]> = {
+    Placed: ['Confirmed', 'Cancelled'],
+    Confirmed: ['Processing', 'Cancelled'],
+    Processing: ['Shipped', 'Cancelled'],
+    Shipped: ['Delivered', 'Cancelled'],
+    Delivered: [],
+    Cancelled: [],
+  };
+
   const statuses: AdminOrder['orderStatus'][] = [
     'Placed',
     'Confirmed',
@@ -57,15 +66,24 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
   ];
 
   const handleUpdateStatus = (orderId: string, newStatus: AdminOrder['orderStatus']) => {
+    const target = orders.find((o) => o.id === orderId);
+    if (!target) return;
+
+    if (target.orderStatus !== newStatus) {
+      const allowed = VALID_TRANSITIONS[target.orderStatus] || [];
+      if (!allowed.includes(newStatus)) {
+        console.warn(`Invalid lifecycle transition from ${target.orderStatus} to ${newStatus}`);
+        return;
+      }
+    }
+
     const updated = orders.map((o) =>
       o.id === orderId
         ? {
             ...o,
             orderStatus: newStatus,
-            paymentStatus:
-              newStatus === 'Delivered' && o.paymentMethod === 'COD'
-                ? ('Paid' as const)
-                : o.paymentStatus,
+            // CRITICAL FIX: Do NOT automatically change COD paymentStatus to 'Paid' on delivery.
+            // Payment settlement is independent from courier drop-off.
           }
         : o
     );
@@ -76,6 +94,19 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         ...activeModalOrder,
         orderStatus: newStatus,
       });
+    }
+  };
+
+  const handleUpdatePaymentStatus = (
+    orderId: string,
+    paymentStatus: 'Paid' | 'Pending'
+  ) => {
+    const updated = orders.map((o) =>
+      o.id === orderId ? { ...o, paymentStatus } : o
+    );
+    onSaveOrders(updated);
+    if (activeModalOrder && activeModalOrder.id === orderId) {
+      setActiveModalOrder({ ...activeModalOrder, paymentStatus });
     }
   };
 
@@ -193,9 +224,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Table (Desktop) & Cards (Mobile) */}
       <div className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50/70 dark:bg-gray-800/50 text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-200 dark:border-gray-800">
               <tr>
@@ -216,59 +248,145 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors"
-                  >
-                    <td className="py-3.5 px-4">
-                      <span className="font-bold text-gray-900 dark:text-white block">
+                filteredOrders.map((o) => {
+                  const allowed = VALID_TRANSITIONS[o.orderStatus] || [];
+                  const isTerminal = allowed.length === 0;
+
+                  return (
+                    <tr
+                      key={o.id}
+                      className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors"
+                    >
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-gray-900 dark:text-white block">
+                          {o.orderNumber}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{o.date}</span>
+                      </td>
+
+                      <td className="py-3.5 px-3">
+                        <p className="font-semibold text-gray-800 dark:text-gray-200">
+                          {o.customerName}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          {o.city} • {o.customerPhone}
+                        </p>
+                      </td>
+
+                      <td className="py-3.5 px-3 max-w-[200px]">
+                        <div className="flex items-center gap-2">
+                          {o.items[0]?.image && (
+                            <img
+                              src={o.items[0].image}
+                              alt=""
+                              className="w-8 h-8 rounded-lg object-cover border border-gray-200 dark:border-gray-700 shrink-0"
+                            />
+                          )}
+                          <div className="truncate">
+                            <p className="font-medium text-gray-700 dark:text-gray-300 truncate">
+                              {o.items[0]?.productName}
+                            </p>
+                            <span className="text-[10px] text-gray-400">
+                              {o.items.length > 1
+                                ? `${o.items[0].quantity}x + ${o.items.length - 1} item(s)`
+                                : `${o.items[0]?.quantity} unit(s)`}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-3 text-right">
+                        <span className="font-bold text-gray-900 dark:text-white block">
+                          PKR {o.totalAmount.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{o.paymentMethod}</span>
+                      </td>
+
+                      <td className="py-3.5 px-3 text-center">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            o.paymentStatus === 'Paid'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
+                              : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400'
+                          }`}
+                        >
+                          {o.paymentStatus}
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-3 text-center">
+                        {isTerminal ? (
+                          <span
+                            className={`inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full border ${getStatusBadgeClass(
+                              o.orderStatus
+                            )}`}
+                          >
+                            {o.orderStatus}
+                          </span>
+                        ) : (
+                          <select
+                            value={o.orderStatus}
+                            onChange={(e) =>
+                              handleUpdateStatus(o.id, e.target.value as AdminOrder['orderStatus'])
+                            }
+                            className={`text-[10px] font-semibold px-2 py-1 rounded-full border cursor-pointer ${getStatusBadgeClass(
+                              o.orderStatus
+                            )} bg-transparent focus:ring-1 focus:ring-[#2d5a61]`}
+                          >
+                            {[o.orderStatus, ...allowed].map((st) => (
+                              <option
+                                key={st}
+                                value={st}
+                                className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                              >
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => setActiveModalOrder(o)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-[#2d5a61] hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                          title="View complete order packing slip"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Stacked Card View */}
+        <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+          {filteredOrders.length === 0 ? (
+            <div className="py-10 text-center text-xs text-gray-400">
+              No orders match your search criteria.
+            </div>
+          ) : (
+            filteredOrders.map((o) => {
+              const allowed = VALID_TRANSITIONS[o.orderStatus] || [];
+              const isTerminal = allowed.length === 0;
+
+              return (
+                <div key={o.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-sm text-gray-900 dark:text-white block">
                         {o.orderNumber}
                       </span>
                       <span className="text-[10px] text-gray-400">{o.date}</span>
-                    </td>
+                    </div>
 
-                    <td className="py-3.5 px-3">
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">
-                        {o.customerName}
-                      </p>
-                      <p className="text-[10px] text-gray-400">
-                        {o.city} • {o.customerPhone}
-                      </p>
-                    </td>
-
-                    <td className="py-3.5 px-3 max-w-[200px]">
-                      <div className="flex items-center gap-2">
-                        {o.items[0]?.image && (
-                          <img
-                            src={o.items[0].image}
-                            alt=""
-                            className="w-8 h-8 rounded-lg object-cover border border-gray-200 dark:border-gray-700 shrink-0"
-                          />
-                        )}
-                        <div className="truncate">
-                          <p className="font-medium text-gray-700 dark:text-gray-300 truncate">
-                            {o.items[0]?.productName}
-                          </p>
-                          <span className="text-[10px] text-gray-400">
-                            {o.items.length > 1
-                              ? `${o.items[0].quantity}x + ${o.items.length - 1} item(s)`
-                              : `${o.items[0]?.quantity} unit(s)`}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-3 text-right">
-                      <span className="font-bold text-gray-900 dark:text-white block">
-                        PKR {o.totalAmount.toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-gray-400">{o.paymentMethod}</span>
-                    </td>
-
-                    <td className="py-3.5 px-3 text-center">
+                    <div className="flex items-center gap-1.5">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                           o.paymentStatus === 'Paid'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
                             : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400'
@@ -276,40 +394,93 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                       >
                         {o.paymentStatus}
                       </span>
-                    </td>
 
-                    <td className="py-3.5 px-3 text-center">
-                      <select
-                        value={o.orderStatus}
-                        onChange={(e) =>
-                          handleUpdateStatus(o.id, e.target.value as AdminOrder['orderStatus'])
-                        }
-                        className={`text-[10px] font-semibold px-2 py-1 rounded-full border cursor-pointer ${getStatusBadgeClass(
-                          o.orderStatus
-                        )} bg-transparent focus:ring-1 focus:ring-[#2d5a61]`}
-                      >
-                        {statuses.map((st) => (
-                          <option key={st} value={st} className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-                            {st}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+                      {isTerminal ? (
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getStatusBadgeClass(
+                            o.orderStatus
+                          )}`}
+                        >
+                          {o.orderStatus}
+                        </span>
+                      ) : (
+                        <select
+                          value={o.orderStatus}
+                          onChange={(e) =>
+                            handleUpdateStatus(o.id, e.target.value as AdminOrder['orderStatus'])
+                          }
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer ${getStatusBadgeClass(
+                            o.orderStatus
+                          )} bg-transparent focus:ring-1 focus:ring-[#2d5a61]`}
+                        >
+                          {[o.orderStatus, ...allowed].map((st) => (
+                            <option
+                              key={st}
+                              value={st}
+                              className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                            >
+                              {st}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setActiveModalOrder(o)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#2d5a61] hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
-                        title="View complete order packing slip"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                  <div className="text-xs">
+                    <p className="font-semibold text-gray-900 dark:text-white">{o.customerName}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      {o.city} • {o.customerPhone}
+                    </p>
+                  </div>
+
+                  {/* Primary Item Preview */}
+                  <div className="p-2.5 rounded-xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 truncate">
+                      {o.items[0]?.image && (
+                        <img
+                          src={o.items[0].image}
+                          alt=""
+                          className="w-9 h-9 rounded-lg object-cover border border-gray-200 dark:border-gray-700 shrink-0"
+                        />
+                      )}
+                      <div className="truncate">
+                        <p className="font-medium text-gray-700 dark:text-gray-300 truncate">
+                          {o.items[0]?.productName}
+                        </p>
+                        <span className="text-[10px] text-gray-400">
+                          {o.items.length > 1
+                            ? `${o.items[0].quantity}x + ${o.items.length - 1} item(s)`
+                            : `${o.items[0]?.quantity} unit(s)`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-bold text-gray-900 dark:text-white block">
+                        PKR {o.totalAmount.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-gray-400">{o.paymentMethod}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-xs">
+                    <span className="text-[11px] text-gray-400">
+                      {o.courierName
+                        ? `${o.courierName} · ${o.trackingNumber || 'Unassigned'}`
+                        : 'Pending Courier'}
+                    </span>
+                    <button
+                      onClick={() => setActiveModalOrder(o)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#2d5a61]/10 text-[#2d5a61] dark:bg-teal-950/40 dark:text-teal-300 hover:bg-[#2d5a61]/20 flex items-center gap-1.5 transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Details</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -323,13 +494,41 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                   <h3 className="font-serif text-lg font-bold text-gray-900 dark:text-white">
                     Order {activeModalOrder.orderNumber}
                   </h3>
-                  <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadgeClass(
-                      activeModalOrder.orderStatus
-                    )}`}
-                  >
-                    {activeModalOrder.orderStatus}
-                  </span>
+                  {(VALID_TRANSITIONS[activeModalOrder.orderStatus] || []).length === 0 ? (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${getStatusBadgeClass(
+                        activeModalOrder.orderStatus
+                      )}`}
+                    >
+                      {activeModalOrder.orderStatus}
+                    </span>
+                  ) : (
+                    <select
+                      value={activeModalOrder.orderStatus}
+                      onChange={(e) =>
+                        handleUpdateStatus(
+                          activeModalOrder.id,
+                          e.target.value as AdminOrder['orderStatus']
+                        )
+                      }
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer ${getStatusBadgeClass(
+                        activeModalOrder.orderStatus
+                      )} bg-transparent focus:ring-1 focus:ring-[#2d5a61]`}
+                    >
+                      {[
+                        activeModalOrder.orderStatus,
+                        ...(VALID_TRANSITIONS[activeModalOrder.orderStatus] || []),
+                      ].map((st) => (
+                        <option
+                          key={st}
+                          value={st}
+                          className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                        >
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">Placed on {activeModalOrder.date}</p>
               </div>
@@ -374,11 +573,34 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
                       {activeModalOrder.address}, {activeModalOrder.city}
                     </span>
                   </p>
-                  <div className="mt-2 text-gray-500">
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                      Payment Method:
-                    </span>{' '}
-                    {activeModalOrder.paymentMethod} ({activeModalOrder.paymentStatus})
+                  <div className="mt-2 text-gray-500 flex items-center gap-2 flex-wrap">
+                    <span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        Payment:
+                      </span>{' '}
+                      {activeModalOrder.paymentMethod}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                        activeModalOrder.paymentStatus === 'Paid'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
+                          : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400'
+                      }`}
+                    >
+                      {activeModalOrder.paymentStatus}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdatePaymentStatus(
+                          activeModalOrder.id,
+                          activeModalOrder.paymentStatus === 'Paid' ? 'Pending' : 'Paid'
+                        )
+                      }
+                      className="text-[10px] text-[#2d5a61] dark:text-teal-400 hover:underline font-semibold"
+                    >
+                      Mark as {activeModalOrder.paymentStatus === 'Paid' ? 'Pending' : 'Paid'}
+                    </button>
                   </div>
                 </div>
               </div>

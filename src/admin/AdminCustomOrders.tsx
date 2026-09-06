@@ -290,7 +290,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
                   <span className="text-gray-800 dark:text-gray-200">{req.metalFinish}</span>
                 </div>
                 <div className="pt-2 border-t border-gray-200/60 dark:border-gray-700/60">
-                  <span className="text-gray-500 dark:text-gray-400 block mb-1">Stones & Beads:</span>
+                  <span className="text-gray-500 dark:text-gray-400 block mb-1">Materials & Preferences:</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {req.preferredStones.map((stone, idx) => (
                       <span
@@ -511,7 +511,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
 
               <div>
                 <label className="block font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                  Preferred Stones & Beads (comma separated)
+                  Materials & Stone Preferences (comma separated)
                 </label>
                 <input
                   type="text"

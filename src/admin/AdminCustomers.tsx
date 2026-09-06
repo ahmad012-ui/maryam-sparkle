@@ -35,9 +35,14 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
     phone: '+92 ',
     city: 'Karachi',
     status: 'Active',
-    totalOrders: 1,
-    totalSpent: 3000,
   });
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 0 || !parts[0]) return 'MS';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   const filteredCustomers = customers.filter((c) => {
     const matchesSearch =
@@ -60,15 +65,19 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
       phone: '+92 ',
       city: 'Karachi',
       status: 'New',
-      totalOrders: 0,
-      totalSpent: 0,
     });
     setShowModal(true);
   };
 
   const handleOpenEdit = (cust: AdminCustomer) => {
     setEditingCustomer(cust);
-    setFormData({ ...cust });
+    setFormData({
+      name: cust.name,
+      email: cust.email,
+      phone: cust.phone,
+      city: cust.city,
+      status: cust.status,
+    });
     setShowModal(true);
   };
 
@@ -78,7 +87,17 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
 
     if (editingCustomer) {
       const updated = customers.map((c) =>
-        c.id === editingCustomer.id ? ({ ...c, ...formData } as AdminCustomer) : c
+        c.id === editingCustomer.id
+          ? {
+              ...c,
+              name: formData.name || c.name,
+              email: formData.email || '',
+              phone: formData.phone || '',
+              city: formData.city || c.city,
+              status: formData.status || c.status,
+              // Lifetime metrics are read-only and preserved
+            }
+          : c
       );
       onSaveCustomers(updated);
     } else {
@@ -89,12 +108,9 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
         phone: formData.phone || '',
         city: formData.city || 'Karachi',
         joinedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        totalOrders: Number(formData.totalOrders) || 0,
-        totalSpent: Number(formData.totalSpent) || 0,
+        totalOrders: 0,
+        totalSpent: 0,
         status: formData.status || 'New',
-        avatar:
-          formData.avatar ||
-          `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80`,
       };
       onSaveCustomers([newCust, ...customers]);
     }
@@ -184,9 +200,10 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
         </div>
       </div>
 
-      {/* Customers Table */}
+      {/* Customers Table (Desktop) & Cards (Mobile) */}
       <div className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50/70 dark:bg-gray-800/50 text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-200 dark:border-gray-800">
               <tr>
@@ -200,88 +217,174 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {filteredCustomers.map((c) => (
-                <tr
-                  key={c.id}
-                  className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors"
-                >
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={
-                          c.avatar ||
-                          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80'
-                        }
-                        alt=""
-                        className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700 shrink-0"
-                      />
-                      <div>
-                        <p className="font-bold text-gray-900 dark:text-white">{c.name}</p>
-                        <span className="text-[10px] text-gray-400">Joined {c.joinedDate}</span>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="py-3.5 px-3">
-                    <p className="text-gray-700 dark:text-gray-300 font-medium">{c.phone}</p>
-                    <p className="text-[10px] text-gray-400">{c.email}</p>
-                  </td>
-
-                  <td className="py-3.5 px-3 text-gray-700 dark:text-gray-300">{c.city}</td>
-
-                  <td className="py-3.5 px-3 text-center font-semibold text-gray-800 dark:text-gray-200">
-                    {c.totalOrders}
-                  </td>
-
-                  <td className="py-3.5 px-3 text-right font-bold text-[#2d5a61] dark:text-teal-400">
-                    PKR {c.totalSpent.toLocaleString()}
-                  </td>
-
-                  <td className="py-3.5 px-3 text-center">
-                    <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                        c.status === 'VIP'
-                          ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-                          : c.status === 'Active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
-                          : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300'
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                  </td>
-
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <a
-                        href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
-                        title="Chat on WhatsApp"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </a>
-                      <button
-                        onClick={() => handleOpenEdit(c)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#2d5a61] hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
-                        title="Edit customer"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(c.id)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                        title="Delete customer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {filteredCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                    No customers match your search criteria.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredCustomers.map((c) => (
+                  <tr
+                    key={c.id}
+                    className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30 transition-colors"
+                  >
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#2d5a61]/10 dark:bg-[#2d5a61]/30 text-[#2d5a61] dark:text-teal-300 font-bold text-xs flex items-center justify-center border border-[#2d5a61]/20 shrink-0">
+                          {getInitials(c.name)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 dark:text-white">{c.name}</p>
+                          <span className="text-[10px] text-gray-400">Joined {c.joinedDate}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-3">
+                      <p className="text-gray-700 dark:text-gray-300 font-medium">{c.phone}</p>
+                      <p className="text-[10px] text-gray-400">{c.email}</p>
+                    </td>
+
+                    <td className="py-3.5 px-3 text-gray-700 dark:text-gray-300">{c.city}</td>
+
+                    <td className="py-3.5 px-3 text-center font-semibold text-gray-800 dark:text-gray-200">
+                      {c.totalOrders}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-right font-bold text-[#2d5a61] dark:text-teal-400">
+                      PKR {c.totalSpent.toLocaleString()}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                          c.status === 'VIP'
+                            ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                            : c.status === 'Active'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
+                            : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300'
+                        }`}
+                      >
+                        {c.status}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <a
+                          href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                          title="Chat on WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+                        <button
+                          onClick={() => handleOpenEdit(c)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-[#2d5a61] hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                          title="Edit customer"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(c.id)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Delete customer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Stacked Card View */}
+        <div className="md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+          {filteredCustomers.length === 0 ? (
+            <div className="py-10 text-center text-xs text-gray-400">
+              No customers match your search criteria.
+            </div>
+          ) : (
+            filteredCustomers.map((c) => (
+              <div key={c.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full bg-[#2d5a61]/10 dark:bg-[#2d5a61]/30 text-[#2d5a61] dark:text-teal-300 font-bold text-xs flex items-center justify-center border border-[#2d5a61]/20 shrink-0">
+                      {getInitials(c.name)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-900 dark:text-white">{c.name}</h4>
+                      <span className="text-[10px] text-gray-400">Joined {c.joinedDate}</span>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                      c.status === 'VIP'
+                        ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300'
+                        : c.status === 'Active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400'
+                        : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                  >
+                    {c.status}
+                  </span>
+                </div>
+
+                <div className="text-xs space-y-0.5 text-gray-600 dark:text-gray-300">
+                  <p className="font-medium">{c.phone}</p>
+                  <p className="text-gray-400 text-[11px]">{c.email}</p>
+                  <p className="text-gray-500 text-[11px]">{c.city}</p>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[10px] text-gray-400 block">Orders</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">
+                      {c.totalOrders} order{c.totalOrders === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-gray-400 block">Lifetime Spend</span>
+                    <span className="font-bold text-[#2d5a61] dark:text-teal-400">
+                      PKR {c.totalSpent.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <a
+                    href={`https://wa.me/${c.phone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 flex items-center gap-1.5 transition-colors"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
+                  <button
+                    onClick={() => handleOpenEdit(c)}
+                    className="p-2 rounded-xl text-gray-500 hover:text-[#2d5a61] hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                    title="Edit customer"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    className="p-2 rounded-xl text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    title="Delete customer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -373,6 +476,23 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
                   </select>
                 </div>
               </div>
+
+              {editingCustomer && (
+                <div className="p-3 bg-gray-50/70 dark:bg-gray-800/40 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Lifetime Orders</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-200">
+                      {editingCustomer.totalOrders} order{editingCustomer.totalOrders === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-gray-400 block text-[10px]">Lifetime Spend (Read-only)</span>
+                    <span className="font-bold text-[#2d5a61] dark:text-teal-400">
+                      PKR {editingCustomer.totalSpent.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <button
