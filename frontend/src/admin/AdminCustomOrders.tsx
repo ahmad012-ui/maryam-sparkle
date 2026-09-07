@@ -263,7 +263,8 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
                   onChange={(e) =>
                     handleUpdateStatus(req.id, e.target.value as AdminCustomOrder['status'])
                   }
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border cursor-pointer ${getStatusBadge(
+                  style={{ width: '120px' }}
+                  className={`w-[120px] shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border cursor-pointer ${getStatusBadge(
                     req.status
                   )} bg-transparent`}
                 >
