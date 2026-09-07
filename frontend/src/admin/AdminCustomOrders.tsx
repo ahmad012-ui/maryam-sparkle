@@ -14,6 +14,7 @@ import {
   Maximize2,
   Calendar,
   Images,
+  ChevronDown,
 } from 'lucide-react';
 import { AdminCustomOrder } from './types';
 import { MultiImageUpload } from './MultiImageUpload';
@@ -229,51 +230,59 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
           filteredOrders.map((req) => (
             <div
               key={req.id}
-              className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-5 shadow-2xs hover:shadow-xs transition-all space-y-4"
+              className="bg-white dark:bg-[#1a1e24] rounded-2xl border border-gray-200/80 dark:border-gray-800 p-4 sm:p-5 shadow-2xs hover:shadow-xs transition-all space-y-4"
             >
               {/* Card Header */}
-              <div className="flex items-start justify-between gap-3">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5 sm:gap-3">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-[#2d5a61] dark:text-teal-400">
+                    <span className="font-mono text-xs font-bold text-[#2d5a61] dark:text-teal-400 shrink-0">
                       {req.requestNumber}
                     </span>
-                    <span className="text-[11px] text-gray-400">• {req.date}</span>
+                    <span className="text-[11px] text-gray-400 shrink-0">• {req.date}</span>
                   </div>
-                  <h3 className="font-serif text-base font-bold text-gray-900 dark:text-white mt-0.5">
+                  <h3 className="font-serif text-base font-bold text-gray-900 dark:text-white mt-0.5 truncate">
                     {req.customerName}
                   </h3>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                    <span className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
+                    <span className="flex items-center gap-1 shrink-0">
                       <Phone className="w-3 h-3 text-gray-400" />
                       {req.phone}
                     </span>
                     {req.email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-gray-400" />
-                        {req.email}
+                      <span className="flex items-center gap-1 truncate max-w-full sm:max-w-xs">
+                        <Mail className="w-3 h-3 text-gray-400 shrink-0" />
+                        <span className="truncate">{req.email}</span>
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Status Dropdown */}
-                <select
-                  value={req.status}
-                  onChange={(e) =>
-                    handleUpdateStatus(req.id, e.target.value as AdminCustomOrder['status'])
-                  }
-                  style={{ width: '100px' }}
-                  className={`w-[100px] shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border cursor-pointer ${getStatusBadge(
-                    req.status
-                  )} bg-transparent`}
-                >
-                  {statuses.map((st) => (
-                    <option key={st} value={st} className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-                      {st}
-                    </option>
-                  ))}
-                </select>
+                <div className="shrink-0 self-start">
+                  <div className="relative inline-flex items-center">
+                    <select
+                      value={req.status}
+                      onChange={(e) =>
+                        handleUpdateStatus(req.id, e.target.value as AdminCustomOrder['status'])
+                      }
+                      className={`appearance-none text-xs font-semibold pl-3 pr-7 py-1.5 rounded-full border cursor-pointer transition-colors ${getStatusBadge(
+                        req.status
+                      )} bg-transparent focus:outline-hidden focus:ring-1 focus:ring-current`}
+                    >
+                      {statuses.map((st) => (
+                        <option
+                          key={st}
+                          value={st}
+                          className="bg-white dark:bg-[#1a1e24] text-gray-900 dark:text-white font-sans font-normal"
+                        >
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-80" />
+                  </div>
+                </div>
               </div>
 
               {/* Jewelry Details */}
@@ -360,7 +369,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
               </div>
 
               {/* Budget & Quote Footer */}
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-[10px] text-gray-400 block">Customer Budget: {req.budgetRange}</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
@@ -386,7 +395,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
                   }.`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-xs transition-colors"
+                  className="w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shadow-xs transition-colors shrink-0"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>WhatsApp Quote</span>
