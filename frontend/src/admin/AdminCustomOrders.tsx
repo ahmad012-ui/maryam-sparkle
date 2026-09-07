@@ -146,10 +146,10 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#2d5a61] text-white hover:bg-[#1e3c41] transition-colors flex items-center justify-center gap-2 shadow-xs"
+          className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#2d5a61] text-white hover:bg-[#1e3c41] transition-colors flex items-center justify-center gap-2 shadow-xs shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Log Custom Request</span>
+          <span>Log Custom Request</span>
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
       </div>
 
       {/* Search & Filter */}
-      <div className="bg-white dark:bg-[#1a1e24] p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-white dark:bg-[#1a1e24] p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -192,13 +192,13 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
           <button
             onClick={() => setStatusFilter('All')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
               statusFilter === 'All'
                 ? 'bg-[#2d5a61] text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
           >
             All Requests
@@ -207,10 +207,10 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                 statusFilter === st
                   ? 'bg-[#2d5a61] text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
               {st}

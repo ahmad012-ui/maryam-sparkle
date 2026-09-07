@@ -139,10 +139,10 @@ export const AdminCustomers: React.FC<AdminCustomersProps> = ({
         </div>
         <button
           onClick={handleOpenAdd}
-          className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#2d5a61] text-white hover:bg-[#1e3c41] transition-colors flex items-center justify-center gap-2 shadow-xs"
+          className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#2d5a61] text-white hover:bg-[#1e3c41] transition-colors flex items-center justify-center gap-2 shadow-xs shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Add Customer</span>
+          <span>Add Customer</span>
         </button>
       </div>
 
