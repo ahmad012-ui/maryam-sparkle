@@ -50,11 +50,12 @@ $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = $config['cors']['allowed_origins'] ?? [];
 
 if ($requestOrigin !== '') {
-    if (in_array('*', $allowedOrigins, true)) {
-        header('Access-Control-Allow-Origin: *');
-    } elseif (in_array($requestOrigin, $allowedOrigins, true)) {
+    if (in_array($requestOrigin, $allowedOrigins, true)) {
         header("Access-Control-Allow-Origin: {$requestOrigin}");
+        header('Access-Control-Allow-Credentials: true');
         header('Vary: Origin');
+    } elseif (in_array('*', $allowedOrigins, true)) {
+        header('Access-Control-Allow-Origin: *');
     }
 }
 
@@ -168,16 +169,23 @@ if ($normalizedPath === 'products' || str_starts_with($normalizedPath, 'products
     exit;
 }
 
-// 13. Route Foundation for Planned Modules (Phase 4+)
+// 13. Authentication & Authorization API Endpoints: /api/v1/auth/...
+if ($normalizedPath === 'auth' || str_starts_with($normalizedPath, 'auth/')) {
+    $routeSubPath = substr($normalizedPath, strlen('auth'));
+    $routeSubPath = trim($routeSubPath, '/');
+    require __DIR__ . '/auth/index.php';
+    exit;
+}
+
+// 14. Route Foundation for Planned Modules (Phase 5+)
 // Planned modules:
-// - /api/v1/auth
 // - /api/v1/cart
 // - /api/v1/orders
 // - /api/v1/users
 // - /api/v1/custom-orders
 // - /api/v1/media
 //
-// In Phase 3, any unhandled route returns a standardized 404 JSON response.
+// In Phase 4, any unhandled route returns a standardized 404 JSON response.
 sendError('Route not found', [
     'path'   => '/' . $routePath,
     'method' => $method,

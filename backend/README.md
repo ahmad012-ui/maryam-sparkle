@@ -37,15 +37,27 @@ Phase 1 establishes the core architectural foundation: centralized configuration
 
 ```text
 backend/
+├── auth/
+│   ├── index.php           # Authentication endpoints (/register, /login, /logout, /me, /check)
+│   └── user.php            # User data access layer (PDO prepared queries, safe formatting)
+├── categories/
+│   ├── index.php           # Category REST controller (GET, POST, PUT, DELETE)
+│   └── category.php        # Category data access layer (PDO prepared queries)
 ├── config/
 │   ├── config.php          # Centralized application, CORS, and runtime settings
 │   └── database.php        # PDO connection manager (strict error mode, prepared statements)
 ├── helpers/
-│   └── response.php        # Standardized JSON response helpers (sendSuccess, sendError)
+│   ├── response.php        # Standardized JSON response helpers (sendSuccess, sendError, getJsonInput)
+│   ├── session.php         # Secure session manager (HttpOnly, SameSite, regeneration, destroy)
+│   └── validation.php      # Validator class for input sanity, length, types, and email checks
 ├── middleware/
-│   └── .gitkeep            # Reserved for auth & role-based middleware (Phase 2+)
+│   ├── admin.php           # Admin authorization middleware (requireAdmin)
+│   └── auth.php            # Session authentication middleware (requireAuth, getAuthenticatedUser)
+├── products/
+│   ├── index.php           # Product REST controller (filtering, sorting, pagination, CRUD)
+│   └── product.php         # Product data access layer (batch images, transactions)
 ├── routes/
-│   └── .gitkeep            # Reserved for modular route handlers (Phase 2+)
+│   └── .gitkeep            # Reserved for future route modules
 ├── .env.example            # Template for environment variables (never commit .env)
 ├── index.php               # Single entry point, CORS interceptor, router dispatcher
 └── README.md               # Backend documentation and setup guide
@@ -622,7 +634,226 @@ curl -X DELETE http://localhost:8000/api/v1/products/11
 
 ---
 
-## 10. Validation & Error Handling
+## 10. Authentication & Authorization API (Phase 4)
+
+Maryam Sparkle utilizes vanilla PHP session-based authentication backed by MySQL PDO prepared statements. All passwords are encrypted with PHP's native `password_hash($password, PASSWORD_DEFAULT)` (Bcrypt). Session cookies are protected with `HttpOnly`, `SameSite=Lax`, and `Secure` attributes, with automatic session ID rotation (`session_regenerate_id(true)`) upon login to prevent session fixation.
+
+### Security Guarantees:
+- **No Plaintext Passwords**: Passwords are never saved in plaintext; only salted Bcrypt hashes are stored.
+- **Sensitive Field Shielding**: API responses NEVER output `password_hash`, `google_id`, internal credentials, or session identifiers.
+- **Enumeration Defense**: Login failures return identical generic errors (`"Invalid email or password"`) regardless of whether the email exists.
+- **Server-Authoritative RBAC**: Users cannot escalate roles through registration or input parameters. New registrations are strictly assigned `role = 'customer'` and `status = 'active'`.
+- **Session Cookie Security**: `HttpOnly` blocks JavaScript access; `SameSite=Lax` defends against CSRF; `Vary: Origin` and `Access-Control-Allow-Credentials: true` safely enable credentialed frontend cross-origin requests.
+
+---
+
+### A. Customer Registration: `POST /api/v1/auth/register`
+
+Creates a new customer account. Validates name, unique email, optional phone number, and minimum 8-character password.
+
+#### Request Body:
+```json
+{
+  "first_name": "Ahmad",
+  "last_name": "Rehman",
+  "email": "ahmad@example.com",
+  "phone": "03001234567",
+  "password": "StrongPassword123"
+}
+```
+
+#### Success Response (`HTTP 201 Created`):
+```json
+{
+  "success": true,
+  "message": "Registration successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "first_name": "Ahmad",
+      "last_name": "Rehman",
+      "email": "ahmad@example.com",
+      "phone": "03001234567",
+      "role": "customer",
+      "status": "active"
+    }
+  }
+}
+```
+
+#### Duplicate Email (`HTTP 409 Conflict`):
+```json
+{
+  "success": false,
+  "message": "Email already registered",
+  "errors": {
+    "email": "An account with this email address already exists."
+  }
+}
+```
+
+#### Validation Error (`HTTP 422 Unprocessable Entity`):
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "password": "Password must be at least 8 characters",
+    "email": "Email must be a valid email address"
+  }
+}
+```
+
+---
+
+### B. Customer / Admin Login: `POST /api/v1/auth/login`
+
+Authenticates email and password, validates active account status, regenerates the session ID to mitigate session fixation, and issues a secure session cookie (`PHPSESSID`).
+
+#### Request Body:
+```json
+{
+  "email": "ahmad@example.com",
+  "password": "StrongPassword123"
+}
+```
+
+#### Success Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": 1,
+      "first_name": "Ahmad",
+      "last_name": "Rehman",
+      "email": "ahmad@example.com",
+      "phone": "03001234567",
+      "role": "customer",
+      "status": "active"
+    }
+  }
+}
+```
+*Note: Response sets `Set-Cookie: PHPSESSID=...; path=/; HttpOnly; SameSite=Lax`.*
+
+#### Invalid Credentials (`HTTP 401 Unauthorized`):
+*(Returned identically if the email does not exist or if the password does not match).*
+```json
+{
+  "success": false,
+  "message": "Invalid email or password"
+}
+```
+
+#### Inactive Account (`HTTP 401 Unauthorized`):
+```json
+{
+  "success": false,
+  "message": "Account is inactive"
+}
+```
+
+---
+
+### C. Session Logout: `POST /api/v1/auth/logout`
+
+Clears server-side session data, invalidates session storage, and expires the browser's session cookie. Safe to execute even if already logged out.
+
+#### Success Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Logout successful"
+}
+```
+
+---
+
+### D. Current Authenticated User: `GET /api/v1/auth/me`
+
+Protected route. Verifies server-side session, retrieves the active user profile from MySQL, and returns safe public account fields.
+
+#### Success Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "first_name": "Ahmad",
+      "last_name": "Rehman",
+      "email": "ahmad@example.com",
+      "phone": "03001234567",
+      "role": "customer",
+      "status": "active"
+    }
+  }
+}
+```
+
+#### Unauthenticated Access (`HTTP 401 Unauthorized`):
+```json
+{
+  "success": false,
+  "message": "Authentication required"
+}
+```
+
+---
+
+### E. Session Status Check: `GET /api/v1/auth/check`
+
+Allows the client application to lightweightly poll session validity without throwing error exceptions.
+
+#### Authenticated (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "authenticated": true,
+    "user": {
+      "id": 1,
+      "role": "customer"
+    }
+  }
+}
+```
+
+#### Unauthenticated (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "authenticated": false
+  }
+}
+```
+
+---
+
+### F. Reusable Middleware
+
+1. **Authentication Middleware (`backend/middleware/auth.php`)**:
+   - `requireAuth(?PDO $pdo = null): array`:
+     Ensures an active session exists and queries MySQL to verify the account is present and active. Rejects invalid or inactive sessions with `HTTP 401 Unauthorized` and destroys stale cookies. Returns the safe user profile.
+   - `getAuthenticatedUser(?PDO $pdo = null): ?array`:
+     Checks for an active user session without halting execution.
+
+2. **Authorization Middleware (`backend/middleware/admin.php`)**:
+   - `requireAdmin(?PDO $pdo = null): array`:
+     Invokes `requireAuth()`, then verifies `role === 'admin'`. If the user is a customer, halts execution with `HTTP 403 Forbidden`:
+     ```json
+     {
+       "success": false,
+       "message": "Administrator access required"
+     }
+     ```
+
+---
+
+## 11. Validation & Error Handling
 
 All requests are validated before database execution. If validation fails, an `HTTP 422 Unprocessable Entity` response is returned with explicit field-by-field error descriptions:
 
@@ -641,28 +872,29 @@ All requests are validated before database execution. If validation fails, an `H
 ### Common HTTP Status Codes:
 | Code | Status | Meaning |
 | :--- | :--- | :--- |
-| `200` | OK | Successful retrieval, update, or soft deletion |
-| `201` | Created | Resource successfully created |
+| `200` | OK | Successful retrieval, update, login, logout, or session verification |
+| `201` | Created | Resource successfully created (product, category, user registration) |
 | `400` | Bad Request | Malformed JSON or invalid parameter types |
-| `404` | Not Found | Target category, product, or slug does not exist |
+| `401` | Unauthorized | Unauthenticated request, expired session, invalid credentials, or inactive account |
+| `403` | Forbidden | Insufficient permissions (customer attempting admin-only operation) |
+| `404` | Not Found | Target resource, category, product, or slug does not exist |
 | `405` | Method Not Allowed | HTTP method is not permitted on the endpoint |
-| `409` | Conflict | Duplicate slug, duplicate SKU, or dependent record conflict |
-| `422` | Unprocessable Entity | Payload failed semantic validation rules |
+| `409` | Conflict | Duplicate email, duplicate slug, or duplicate SKU |
+| `422` | Unprocessable Entity | Payload failed validation rules (e.g. password too short, invalid email) |
 | `500` | Internal Server Error | Unexpected server error (logged securely) |
 | `503` | Service Unavailable | Database connection unavailable |
 
 ---
 
-## 11. Planned API Modules (Phase 4+)
+## 12. Planned API Modules (Phase 5+)
 
 The following modules will be incrementally introduced in subsequent phases:
 
 | Endpoint Prefix | Module Description |
 | :--- | :--- |
-| `/api/v1/auth` | User registration, login, logout, password resets, session/JWT validation |
-| `/api/v1/users` | Profile management, shipping addresses, customer management |
 | `/api/v1/cart` | Persistent and guest cart management |
 | `/api/v1/orders` | Checkout, order creation, order status history, customer receipts |
+| `/api/v1/users` | Profile management, shipping addresses, customer management |
 | `/api/v1/custom-orders` | Bespoke jewelry inquiries, customer specifications, quotation lifecycle |
 | `/api/v1/media` | Image and reference uploads, asset management |
 
