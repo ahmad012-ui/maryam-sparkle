@@ -14,6 +14,7 @@ require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validation.php';
 require_once __DIR__ . '/../helpers/session.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../cart/cart.php';
 require_once __DIR__ . '/user.php';
 
 try {
@@ -130,6 +131,12 @@ if ($action === 'login') {
 
     // Establish secure session with ID regeneration
     setAuthSession((int) $rawUser['id'], (string) $rawUser['role']);
+
+    // Merge guest shopping cart into authenticated user cart if guest_token exists
+    if (!empty($_COOKIE['guest_token'])) {
+        $cartModel = new Cart($pdo);
+        $cartModel->mergeGuestCart((int) $rawUser['id'], (string) $_COOKIE['guest_token']);
+    }
 
     $safeUser = User::formatSafeUser($rawUser);
 

@@ -177,7 +177,38 @@ CREATE TABLE addresses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
--- 7. ORDERS TABLE
+-- 7. CARTS & CART ITEMS TABLES
+-- Persistent user carts and anonymous guest session carts.
+-- ------------------------------------------------------------------------------
+DROP TABLE IF EXISTS cart_items;
+DROP TABLE IF EXISTS carts;
+CREATE TABLE carts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNSIGNED NULL,
+    guest_token VARCHAR(64) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_carts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_carts_user_id (user_id),
+    INDEX idx_carts_guest_token (guest_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE cart_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    cart_id INT UNSIGNED NOT NULL,
+    product_id INT UNSIGNED NOT NULL,
+    quantity INT UNSIGNED NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uq_cart_items_cart_product UNIQUE (cart_id, product_id),
+    CONSTRAINT chk_cart_items_quantity CHECK (quantity > 0),
+    CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_cart_items_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    INDEX idx_cart_items_cart_id (cart_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 8. ORDERS TABLE
 -- Order management. Supports guest checkout (user_id allows NULL).
 -- Customer name, email, and phone are snapshotted directly on the order.
 -- Deleting a user sets user_id to NULL so historical orders remain intact.

@@ -177,9 +177,16 @@ if ($normalizedPath === 'auth' || str_starts_with($normalizedPath, 'auth/')) {
     exit;
 }
 
-// 14. Route Foundation for Planned Modules (Phase 5+)
+// 14. Shopping Cart API Endpoints: /api/v1/cart/...
+if ($normalizedPath === 'cart' || str_starts_with($normalizedPath, 'cart/')) {
+    $routeSubPath = substr($normalizedPath, strlen('cart'));
+    $routeSubPath = trim($routeSubPath, '/');
+    require __DIR__ . '/cart/index.php';
+    exit;
+}
+
+// 15. Route Foundation for Planned Modules (Phase 6+)
 // Planned modules:
-// - /api/v1/cart
 // - /api/v1/orders
 // - /api/v1/users
 // - /api/v1/custom-orders
