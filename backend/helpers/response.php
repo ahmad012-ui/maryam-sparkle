@@ -25,7 +25,8 @@ if (!function_exists('sendResponse')) {
         string $message,
         mixed $data = null,
         mixed $errors = null,
-        int $statusCode = 200
+        int $statusCode = 200,
+        ?array $meta = null
     ): void {
         http_response_code($statusCode);
 
@@ -41,6 +42,9 @@ if (!function_exists('sendResponse')) {
         if ($success) {
             if ($data !== null) {
                 $response['data'] = $data;
+            }
+            if ($meta !== null) {
+                $response['meta'] = $meta;
             }
         } else {
             if ($errors !== null) {
@@ -68,10 +72,16 @@ if (!function_exists('sendSuccess')) {
      * @param string $message Success message
      * @param mixed $data Associated response payload
      * @param int $statusCode HTTP status code (default: 200)
+     * @param array|null $meta Optional pagination/search metadata
      * @return void
      */
-    function sendSuccess(string $message, mixed $data = null, int $statusCode = 200): void {
-        sendResponse(true, $message, $data, null, $statusCode);
+    function sendSuccess(
+        string $message,
+        mixed $data = null,
+        int $statusCode = 200,
+        ?array $meta = null
+    ): void {
+        sendResponse(true, $message, $data, null, $statusCode, $meta);
     }
 }
 
@@ -86,5 +96,24 @@ if (!function_exists('sendError')) {
      */
     function sendError(string $message, mixed $errors = null, int $statusCode = 400): void {
         sendResponse(false, $message, null, $errors, $statusCode);
+    }
+}
+
+if (!function_exists('getJsonInput')) {
+    /**
+     * Parse raw JSON request body into an associative array
+     *
+     * @return array
+     */
+    function getJsonInput(): array {
+        $raw = file_get_contents('php://input');
+        if ($raw === false || trim($raw) === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            sendError('Invalid JSON payload', ['body' => 'Request body must be valid JSON'], 400);
+        }
+        return $decoded;
     }
 }

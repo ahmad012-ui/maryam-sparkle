@@ -144,19 +144,40 @@ if ($isDbHealthRoute) {
     }
 }
 
-// 11. Route Foundation for Planned Modules (Phase 3+)
+// 11. Categories API Endpoints: /api/v1/categories[/{id}]
+$normalizedPath = $routePath;
+if (str_starts_with($normalizedPath, 'api/v1/')) {
+    $normalizedPath = substr($normalizedPath, strlen('api/v1/'));
+} elseif (str_starts_with($normalizedPath, 'v1/')) {
+    $normalizedPath = substr($normalizedPath, strlen('v1/'));
+}
+$normalizedPath = trim($normalizedPath, '/');
+
+if ($normalizedPath === 'categories' || str_starts_with($normalizedPath, 'categories/')) {
+    $routeSubPath = substr($normalizedPath, strlen('categories'));
+    $routeSubPath = trim($routeSubPath, '/');
+    require __DIR__ . '/categories/index.php';
+    exit;
+}
+
+// 12. Products API Endpoints: /api/v1/products[/{id}|/slug/{slug}]
+if ($normalizedPath === 'products' || str_starts_with($normalizedPath, 'products/')) {
+    $routeSubPath = substr($normalizedPath, strlen('products'));
+    $routeSubPath = trim($routeSubPath, '/');
+    require __DIR__ . '/products/index.php';
+    exit;
+}
+
+// 13. Route Foundation for Planned Modules (Phase 4+)
 // Planned modules:
 // - /api/v1/auth
-// - /api/v1/products
-// - /api/v1/categories
 // - /api/v1/cart
 // - /api/v1/orders
 // - /api/v1/users
 // - /api/v1/custom-orders
 // - /api/v1/media
 //
-// These endpoints will be implemented in subsequent phases.
-// In Phase 1, any unhandled route returns a standardized 404 JSON response.
+// In Phase 3, any unhandled route returns a standardized 404 JSON response.
 sendError('Route not found', [
     'path'   => '/' . $routePath,
     'method' => $method,

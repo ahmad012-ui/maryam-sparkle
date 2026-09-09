@@ -208,7 +208,452 @@ All responses from this API follow an envelope contract:
 
 ---
 
-## 8. Planned API Modules (Phase 2+)
+## 8. Categories REST API (Phase 3)
+
+The Categories API manages jewelry taxonomy with full CRUD operations and dependency safety checks.
+
+### A. List Active Categories
+- **Path:** `GET /api/v1/categories`
+- **Description:** Returns all active categories sorted alphabetically by name.
+
+```bash
+curl -X GET http://localhost:8000/api/v1/categories
+```
+
+#### Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Categories retrieved successfully",
+  "data": [
+    {
+      "id": 1,
+      "name": "Necklaces",
+      "slug": "necklaces",
+      "description": "Handcrafted silver and gemstone necklaces",
+      "image": "/images/categories/necklaces.jpg",
+      "status": "active",
+      "created_at": "2026-03-01 10:00:00",
+      "updated_at": "2026-03-01 10:00:00"
+    }
+  ]
+}
+```
+
+### B. Get Single Category
+- **Path:** `GET /api/v1/categories/{id}`
+- **Description:** Retrieves a single category by primary ID.
+
+```bash
+curl -X GET http://localhost:8000/api/v1/categories/1
+```
+
+#### Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Category retrieved successfully",
+  "data": {
+    "id": 1,
+    "name": "Necklaces",
+    "slug": "necklaces",
+    "description": "Handcrafted silver and gemstone necklaces",
+    "image": "/images/categories/necklaces.jpg",
+    "status": "active",
+    "created_at": "2026-03-01 10:00:00",
+    "updated_at": "2026-03-01 10:00:00"
+  }
+}
+```
+
+If not found (`HTTP 404 Not Found`):
+```json
+{
+  "success": false,
+  "message": "Category not found"
+}
+```
+
+### C. Create Category
+- **Path:** `POST /api/v1/categories`
+- **Description:** Creates a new category. Validates unique slug, required name, and status.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/categories \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Bracelets",
+    "slug": "bracelets",
+    "description": "Delicate handmade wrist jewelry",
+    "image": null,
+    "status": "active"
+  }'
+```
+
+#### Response (`HTTP 201 Created`):
+```json
+{
+  "success": true,
+  "message": "Category created successfully",
+  "data": {
+    "id": 2,
+    "name": "Bracelets",
+    "slug": "bracelets",
+    "description": "Delicate handmade wrist jewelry",
+    "image": null,
+    "status": "active",
+    "created_at": "2026-03-09 10:30:00",
+    "updated_at": "2026-03-09 10:30:00"
+  }
+}
+```
+
+### D. Update Category
+- **Path:** `PUT /api/v1/categories/{id}`
+- **Description:** Updates category attributes. Checks slug uniqueness excluding self.
+
+```bash
+curl -X PUT http://localhost:8000/api/v1/categories/2 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Artisanal Bracelets",
+    "slug": "artisanal-bracelets",
+    "description": "Custom beaded and wire-wrapped bracelets",
+    "image": null,
+    "status": "active"
+  }'
+```
+
+#### Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Category updated successfully",
+  "data": {
+    "id": 2,
+    "name": "Artisanal Bracelets",
+    "slug": "artisanal-bracelets",
+    "description": "Custom beaded and wire-wrapped bracelets",
+    "image": null,
+    "status": "active",
+    "created_at": "2026-03-09 10:30:00",
+    "updated_at": "2026-03-09 10:35:00"
+  }
+}
+```
+
+### E. Delete Category (Safe Deletion)
+- **Path:** `DELETE /api/v1/categories/{id}`
+- **Description:** Checks if products are associated with the category. If products exist, deletion is safely rejected with HTTP 409 to preserve data integrity.
+
+```bash
+curl -X DELETE http://localhost:8000/api/v1/categories/2
+```
+
+#### Safe Rejection (`HTTP 409 Conflict`):
+```json
+{
+  "success": false,
+  "message": "Cannot delete category: 3 product(s) are associated with this category. Please reassign or remove dependent products first.",
+  "errors": {
+    "dependent_products": 3,
+    "suggestion": "Set category status to inactive instead of deleting."
+  }
+}
+```
+
+#### Success (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Category deleted successfully"
+}
+```
+
+---
+
+## 9. Products REST API (Phase 3)
+
+The Products API provides high-performance catalog querying, filtering, sorting, pagination, and full product lifecycle management.
+
+### Supported Query Filters & Sorting
+- `category`: Filter by category slug (`?category=necklaces`) or category ID (`?category=1`).
+- `status`: `active` (default), `inactive`, or `all`.
+- `featured`: `true` or `false`.
+- `best_seller`: `true` or `false`.
+- `new`: `true` or `false`.
+- `min_price` & `max_price`: Numeric price range boundaries.
+- `search`: Keyword query matching product name, SKU, short description, or full description.
+- `sort`:
+  - `newest` (default): newest products first
+  - `price_asc`: lowest price first
+  - `price_desc`: highest price first
+  - `name_asc`: A to Z
+  - `name_desc`: Z to A
+- `page`: Page index (default: `1`).
+- `limit`: Items per page (default: `12`, max: `50`).
+
+---
+
+### A. List & Filter Products
+- **Path:** `GET /api/v1/products`
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/products?category=necklaces&min_price=1000&max_price=5000&sort=price_asc&page=1&limit=12"
+```
+
+#### Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Products retrieved successfully",
+  "data": [
+    {
+      "id": 10,
+      "category_id": 1,
+      "category": {
+        "id": 1,
+        "name": "Necklaces",
+        "slug": "necklaces"
+      },
+      "name": "Celestial Moon Pendant",
+      "slug": "celestial-moon-pendant",
+      "description": "Hand-forged crescent pendant embedded with natural labradorite.",
+      "short_description": "Labradorite crescent pendant with sterling chain.",
+      "price": 2800.0,
+      "compare_at_price": 3200.0,
+      "sku": "MS-NCK-001",
+      "stock": 8,
+      "is_featured": true,
+      "is_best_seller": true,
+      "is_new": false,
+      "status": "active",
+      "images": [
+        {
+          "id": 1,
+          "product_id": 10,
+          "image_url": "https://example.com/pendant-1.jpg",
+          "sort_order": 0,
+          "is_primary": true,
+          "created_at": "2026-03-01 12:00:00"
+        }
+      ],
+      "created_at": "2026-03-01 12:00:00",
+      "updated_at": "2026-03-01 12:00:00"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 12,
+    "total": 1,
+    "total_pages": 1
+  }
+}
+```
+
+---
+
+### B. Get Single Product by ID
+- **Path:** `GET /api/v1/products/{id}`
+
+```bash
+curl -X GET http://localhost:8000/api/v1/products/10
+```
+
+#### Response (`HTTP 200 OK`):
+Includes detailed category information, all product gallery images, and current inventory metadata:
+```json
+{
+  "success": true,
+  "message": "Product retrieved successfully",
+  "data": {
+    "id": 10,
+    "category_id": 1,
+    "category": {
+      "id": 1,
+      "name": "Necklaces",
+      "slug": "necklaces"
+    },
+    "name": "Celestial Moon Pendant",
+    "slug": "celestial-moon-pendant",
+    "description": "Hand-forged crescent pendant embedded with natural labradorite.",
+    "short_description": "Labradorite crescent pendant with sterling chain.",
+    "price": 2800.0,
+    "compare_at_price": 3200.0,
+    "sku": "MS-NCK-001",
+    "stock": 8,
+    "is_featured": true,
+    "is_best_seller": true,
+    "is_new": false,
+    "status": "active",
+    "images": [
+      {
+        "id": 1,
+        "product_id": 10,
+        "image_url": "https://example.com/pendant-1.jpg",
+        "sort_order": 0,
+        "is_primary": true,
+        "created_at": "2026-03-01 12:00:00"
+      }
+    ],
+    "inventory": {
+      "quantity": 8,
+      "low_stock_threshold": 5,
+      "updated_at": "2026-03-01 12:00:00"
+    },
+    "created_at": "2026-03-01 12:00:00",
+    "updated_at": "2026-03-01 12:00:00"
+  }
+}
+```
+
+---
+
+### C. Get Single Product by Slug
+- **Path:** `GET /api/v1/products/slug/{slug}`
+
+```bash
+curl -X GET http://localhost:8000/api/v1/products/slug/celestial-moon-pendant
+```
+
+---
+
+### D. Create Product
+- **Path:** `POST /api/v1/products`
+- **Description:** Validates all fields, creates the product, and generates the initial inventory row in an ACID transaction.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category_id": 1,
+    "name": "Aurora Borealis Choker",
+    "slug": "aurora-borealis-choker",
+    "description": "Natural iridescent beads woven on silver wire.",
+    "short_description": "Iridescent beaded choker necklace.",
+    "price": 3200,
+    "compare_at_price": 3600,
+    "sku": "MS-NCK-002",
+    "stock": 15,
+    "is_featured": true,
+    "is_best_seller": false,
+    "is_new": true,
+    "status": "active"
+  }'
+```
+
+#### Response (`HTTP 201 Created`):
+```json
+{
+  "success": true,
+  "message": "Product created successfully",
+  "data": {
+    "id": 11,
+    "category_id": 1,
+    "name": "Aurora Borealis Choker",
+    "slug": "aurora-borealis-choker",
+    "price": 3200.0,
+    "sku": "MS-NCK-002",
+    "stock": 15,
+    "status": "active",
+    "created_at": "2026-03-09 10:45:00",
+    "updated_at": "2026-03-09 10:45:00"
+  }
+}
+```
+
+---
+
+### E. Update Product
+- **Path:** `PUT /api/v1/products/{id}`
+- **Description:** Updates product specifications and synchronizes stock with the inventory table in an ACID transaction.
+
+```bash
+curl -X PUT http://localhost:8000/api/v1/products/11 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category_id": 1,
+    "name": "Aurora Borealis Choker (Updated)",
+    "slug": "aurora-borealis-choker",
+    "description": "Natural iridescent beads woven on oxidized silver wire.",
+    "short_description": "Iridescent beaded choker necklace.",
+    "price": 3100,
+    "compare_at_price": 3600,
+    "sku": "MS-NCK-002",
+    "stock": 20,
+    "is_featured": true,
+    "is_best_seller": false,
+    "is_new": true,
+    "status": "active"
+  }'
+```
+
+#### Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Product updated successfully",
+  "data": {
+    "id": 11,
+    "name": "Aurora Borealis Choker (Updated)",
+    "price": 3100.0,
+    "stock": 20
+  }
+}
+```
+
+---
+
+### F. Deactivate Product (Soft Deletion)
+- **Path:** `DELETE /api/v1/products/{id}`
+- **Description:** Safely sets `status = 'inactive'` to preserve historical orders and carts while removing the item from default catalog listings.
+
+```bash
+curl -X DELETE http://localhost:8000/api/v1/products/11
+```
+
+#### Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Product deactivated successfully"
+}
+```
+
+---
+
+## 10. Validation & Error Handling
+
+All requests are validated before database execution. If validation fails, an `HTTP 422 Unprocessable Entity` response is returned with explicit field-by-field error descriptions:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": {
+    "name": "Product Name is required",
+    "price": "Price must be greater than or equal to 0",
+    "slug": "Slug must be URL-friendly (lowercase alphanumeric characters separated by single hyphens, e.g. 'beaded-bracelets')"
+  }
+}
+```
+
+### Common HTTP Status Codes:
+| Code | Status | Meaning |
+| :--- | :--- | :--- |
+| `200` | OK | Successful retrieval, update, or soft deletion |
+| `201` | Created | Resource successfully created |
+| `400` | Bad Request | Malformed JSON or invalid parameter types |
+| `404` | Not Found | Target category, product, or slug does not exist |
+| `405` | Method Not Allowed | HTTP method is not permitted on the endpoint |
+| `409` | Conflict | Duplicate slug, duplicate SKU, or dependent record conflict |
+| `422` | Unprocessable Entity | Payload failed semantic validation rules |
+| `500` | Internal Server Error | Unexpected server error (logged securely) |
+| `503` | Service Unavailable | Database connection unavailable |
+
+---
+
+## 11. Planned API Modules (Phase 4+)
 
 The following modules will be incrementally introduced in subsequent phases:
 
@@ -216,9 +661,8 @@ The following modules will be incrementally introduced in subsequent phases:
 | :--- | :--- |
 | `/api/v1/auth` | User registration, login, logout, password resets, session/JWT validation |
 | `/api/v1/users` | Profile management, shipping addresses, customer management |
-| `/api/v1/categories` | Jewelry collection taxonomy (Rings, Necklaces, Bracelets, Earrings) |
-| `/api/v1/products` | Catalog browsing, inventory tracking, specifications, price tiers |
 | `/api/v1/cart` | Persistent and guest cart management |
 | `/api/v1/orders` | Checkout, order creation, order status history, customer receipts |
 | `/api/v1/custom-orders` | Bespoke jewelry inquiries, customer specifications, quotation lifecycle |
 | `/api/v1/media` | Image and reference uploads, asset management |
+
