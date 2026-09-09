@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/response.php';
 require_once __DIR__ . '/../helpers/validation.php';
+require_once __DIR__ . '/../middleware/admin.php';
 require_once __DIR__ . '/product.php';
 
 try {
@@ -145,6 +146,8 @@ if ($method === 'GET') {
 // 2. POST /api/v1/products (Create Product)
 // -----------------------------------------------------------------------------
 if ($method === 'POST') {
+    requireAdmin($pdo);
+
     if ($id !== null || $slug !== null) {
         sendError('Method not allowed on specific resource path', null, 405);
     }
@@ -226,6 +229,8 @@ if ($method === 'POST') {
 // 3. PUT /api/v1/products/{id} (Update Product)
 // -----------------------------------------------------------------------------
 if ($method === 'PUT') {
+    requireAdmin($pdo);
+
     if ($id === null) {
         sendError('Product ID is required for update', ['id' => 'Missing product ID in URL path'], 400);
     }
@@ -312,6 +317,8 @@ if ($method === 'PUT') {
 // 4. DELETE /api/v1/products/{id} (Deactivate Product)
 // -----------------------------------------------------------------------------
 if ($method === 'DELETE') {
+    requireAdmin($pdo);
+
     if ($id === null) {
         sendError('Product ID is required for deletion', ['id' => 'Missing product ID in URL path'], 400);
     }
