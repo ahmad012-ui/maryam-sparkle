@@ -40,6 +40,9 @@ backend/
 ├── auth/
 │   ├── index.php           # Authentication endpoints (/register, /login, /logout, /me, /check)
 │   └── user.php            # User data access layer (PDO prepared queries, safe formatting)
+├── cart/
+│   ├── index.php           # Shopping cart controller (GET, POST, PUT, DELETE items/clear)
+│   └── cart.php            # Cart data access layer (guest cookies, user migration, stock verification)
 ├── categories/
 │   ├── index.php           # Category REST controller (GET, POST, PUT, DELETE)
 │   └── category.php        # Category data access layer (PDO prepared queries)
@@ -53,6 +56,9 @@ backend/
 ├── middleware/
 │   ├── admin.php           # Admin authorization middleware (requireAdmin)
 │   └── auth.php            # Session authentication middleware (requireAuth, getAuthenticatedUser)
+├── orders/
+│   ├── index.php           # Orders & Checkout REST controller (POST checkout, GET orders, GET track, GET /:id)
+│   └── order.php           # Order data access layer (transactions, inventory locking, order numbering)
 ├── products/
 │   ├── index.php           # Product REST controller (filtering, sorting, pagination, CRUD)
 │   └── product.php         # Product data access layer (batch images, transactions)
@@ -886,15 +892,325 @@ All requests are validated before database execution. If validation fails, an `H
 
 ---
 
-## 12. Planned API Modules (Phase 5+)
+---
+
+## 12. Orders & Checkout API Endpoints (Phase 6)
+
+The Orders & Checkout module handles checkout execution, atomic order persistence, payment record tracking, customer order history, and secure guest order tracking.
+
+### Core Architecture & Guarantees
+
+1. **Transaction Safety**: All checkout operations run inside a strict MySQL InnoDB transaction (`BEGIN TRANSACTION` -> `COMMIT` / `ROLLBACK`). If any step fails (insufficient stock, unavailable product, database issue), the transaction rolls back completely. No orphaned orders, partial inventory deductions, or broken carts are ever created.
+2. **Concurrency & Anti-Overselling**: Products and inventory rows are locked using `SELECT ... FOR UPDATE` before stock verification and line total calculations. If requested quantity exceeds available stock, `HTTP 409 Conflict` is returned and the cart remains intact.
+3. **Never Trust Client Prices**: All unit prices, line subtotals, shipping fees, discounts, and totals are computed strictly server-side using authoritative database prices. Client-submitted prices or totals are completely ignored.
+4. **Deterministic Shipping**: Server applies a deterministic shipping rule: standard flat-rate PKR `200.00`, with free shipping on orders PKR `5000.00` and above.
+5. **Cart Clearance**: Cart items are cleared if and only if all order rows, payment records, and inventory deductions succeed within the transaction immediately before commit.
+6. **Payment Status Lifecycle**: Supported methods are `COD`, `Card`, and `Easypaisa`. Every order creates an associated record in the `payments` table with status `pending`. No payment gateway is integrated in Phase 6; status is never prematurely marked `Paid`.
+
+---
+
+### A. Checkout / Create Order: `POST /api/v1/orders`
+
+Supports both **authenticated customer checkout** and **guest checkout**.
+
+#### 1. Authenticated Customer Checkout
+- `user_id` is bound strictly to the active session (never from the request payload).
+- May provide `address_id` (verified for ownership against `addresses` table) OR provide a new `shipping_address` object.
+- Customer details (`name`, `email`, `phone`) automatically default to the authenticated profile if omitted.
+
+**Request Example (Saved Address):**
+```json
+{
+  "payment_method": "COD",
+  "address_id": 3
+}
+```
+
+**Request Example (New Address):**
+```json
+{
+  "payment_method": "Card",
+  "shipping_address": {
+    "full_name": "Ahmad Rehman",
+    "phone": "03001234567",
+    "address_line_1": "House 12, Street 4, Sector F-7",
+    "city": "Islamabad",
+    "postal_code": "44000",
+    "country": "Pakistan"
+  }
+}
+```
+
+#### 2. Guest Checkout
+- Requires active guest session cart (via `guest_token` cookie).
+- `user_id` is saved as `NULL`.
+- Requires complete `customer` object (`name`, `email`, `phone`).
+- Requires complete `shipping_address` object. Stored in `addresses` with `user_id = NULL` and linked via `orders.shipping_address_id` to guarantee fulfillment visibility.
+
+**Request Example (Guest Checkout):**
+```json
+{
+  "payment_method": "COD",
+  "customer": {
+    "name": "Zahra Khan",
+    "email": "zahra@example.com",
+    "phone": "03119876543"
+  },
+  "shipping_address": {
+    "full_name": "Zahra Khan",
+    "phone": "03119876543",
+    "address_line_1": "Flat 4B, Block 2, Clifton",
+    "city": "Karachi",
+    "postal_code": "75600",
+    "country": "Pakistan"
+  }
+}
+```
+
+#### Success Response (`HTTP 201 Created`):
+```json
+{
+  "success": true,
+  "message": "Order created successfully",
+  "data": {
+    "order": {
+      "id": 14,
+      "order_number": "MS-20260909-A4C8B1",
+      "status": "Placed",
+      "payment_status": "Pending",
+      "payment_method": "COD",
+      "subtotal": 2400.00,
+      "shipping_fee": 200.00,
+      "discount": 0.00,
+      "total": 2600.00,
+      "item_count": 2,
+      "created_at": "2026-09-09 13:00:00"
+    }
+  }
+}
+```
+
+#### Common Checkout Errors:
+- **Empty Cart (`HTTP 400 Bad Request`)**:
+  ```json
+  {
+    "success": false,
+    "message": "Cart is empty. Please add items to your cart before checking out.",
+    "errors": { "cart": "No items in cart" }
+  }
+  ```
+- **Insufficient Stock (`HTTP 409 Conflict`)**:
+  ```json
+  {
+    "success": false,
+    "message": "Requested quantity (5) exceeds available stock (2) for 'Pearl Bracelet'.",
+    "errors": { "stock": "Requested quantity (5) exceeds available stock (2) for 'Pearl Bracelet'." }
+  }
+  ```
+- **Invalid Payment Method (`HTTP 422 Unprocessable Entity`)**:
+  ```json
+  {
+    "success": false,
+    "message": "Validation failed",
+    "errors": { "payment_method": "Payment method is required and must be one of: COD, Card, Easypaisa" }
+  }
+  ```
+
+---
+
+### B. List Authenticated Orders: `GET /api/v1/orders`
+
+Protected endpoint (`requireAuth`). Retrieves the authenticated user's order history with pagination.
+
+**Query Parameters:**
+- `page` (integer, default: `1`)
+- `limit` (integer, default: `10`, max: `50`)
+
+#### Success Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Orders retrieved successfully",
+  "data": {
+    "orders": [
+      {
+        "id": 14,
+        "order_number": "MS-20260909-A4C8B1",
+        "status": "Placed",
+        "payment_status": "Pending",
+        "payment_method": "COD",
+        "subtotal": 2400.00,
+        "shipping_fee": 200.00,
+        "discount": 0.00,
+        "total": 2600.00,
+        "item_count": 2,
+        "total_quantity": 2,
+        "customer_name": "Ahmad Rehman",
+        "customer_email": "ahmad@example.com",
+        "customer_phone": "03001234567",
+        "created_at": "2026-09-09 13:00:00",
+        "updated_at": "2026-09-09 13:00:00"
+      }
+    ]
+  },
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total_items": 1,
+    "total_pages": 1
+  }
+}
+```
+
+---
+
+### C. Single Order Details: `GET /api/v1/orders/{id}`
+
+Protected endpoint (`requireAuth`). Enforces ownership validation: non-admin customers can only view their own orders; attempting to view another customer's order returns `HTTP 404 Not Found` without data leakage.
+
+#### Success Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Order details retrieved successfully",
+  "data": {
+    "order": {
+      "id": 14,
+      "user_id": 1,
+      "order_number": "MS-20260909-A4C8B1",
+      "customer_name": "Ahmad Rehman",
+      "customer_email": "ahmad@example.com",
+      "customer_phone": "03001234567",
+      "subtotal": 2400.00,
+      "shipping_fee": 200.00,
+      "discount": 0.00,
+      "total": 2600.00,
+      "status": "Placed",
+      "payment_status": "Pending",
+      "payment_method": "COD",
+      "shipping_address_id": 3,
+      "shipping_address": {
+        "id": 3,
+        "full_name": "Ahmad Rehman",
+        "phone": "03001234567",
+        "address_line_1": "House 12, Street 4, Sector F-7",
+        "address_line_2": null,
+        "city": "Islamabad",
+        "state": "ICT",
+        "postal_code": "44000",
+        "country": "Pakistan"
+      },
+      "item_count": 1,
+      "total_quantity": 2,
+      "items": [
+        {
+          "id": 21,
+          "product_id": 1,
+          "product_name": "Crystal Choker",
+          "sku": "MS-JW-001",
+          "quantity": 2,
+          "unit_price": 1200.00,
+          "subtotal": 2400.00,
+          "current_product_slug": "crystal-choker",
+          "primary_image": "/uploads/products/crystal-choker-1.jpg",
+          "created_at": "2026-09-09 13:00:00"
+        }
+      ],
+      "payment": {
+        "id": 14,
+        "transaction_reference": null,
+        "amount": 2600.00,
+        "method": "COD",
+        "status": "pending",
+        "paid_at": null,
+        "created_at": "2026-09-09 13:00:00"
+      },
+      "created_at": "2026-09-09 13:00:00",
+      "updated_at": "2026-09-09 13:00:00"
+    }
+  }
+}
+```
+
+---
+
+### D. Guest Order Tracking: `GET /api/v1/orders/track`
+
+Public tracking endpoint for guests and customers without logging in.
+
+**Query Parameters:**
+- `order_number` (string, required): e.g. `MS-20260909-A4C8B1`
+- `email` (string, required): e.g. `zahra@example.com` (verified case-insensitively against customer order record)
+- `phone` (string, optional): e.g. `03119876543` (optional secondary verification)
+
+#### Security Rules:
+- If `order_number` or `email` are missing, returns `HTTP 422 Unprocessable Entity` with specific validation error messages.
+- If `order_number` does not exist OR email does not match the order's customer record, returns `HTTP 404 Not Found` with `"Order not found with the provided details"` (prevents enumeration).
+- Sensitive administrative data (such as internal `user_id`, `shipping_address_id`, internal payment tokens, and gateway transaction references) is completely omitted from the guest tracking response.
+
+#### Request Example:
+```text
+GET /api/v1/orders/track?order_number=MS-20260909-A4C8B1&email=zahra@example.com
+```
+
+#### Success Response (`HTTP 200 OK`):
+```json
+{
+  "success": true,
+  "message": "Order tracking details retrieved successfully",
+  "data": {
+    "order": {
+      "id": 14,
+      "order_number": "MS-20260909-A4C8B1",
+      "customer_name": "Zahra Khan",
+      "customer_email": "zahra@example.com",
+      "customer_phone": "03119876543",
+      "subtotal": 800.00,
+      "shipping_fee": 200.00,
+      "discount": 0.00,
+      "total": 1000.00,
+      "status": "Placed",
+      "payment_status": "Pending",
+      "payment_method": "COD",
+      "shipping_address": {
+        "id": 4,
+        "full_name": "Zahra Khan",
+        "phone": "03119876543",
+        "address_line_1": "Flat 4B, Block 2, Clifton",
+        "city": "Karachi",
+        "country": "Pakistan"
+      },
+      "item_count": 1,
+      "total_quantity": 1,
+      "items": [
+        {
+          "id": 22,
+          "product_id": 2,
+          "product_name": "Pearl Bracelet",
+          "sku": "MS-JW-002",
+          "quantity": 1,
+          "unit_price": 800.00,
+          "subtotal": 800.00,
+          "current_product_slug": "pearl-bracelet",
+          "primary_image": "/uploads/products/pearl-bracelet-1.jpg"
+        }
+      ],
+      "created_at": "2026-09-09 13:00:00"
+    }
+  }
+}
+```
+
+---
+
+## 13. Planned API Modules (Phase 7+)
 
 The following modules will be incrementally introduced in subsequent phases:
 
 | Endpoint Prefix | Module Description |
 | :--- | :--- |
-| `/api/v1/cart` | Persistent and guest cart management |
-| `/api/v1/orders` | Checkout, order creation, order status history, customer receipts |
-| `/api/v1/users` | Profile management, shipping addresses, customer management |
+| `/api/v1/users` | Profile management, address book CRUD, customer management |
 | `/api/v1/custom-orders` | Bespoke jewelry inquiries, customer specifications, quotation lifecycle |
 | `/api/v1/media` | Image and reference uploads, asset management |
+| `/api/v1/coupons` | Promo codes and discount rule engine |
 

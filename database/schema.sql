@@ -152,12 +152,13 @@ CREATE TABLE inventory (
 
 -- ------------------------------------------------------------------------------
 -- 6. ADDRESSES TABLE
--- Saved shipping and billing addresses for registered customers.
+-- Saved shipping and billing addresses for registered customers and guest checkout.
+-- user_id allows NULL to support guest checkout address persistence.
 -- ------------------------------------------------------------------------------
 DROP TABLE IF EXISTS addresses;
 CREATE TABLE addresses (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NULL,
     full_name VARCHAR(150) NOT NULL,
     phone VARCHAR(30) NOT NULL,
     address_line_1 VARCHAR(255) NOT NULL,

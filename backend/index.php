@@ -185,14 +185,21 @@ if ($normalizedPath === 'cart' || str_starts_with($normalizedPath, 'cart/')) {
     exit;
 }
 
-// 15. Route Foundation for Planned Modules (Phase 6+)
+// 15. Orders & Checkout API Endpoints: /api/v1/orders/...
+if ($normalizedPath === 'orders' || str_starts_with($normalizedPath, 'orders/')) {
+    $routeSubPath = substr($normalizedPath, strlen('orders'));
+    $routeSubPath = trim($routeSubPath, '/');
+    require __DIR__ . '/orders/index.php';
+    exit;
+}
+
+// 16. Route Foundation for Planned Modules (Phase 7+)
 // Planned modules:
-// - /api/v1/orders
 // - /api/v1/users
 // - /api/v1/custom-orders
 // - /api/v1/media
 //
-// In Phase 4, any unhandled route returns a standardized 404 JSON response.
+// In Phase 6, any unhandled route returns a standardized 404 JSON response.
 sendError('Route not found', [
     'path'   => '/' . $routePath,
     'method' => $method,
