@@ -1,16 +1,20 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/attribute.php';
+
 /**
  * Product Model / Data Access Layer
  *
- * Handles database operations for products, images, and inventory using pure PDO prepared statements.
+ * Handles database operations for products, images, inventory, and flexible attributes using pure PDO prepared statements.
  */
 class Product {
     private PDO $pdo;
+    private ProductAttribute $attributeModel;
 
     public function __construct(PDO $pdo) {
         $this->pdo = $pdo;
+        $this->attributeModel = new ProductAttribute($pdo);
     }
 
     /**
@@ -28,9 +32,9 @@ class Product {
     }
 
     /**
-     * Format a product database row with its attached images and category details
+     * Format a product database row with its attached images, category details, inventory, and grouped attributes
      */
-    public static function format(array $row, array $images = [], ?array $inventory = null): array {
+    public static function format(array $row, array $images = [], ?array $inventory = null, array $attributes = []): array {
         $formatted = [
             'id'                => (int) $row['id'],
             'category_id'       => $row['category_id'] !== null ? (int) $row['category_id'] : null,
@@ -52,6 +56,7 @@ class Product {
             'is_new'            => (bool) $row['is_new'],
             'status'            => (string) $row['status'],
             'images'            => array_map([self::class, 'formatImage'], $images),
+            'attributes'        => !empty($attributes) ? $attributes : (object)[],
             'created_at'        => (string) $row['created_at'],
             'updated_at'        => (string) $row['updated_at'],
         ];
@@ -197,15 +202,17 @@ class Product {
             ];
         }
 
-        // Batch Fetch Images for all retrieved products (avoids N+1 query problem)
+        // Batch Fetch Images and Attributes for all retrieved products (avoids N+1 query problem)
         $productIds = array_map(fn($r) => (int) $r['id'], $rows);
         $imagesByProduct = $this->getBatchImages($productIds);
+        $attributesByProduct = $this->attributeModel->getBatchAttributes($productIds);
 
         $data = [];
         foreach ($rows as $row) {
             $pid = (int) $row['id'];
             $productImages = $imagesByProduct[$pid] ?? [];
-            $data[] = self::format($row, $productImages);
+            $productAttributes = $attributesByProduct[$pid] ?? [];
+            $data[] = self::format($row, $productImages, null, $productAttributes);
         }
 
         return [
@@ -267,8 +274,9 @@ class Product {
 
         $images = $this->getImagesForProduct($id);
         $inventory = $this->getInventoryForProduct($id);
+        $attributes = $this->attributeModel->getAttributesForProduct($id);
 
-        return self::format($row, $images, $inventory);
+        return self::format($row, $images, $inventory, $attributes);
     }
 
     /**
@@ -293,8 +301,9 @@ class Product {
         $id = (int) $row['id'];
         $images = $this->getImagesForProduct($id);
         $inventory = $this->getInventoryForProduct($id);
+        $attributes = $this->attributeModel->getAttributesForProduct($id);
 
-        return self::format($row, $images, $inventory);
+        return self::format($row, $images, $inventory, $attributes);
     }
 
     /**
@@ -409,6 +418,11 @@ class Product {
             $invStmt->bindValue(':low_stock_threshold', 5, PDO::PARAM_INT);
             $invStmt->execute();
 
+            // Save attributes if provided
+            if (isset($data['attributes']) && is_array($data['attributes'])) {
+                $this->attributeModel->setAttributesForProduct($productId, $data['attributes']);
+            }
+
             $this->pdo->commit();
 
             return $this->getById($productId) ?? [];
@@ -471,6 +485,11 @@ class Product {
             $invStmt->bindValue(':update_quantity', $data['stock'] ?? 0, PDO::PARAM_INT);
             $invStmt->execute();
 
+            // Save attributes if provided
+            if (isset($data['attributes']) && is_array($data['attributes'])) {
+                $this->attributeModel->setAttributesForProduct($id, $data['attributes']);
+            }
+
             $this->pdo->commit();
 
             return $this->getById($id);
@@ -478,6 +497,20 @@ class Product {
             $this->pdo->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Retrieve all attribute rows for a product, grouped by attribute_name.
+     */
+    public function getAttributesForProduct(int $productId): array {
+        return $this->attributeModel->getAttributesForProduct($productId);
+    }
+
+    /**
+     * Replace a product's attributes inside a database transaction.
+     */
+    public function setAttributesForProduct(int $productId, array $attributes): void {
+        $this->attributeModel->setAttributesForProduct($productId, $attributes);
     }
 
     /**

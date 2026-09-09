@@ -93,7 +93,28 @@ CREATE TABLE products (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
--- 4. PRODUCT IMAGES TABLE
+-- 4. PRODUCT ATTRIBUTES TABLE
+-- Flexible key-value attributes for handmade & fashion jewelry (e.g., Material, Finish, Gemstone).
+-- Enables varied catalog specifications without altering the core products table schema.
+-- ------------------------------------------------------------------------------
+DROP TABLE IF EXISTS product_attributes;
+CREATE TABLE product_attributes (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id INT UNSIGNED NOT NULL,
+    attribute_name VARCHAR(100) NOT NULL,
+    attribute_value VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_product_attributes_product FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    INDEX idx_product_attributes_product_id (product_id),
+    INDEX idx_product_attributes_name_value (attribute_name, attribute_value)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 5. PRODUCT IMAGES TABLE
 -- Supports multiple gallery images per product. Only URLs/paths are stored.
 -- ------------------------------------------------------------------------------
 DROP TABLE IF EXISTS product_images;

@@ -33,7 +33,10 @@ if (isset($routeSubPath)) {
 $slug = null;
 $id = null;
 
-if (str_starts_with($subPath, 'slug/')) {
+if (preg_match('#^(\d+)/slug/([^/]+)#', $subPath, $matches)) {
+    $id = (int) $matches[1];
+    $slug = trim($matches[2]);
+} elseif (str_starts_with($subPath, 'slug/')) {
     $slug = trim(substr($subPath, strlen('slug/')), '/');
 } elseif (is_numeric($subPath)) {
     $id = (int) $subPath;
@@ -44,21 +47,21 @@ if (str_starts_with($subPath, 'slug/')) {
 }
 
 // -----------------------------------------------------------------------------
-// 1. GET /api/v1/products, GET /api/v1/products/{id}, GET /api/v1/products/slug/{slug}
+// 1. GET /api/v1/products, GET /api/v1/products/{id}, GET /api/v1/products/{id}/slug/{slug}, GET /api/v1/products/slug/{slug}
 // -----------------------------------------------------------------------------
 if ($method === 'GET') {
-    // 1A. Get Single Product by Slug
-    if ($slug !== null && $slug !== '') {
-        $product = $productModel->getBySlug($slug);
+    // 1A. Get Single Product by ID (handles /products/{id} and /products/{id}/slug/{slug})
+    if ($id !== null) {
+        $product = $productModel->getById($id);
         if (!$product) {
             sendError('Product not found', null, 404);
         }
         sendSuccess('Product retrieved successfully', $product, 200);
     }
 
-    // 1B. Get Single Product by ID
-    if ($id !== null) {
-        $product = $productModel->getById($id);
+    // 1B. Get Single Product by Slug (handles /products/slug/{slug})
+    if ($slug !== null && $slug !== '') {
+        $product = $productModel->getBySlug($slug);
         if (!$product) {
             sendError('Product not found', null, 404);
         }
