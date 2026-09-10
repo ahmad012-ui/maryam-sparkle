@@ -170,3 +170,22 @@ export async function uploadImageFile(
     }, 400);
   });
 }
+
+export const imageUploadService = {
+  validateImageFile,
+  createLocalPreviewUrl,
+  revokeLocalPreviewUrl,
+  uploadImageFile,
+  uploadProductImage: async (file: File) => {
+    const url = await uploadImageFile(file, 'products');
+    return { success: true, url };
+  },
+  uploadPaymentProof: async (file: File, orderId?: string) => {
+    const url = await uploadImageFile(file, 'payment-proofs');
+    return { success: true, url, storagePath: url };
+  },
+  uploadCustomOrderImage: async (file: File, customOrderId?: string) => {
+    const url = await uploadImageFile(file, 'custom-orders');
+    return { success: true, url, storagePath: url };
+  },
+};

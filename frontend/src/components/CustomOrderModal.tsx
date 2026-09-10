@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { X, Sparkles, CheckCircle2, Heart, Send, Image as ImageIcon } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, Heart, Send, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { ReferenceImageUpload, ReferenceImageFile } from './ReferenceImageUpload';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { authService } from '../services/authService';
+import { imageUploadService } from '../services/imageUploadService';
+import { adminStorage } from '../admin/adminData';
+import { AdminCustomOrder, AdminNotification } from '../admin/types';
 
 interface CustomOrderModalProps {
   isOpen: boolean;
@@ -23,6 +28,7 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
 
   const [referenceImages, setReferenceImages] = useState<ReferenceImageFile[]>([]);
   const [phoneError, setPhoneError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen) return null;
@@ -47,7 +53,7 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
     if (!formData.name.trim()) return;
@@ -55,7 +61,114 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
       setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
       return;
     }
-    setSubmitted(true);
+
+    setIsSubmitting(true);
+    const customOrderId = `cst_${Date.now()}`;
+    const reqNumber = `REQ-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      const uploadedImageUrls: string[] = [];
+
+      // 1. Upload reference images to Supabase Storage if configured
+      if (referenceImages.length > 0) {
+        for (const img of referenceImages) {
+          if (img.file) {
+            const uploadRes = await imageUploadService.uploadCustomOrderImage(img.file, customOrderId);
+            if (uploadRes.success && uploadRes.url) {
+              uploadedImageUrls.push(uploadRes.url);
+            } else if (img.previewUrl) {
+              uploadedImageUrls.push(img.previewUrl);
+            }
+          } else if (img.previewUrl) {
+            uploadedImageUrls.push(img.previewUrl);
+          }
+        }
+      }
+
+      // 2. Persist to Supabase Database
+      if (isSupabaseConfigured()) {
+        try {
+          const currentUser = authService.getCurrentUser();
+          const validUserId = currentUser?.id && !currentUser.id.startsWith('usr-') ? currentUser.id : null;
+
+          const { data: insertedRecord, error: dbError } = await supabase
+            .from('custom_orders')
+            .insert({
+              user_id: validUserId,
+              customer_name: formData.name,
+              customer_email: formData.email || null,
+              customer_phone: sanitizePhoneNumber(formData.phone),
+              jewelry_type: formData.type,
+              wrist_size: formData.size,
+              metal_finish: formData.finish,
+              preferred_stones: formData.stones,
+              initials_or_word: null,
+              budget_range: 'Rs. 2,000 - Rs. 4,000',
+              special_notes: `${formData.palette ? `[Palette: ${formData.palette}] ` : ''}${formData.specialNotes || ''}`.trim() || null,
+              status: 'pending',
+            })
+            .select()
+            .single();
+
+          if (dbError) {
+            console.warn('Supabase custom order modal insertion error:', dbError);
+          } else if (insertedRecord?.id && uploadedImageUrls.length > 0) {
+            const imageRows = uploadedImageUrls.map((url, idx) => ({
+              custom_order_id: insertedRecord.id,
+              image_url: url,
+              sort_order: idx,
+            }));
+            await supabase.from('custom_order_images').insert(imageRows);
+          }
+        } catch (supabaseErr) {
+          console.warn('Supabase custom order modal error:', supabaseErr);
+        }
+      }
+
+      // 3. Update admin storage for instant reactivity
+      try {
+        const existingCustomOrders = adminStorage.getCustomOrders();
+        const newAdminCustomOrder: AdminCustomOrder = {
+          id: customOrderId,
+          requestNumber: reqNumber,
+          customerName: formData.name,
+          email: formData.email || '',
+          phone: sanitizePhoneNumber(formData.phone),
+          jewelryType: formData.type,
+          preferredStones: formData.stones,
+          wristSize: formData.size,
+          metalFinish: formData.finish,
+          notes: `${formData.palette ? `[Palette: ${formData.palette}] ` : ''}${formData.specialNotes || ''}`.trim(),
+          budgetRange: 'Rs. 2,000 - Rs. 4,000',
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          status: 'New Request',
+          referenceImages: uploadedImageUrls.length > 0 ? uploadedImageUrls : referenceImages.map((r) => r.previewUrl),
+        };
+        adminStorage.saveCustomOrders([newAdminCustomOrder, ...existingCustomOrders]);
+
+        // Add admin notification
+        const existingNotifs = adminStorage.getNotifications();
+        const notif: AdminNotification = {
+          id: `notif-${Date.now()}`,
+          type: 'custom',
+          title: `New Bespoke Request ${reqNumber}`,
+          message: `${formData.name} requested a bespoke ${formData.type}.`,
+          timestamp: 'Just now',
+          read: false,
+          linkTab: 'custom-orders',
+        };
+        adminStorage.saveNotifications([notif, ...existingNotifs]);
+      } catch (localErr) {
+        console.warn('Failed to update adminStorage for modal custom order:', localErr);
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Failed to submit custom order from modal:', err);
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleClose = () => {
@@ -269,10 +382,20 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full bg-[#2d5a61] text-white py-3.5 rounded-full font-medium text-sm hover:bg-[#1e3c41] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full bg-[#2d5a61] text-white py-3.5 rounded-full font-medium text-sm hover:bg-[#1e3c41] transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" />
-                <span>Submit Bespoke Request to Maryam</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Submitting Request...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Submit Bespoke Request to Maryam</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

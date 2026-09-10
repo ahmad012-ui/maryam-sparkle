@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AdminCustomOrder } from './types';
 import { MultiImageUpload } from './MultiImageUpload';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface AdminCustomOrdersProps {
   customOrders: AdminCustomOrder[];
@@ -74,21 +75,50 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
     return matchesSearch && matchesStatus;
   });
 
-  const handleUpdateStatus = (id: string, newStatus: AdminCustomOrder['status']) => {
+  const handleUpdateStatus = async (id: string, newStatus: AdminCustomOrder['status']) => {
     const updated = customOrders.map((c) =>
       c.id === id ? { ...c, status: newStatus } : c
     );
     onSaveCustomOrders(updated);
+
+    if (isSupabaseConfigured() && !id.startsWith('cst-')) {
+      try {
+        const dbStatusMap: Record<string, string> = {
+          'New Request': 'pending',
+          'Quote Sent': 'quote_sent',
+          'In Production': 'in_progress',
+          'Completed': 'completed',
+          'Declined': 'rejected',
+        };
+        await supabase
+          .from('custom_orders')
+          .update({ status: dbStatusMap[newStatus] || 'pending', updated_at: new Date().toISOString() })
+          .eq('id', id);
+      } catch (err) {
+        console.warn('Failed to update custom order status in Supabase:', err);
+      }
+    }
   };
 
-  const handleUpdateQuote = (id: string, amount: number) => {
+  const handleUpdateQuote = async (id: string, amount: number) => {
     const updated = customOrders.map((c) =>
       c.id === id ? { ...c, quoteAmount: amount } : c
     );
     onSaveCustomOrders(updated);
+
+    if (isSupabaseConfigured() && !id.startsWith('cst-')) {
+      try {
+        await supabase
+          .from('custom_orders')
+          .update({ quote_amount: amount, updated_at: new Date().toISOString() })
+          .eq('id', id);
+      } catch (err) {
+        console.warn('Failed to update quote in Supabase:', err);
+      }
+    }
   };
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customerName?.trim()) return;
 
@@ -113,6 +143,36 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
     };
 
     onSaveCustomOrders([newReq, ...customOrders]);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: inserted } = await supabase.from('custom_orders').insert({
+          customer_name: newReq.customerName,
+          customer_email: newReq.email || null,
+          customer_phone: newReq.phone || null,
+          jewelry_type: newReq.jewelryType,
+          wrist_size: newReq.wristSize || null,
+          metal_finish: newReq.metalFinish || null,
+          preferred_stones: newReq.preferredStones,
+          budget_range: newReq.budgetRange || null,
+          quote_amount: newReq.quoteAmount || null,
+          special_notes: newReq.notes || null,
+          status: 'pending',
+        }).select().single();
+
+        if (inserted?.id && newReq.referenceImages.length > 0) {
+          const rows = newReq.referenceImages.map((url, idx) => ({
+            custom_order_id: inserted.id,
+            image_url: url,
+            sort_order: idx,
+          }));
+          await supabase.from('custom_order_images').insert(rows);
+        }
+      } catch (err) {
+        console.warn('Failed to persist admin custom order to Supabase:', err);
+      }
+    }
+
     setShowAddModal(false);
     if (onCloseAddModal) onCloseAddModal();
   };

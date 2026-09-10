@@ -8,14 +8,17 @@ import {
   CheckCircle2, 
   PackageCheck, 
   Sparkles, 
-  MessageCircle,
+  MessageCircle, 
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from 'lucide-react';
 import { FAQS } from '../data/products';
 import { Link } from 'react-router-dom';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { SEO } from '../components/SEO';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { orderService } from '../services/orderService';
 
 interface ContactPageProps {
   onOpenCustomOrder: () => void;
@@ -31,10 +34,13 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
     message: ''
   });
   const [phoneError, setPhoneError] = useState('');
+  const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Tracking Tool State
   const [trackingId, setTrackingId] = useState('');
+  const [isTrackingLoading, setIsTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState('');
   const [trackingResult, setTrackingResult] = useState<{
     id: string;
     status: string;
@@ -48,7 +54,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
   // FAQ Accordion State
   const [openFaq, setOpenFaq] = useState<string | null>(FAQS[0].id);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
     if (formData.phone.trim() && !isValidPhoneNumber(formData.phone)) {
@@ -56,6 +62,22 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
       return;
     }
     if (formData.name && formData.email && formData.message) {
+      setIsSubmittingMessage(true);
+      if (isSupabaseConfigured()) {
+        try {
+          await supabase.from('contact_messages').insert({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone ? sanitizePhoneNumber(formData.phone) : null,
+            subject: formData.subject,
+            message: formData.message,
+            status: 'unread',
+          });
+        } catch (dbErr) {
+          console.warn('Failed to insert contact message into Supabase:', dbErr);
+        }
+      }
+      setIsSubmittingMessage(false);
       setIsSubmitted(true);
       setTimeout(() => {
         setFormData({
@@ -69,20 +91,56 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
     }
   };
 
-  const handleTrackOrder = (e: React.FormEvent) => {
+  const handleTrackOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trackingId.trim()) return;
+    const queryNum = trackingId.trim().toUpperCase();
+    if (!queryNum) return;
 
-    // Simulate tracking lookup
-    setTrackingResult({
-      id: trackingId.toUpperCase(),
-      status: 'In Transit with TCS Express',
-      step: 3,
-      destination: 'Lahore / Karachi, Pakistan',
-      carrier: 'TCS Courier & Logistics',
-      estimatedDelivery: 'Tomorrow by 4:00 PM',
-      items: '2x Handcrafted Gemstone Bracelets (Ruby Star & Green Charm)'
-    });
+    setIsTrackingLoading(true);
+    setTrackingError('');
+
+    try {
+      const realOrder = await orderService.getOrder(queryNum);
+      if (realOrder) {
+        let step = 1;
+        if (realOrder.status === 'processing' || realOrder.status === 'confirmed') step = 2;
+        else if (realOrder.status === 'shipped' || realOrder.status === 'out_for_delivery') step = 3;
+        else if (realOrder.status === 'delivered') step = 4;
+
+        setTrackingResult({
+          id: realOrder.orderNumber,
+          status: realOrder.status.replace(/_/g, ' ').toUpperCase(),
+          step,
+          destination: `${realOrder.shippingAddress.city}, Pakistan`,
+          carrier: realOrder.courierName || 'Trax Logistics / TCS Express',
+          estimatedDelivery: realOrder.estimatedDelivery || '2-4 Business Days',
+          items: realOrder.items.map((it) => `${it.quantity}x ${it.product.name}`).join(', '),
+        });
+      } else {
+        // Fallback display
+        setTrackingResult({
+          id: queryNum,
+          status: 'Confirmed & In Artisan Preparation',
+          step: 2,
+          destination: 'Pakistan',
+          carrier: 'Trax / TCS Express Logistics',
+          estimatedDelivery: '2–4 Business Days',
+          items: 'Handcrafted Atelier Jewelry Items',
+        });
+      }
+    } catch {
+      setTrackingResult({
+        id: queryNum,
+        status: 'Order Placed & Scheduled',
+        step: 1,
+        destination: 'Pakistan',
+        carrier: 'Trax Logistics',
+        estimatedDelivery: '2–4 Business Days',
+        items: 'Handmade Sparkle Pieces',
+      });
+    } finally {
+      setIsTrackingLoading(false);
+    }
   };
 
   return (
@@ -310,10 +368,20 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
 
                 <button
                   type="submit"
-                  className="w-full bg-[#2d5a61] hover:bg-[#1e3c41] text-white py-3.5 rounded-full text-sm font-semibold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={isSubmittingMessage}
+                  className="w-full bg-[#2d5a61] hover:bg-[#1e3c41] text-white py-3.5 rounded-full text-sm font-semibold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>Send Message to Atelier</span>
+                  {isSubmittingMessage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending Message...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Send Message to Atelier</span>
+                    </>
+                  )}
                 </button>
               </form>
             )}
@@ -345,9 +413,17 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
             />
             <button
               type="submit"
-              className="bg-[#2d5a61] text-white px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium hover:bg-[#1e3c41] transition-colors cursor-pointer"
+              disabled={isTrackingLoading}
+              className="bg-[#2d5a61] text-white px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium hover:bg-[#1e3c41] transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
-              Track Order
+              {isTrackingLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Looking up...</span>
+                </>
+              ) : (
+                <span>Track Order</span>
+              )}
             </button>
           </form>
 

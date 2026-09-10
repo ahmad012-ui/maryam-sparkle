@@ -427,68 +427,127 @@ export const orderService = {
         const currentUser = authService.getCurrentUser();
         const validUserId = currentUser?.id && !currentUser.id.startsWith('usr-') ? currentUser.id : null;
 
-        const { data: insertedOrder, error: orderError } = await supabase
-          .from('orders')
-          .insert({
-            order_number: orderNumber,
-            user_id: validUserId,
-            customer_name: orderPayload.customer.fullName,
-            customer_email: orderPayload.customer.email,
-            customer_phone: orderPayload.customer.phone,
-            subtotal: orderPayload.subtotal,
-            shipping_fee: orderPayload.shippingCost,
-            discount: orderPayload.discount,
-            coupon_code: orderPayload.couponCode || null,
-            total: orderPayload.total,
-            status: 'placed',
-            payment_status: 'pending',
-            payment_method: orderPayload.paymentMethod.id,
-            shipping_address: {
-              full_name: orderPayload.customer.fullName,
-              phone: orderPayload.customer.phone,
-              address_line_1: orderPayload.shippingAddress.address,
-              city: orderPayload.shippingAddress.city,
-              state: orderPayload.shippingAddress.province || 'Sindh',
-              postal_code: orderPayload.shippingAddress.postalCode,
-              country: orderPayload.shippingAddress.country || 'Pakistan',
-            },
-            delivery_method: orderPayload.deliveryMethod.id,
-            notes: orderPayload.notes || null,
-          })
-          .select()
-          .single();
-
-        if (orderError) {
-          console.error('Supabase order creation error:', orderError);
-        } else if (insertedOrder?.id) {
-          // Insert order items
-          const itemRows = orderPayload.items.map((it) => ({
-            order_id: insertedOrder.id,
-            product_name: it.product.name,
-            product_slug: it.product.slug,
-            product_image: it.product.image,
-            sku: it.product.sku || `MS-${it.product.name.slice(0, 3).toUpperCase()}`,
+        // Try atomic server-side RPC first
+        const rpcPayload = {
+          customer: {
+            fullName: orderPayload.customer.fullName,
+            name: orderPayload.customer.fullName,
+            email: orderPayload.customer.email,
+            phone: orderPayload.customer.phone,
+          },
+          shippingAddress: {
+            full_name: orderPayload.customer.fullName,
+            phone: orderPayload.customer.phone,
+            address_line_1: orderPayload.shippingAddress.address,
+            city: orderPayload.shippingAddress.city,
+            state: orderPayload.shippingAddress.province || 'Sindh',
+            postal_code: orderPayload.shippingAddress.postalCode,
+            country: orderPayload.shippingAddress.country || 'Pakistan',
+          },
+          deliveryMethod: orderPayload.deliveryMethod.id,
+          paymentMethod: orderPayload.paymentMethod.id,
+          transactionReference: orderPayload.transactionReference || null,
+          proofOfPaymentUrl: orderPayload.proofOfPaymentUrl || null,
+          couponCode: orderPayload.couponCode || null,
+          notes: orderPayload.notes || null,
+          items: orderPayload.items.map((it) => ({
+            productId: it.product.id,
+            productSlug: it.product.slug,
+            productName: it.product.name,
+            price: it.product.price,
             quantity: it.quantity,
-            unit_price: it.product.price,
-            subtotal: it.product.price * it.quantity,
-            size: it.selectedSize || 'Medium (6.5")',
-            finish: it.selectedFinish || '18K Gold Plated',
-          }));
+            selectedSize: it.selectedSize || 'Medium (6.5")',
+            selectedFinish: it.selectedFinish || '18K Gold Plated',
+            product: {
+              id: it.product.id,
+              name: it.product.name,
+              slug: it.product.slug,
+              price: it.product.price,
+              sku: it.product.sku,
+              image: it.product.image,
+            },
+          })),
+        };
 
-          await supabase.from('order_items').insert(itemRows);
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('place_order', {
+          payload: rpcPayload,
+        });
 
-          // Insert payment record
-          await supabase.from('payments').insert({
-            order_id: insertedOrder.id,
-            transaction_reference: orderPayload.transactionReference || null,
-            proof_of_payment_path: orderPayload.proofOfPaymentUrl || null,
-            proof_of_payment_url: orderPayload.proofOfPaymentUrl || null,
-            amount: orderPayload.total,
-            method: orderPayload.paymentMethod.id,
-            status: 'pending',
-          });
+        if (!rpcError && rpcResult?.order_id) {
+          newOrder.id = rpcResult.order_id;
+          newOrder.orderNumber = rpcResult.order_number || orderNumber;
+          if (rpcResult.total !== undefined) {
+            newOrder.total = Number(rpcResult.total);
+            newOrder.subtotal = Number(rpcResult.subtotal);
+            newOrder.shippingCost = Number(rpcResult.shipping_fee);
+            newOrder.discount = Number(rpcResult.discount);
+          }
+        } else {
+          // Fallback to direct table insertion
+          const { data: insertedOrder, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+              order_number: orderNumber,
+              user_id: validUserId,
+              customer_name: orderPayload.customer.fullName,
+              customer_email: orderPayload.customer.email,
+              customer_phone: orderPayload.customer.phone,
+              subtotal: orderPayload.subtotal,
+              shipping_fee: orderPayload.shippingCost,
+              discount: orderPayload.discount,
+              coupon_code: orderPayload.couponCode || null,
+              total: orderPayload.total,
+              status: 'placed',
+              payment_status: 'pending',
+              payment_method: orderPayload.paymentMethod.id,
+              shipping_address: {
+                full_name: orderPayload.customer.fullName,
+                phone: orderPayload.customer.phone,
+                address_line_1: orderPayload.shippingAddress.address,
+                city: orderPayload.shippingAddress.city,
+                state: orderPayload.shippingAddress.province || 'Sindh',
+                postal_code: orderPayload.shippingAddress.postalCode,
+                country: orderPayload.shippingAddress.country || 'Pakistan',
+              },
+              delivery_method: orderPayload.deliveryMethod.id,
+              notes: orderPayload.notes || null,
+            })
+            .select()
+            .single();
 
-          newOrder.id = insertedOrder.id;
+          if (orderError) {
+            console.error('Supabase order creation error:', orderError);
+          } else if (insertedOrder?.id) {
+            // Insert order items
+            const itemRows = orderPayload.items.map((it) => ({
+              order_id: insertedOrder.id,
+              product_id: it.product.id.startsWith('prod-') ? null : it.product.id,
+              product_name: it.product.name,
+              product_slug: it.product.slug,
+              product_image: it.product.image,
+              sku: it.product.sku || `MS-${it.product.name.slice(0, 3).toUpperCase()}`,
+              quantity: it.quantity,
+              unit_price: it.product.price,
+              subtotal: it.product.price * it.quantity,
+              size: it.selectedSize || 'Medium (6.5")',
+              finish: it.selectedFinish || '18K Gold Plated',
+            }));
+
+            await supabase.from('order_items').insert(itemRows);
+
+            // Insert payment record
+            await supabase.from('payments').insert({
+              order_id: insertedOrder.id,
+              transaction_reference: orderPayload.transactionReference || null,
+              proof_of_payment_path: orderPayload.proofOfPaymentUrl || null,
+              proof_of_payment_url: orderPayload.proofOfPaymentUrl || null,
+              amount: orderPayload.total,
+              method: orderPayload.paymentMethod.id,
+              status: 'pending',
+            });
+
+            newOrder.id = insertedOrder.id;
+          }
         }
       } catch (dbErr) {
         console.warn('Failed to insert into Supabase orders:', dbErr);

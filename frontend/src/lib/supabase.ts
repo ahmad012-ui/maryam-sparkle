@@ -1,8 +1,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Environment variables for Supabase connection
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL) as string | undefined;
+const supabaseAnonKey = (
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.SUPABASE_ANON_KEY
+) as string | undefined;
 
 /**
  * Validates if Supabase credentials are configured with valid formats
