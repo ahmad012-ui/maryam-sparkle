@@ -43,6 +43,21 @@ export const authService = {
     return () => data.subscription.unsubscribe();
   },
 
+  async getCurrentUserAsync(): Promise<UserProfile | null> {
+    requireSupabase();
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      currentUserCache = null;
+      return null;
+    }
+    return syncSessionUser(data.user || null);
+  },
+
+  async isAdmin(): Promise<boolean> {
+    const user = await this.getCurrentUserAsync();
+    return user?.role === 'admin';
+  },
+
   getCurrentUser(): UserProfile | null {
     return currentUserCache;
   },
