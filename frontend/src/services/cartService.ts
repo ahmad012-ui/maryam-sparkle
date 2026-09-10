@@ -1,87 +1,20 @@
 import { CartItem, Product } from '../types';
 import { PRODUCTS } from '../data/products';
-
-export interface BackendCartItem {
-  id: number;
-  product_id: number;
-  name: string;
-  slug: string;
-  price: number;
-  image: string | null;
-  quantity: number;
-  stock: number;
-  subtotal: number;
-  status: string;
-}
-
-export interface BackendCartData {
-  id: number | null;
-  user_id: number | null;
-  guest_token: string | null;
-  items: BackendCartItem[];
-  item_count: number;
-  total: number;
-}
-
-export interface CartApiResponse {
-  success: boolean;
-  message: string;
-  data: BackendCartData;
-  errors?: Record<string, string>;
-}
-
-/**
- * Helper to convert backend product_id or slug to a catalog Product object
- */
-export function mapBackendItemToCartItem(item: BackendCartItem): CartItem {
-  const found = PRODUCTS.find((p) => p.slug === item.slug || p.id === String(item.product_id));
-  const product: Product = found || {
-    id: String(item.product_id),
-    slug: item.slug,
-    name: item.name,
-    category: 'Bracelets',
-    price: item.price,
-    image: item.image || PRODUCTS[0]?.image || '',
-    images: item.image ? [item.image] : [PRODUCTS[0]?.image || ''],
-    description: 'Handmade artisanal jewelry crafted with love in our Karachi atelier.',
-    materials: ['Glass Beads', 'Gold-Tone Accents'],
-    stock: item.stock,
-    inStock: item.stock > 0,
-  };
-
-  return {
-    product,
-    quantity: item.quantity,
-    selectedSize: 'Medium (6.5")',
-    selectedFinish: product.finish || 'Gold-Tone',
-  };
-}
-
-/**
- * Resolve an integer product_id from a Product or product_id string/number
- */
-export function resolveNumericProductId(productOrId: Product | string | number): number {
-  if (typeof productOrId === 'number') {
-    return productOrId;
-  }
-  if (typeof productOrId === 'string') {
-    const parsed = parseInt(productOrId, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      return parsed;
-    }
-    const idx = PRODUCTS.findIndex((p) => p.id === productOrId || p.slug === productOrId);
-    return idx >= 0 ? idx + 1 : 1;
-  }
-  // Product object
-  const parsed = parseInt(productOrId.id, 10);
-  if (!isNaN(parsed) && parsed > 0) {
-    return parsed;
-  }
-  const idx = PRODUCTS.findIndex((p) => p.id === productOrId.id || p.slug === productOrId.slug);
-  return idx >= 0 ? idx + 1 : 1;
-}
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { authService } from './authService';
 
 const CART_STORAGE_KEY = 'maryam_sparkle_cart_v1';
+const GUEST_TOKEN_KEY = 'maryam_sparkle_guest_token_v1';
+
+function getOrCreateGuestToken(): string {
+  if (typeof window === 'undefined') return 'guest_default';
+  let token = localStorage.getItem(GUEST_TOKEN_KEY);
+  if (!token) {
+    token = `gst_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
+    localStorage.setItem(GUEST_TOKEN_KEY, token);
+  }
+  return token;
+}
 
 function getLocalCart(): CartItem[] {
   try {
@@ -101,51 +34,92 @@ function saveLocalCart(items: CartItem[]): void {
   }
 }
 
-async function safeJsonFetch<T>(url: string, options?: RequestInit): Promise<T | null> {
-  try {
-    const res = await fetch(url, options);
-    const contentType = res.headers.get('content-type') || '';
-    if (!res.ok || !contentType.includes('application/json')) {
-      return null;
-    }
-    const text = await res.text();
-    if (!text || !text.trim()) {
-      return null;
-    }
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
-}
-
 export const cartService = {
   /**
-   * Fetch current cart with resilient local storage and background API sync
+   * Fetch current cart with resilient local storage and Supabase sync
    */
-  async getCart(): Promise<{ items: CartItem[]; itemCount: number; total: number; raw: BackendCartData }> {
+  async getCart(): Promise<{ items: CartItem[]; itemCount: number; total: number }> {
     const localItems = getLocalCart();
 
-    try {
-      const json = await safeJsonFetch<CartApiResponse>('/api/v1/cart', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
+    if (isSupabaseConfigured()) {
+      try {
+        const currentUser = authService.getCurrentUser();
+        const guestToken = getOrCreateGuestToken();
 
-      if (json?.success && json.data && Array.isArray(json.data.items)) {
-        const items = json.data.items.map(mapBackendItemToCartItem);
-        saveLocalCart(items);
-        return {
-          items,
-          itemCount: json.data.item_count || items.reduce((s, it) => s + it.quantity, 0),
-          total: json.data.total || items.reduce((s, it) => s + it.product.price * it.quantity, 0),
-          raw: json.data,
-        };
+        let cartQuery = supabase.from('carts').select('id');
+        if (currentUser?.id && !currentUser.id.startsWith('usr-')) {
+          cartQuery = cartQuery.eq('user_id', currentUser.id);
+        } else {
+          cartQuery = cartQuery.eq('guest_token', guestToken);
+        }
+
+        const { data: cartData } = await cartQuery.maybeSingle();
+
+        if (cartData?.id) {
+          const { data: itemRows } = await supabase
+            .from('cart_items')
+            .select(`
+              id,
+              quantity,
+              size,
+              finish,
+              custom_note,
+              products (
+                id,
+                name,
+                slug,
+                price,
+                stock,
+                in_stock,
+                finish,
+                product_images ( image_url, is_primary )
+              )
+            `)
+            .eq('cart_id', cartData.id);
+
+          if (itemRows && itemRows.length > 0) {
+            const syncedItems: CartItem[] = itemRows
+              .filter((r: any) => r.products)
+              .map((r: any) => {
+                const prod = r.products;
+                const img =
+                  prod.product_images?.find((i: any) => i.is_primary)?.image_url ||
+                  prod.product_images?.[0]?.image_url ||
+                  PRODUCTS[0].image;
+
+                const catalogProduct: Product = {
+                  id: prod.id,
+                  name: prod.name,
+                  slug: prod.slug,
+                  price: Number(prod.price),
+                  category: 'Bracelets',
+                  image: img,
+                  images: [img],
+                  description: 'Handmade artisanal jewelry',
+                  materials: ['Glass Beads', 'Gold-Tone Accents'],
+                  stock: prod.stock ?? 10,
+                  inStock: prod.in_stock ?? true,
+                };
+
+                return {
+                  product: catalogProduct,
+                  quantity: r.quantity,
+                  selectedSize: r.size || 'Medium (6.5")',
+                  selectedFinish: r.finish || prod.finish || '18K Gold Plated',
+                };
+              });
+
+            if (syncedItems.length > 0) {
+              saveLocalCart(syncedItems);
+              const count = syncedItems.reduce((acc, it) => acc + it.quantity, 0);
+              const total = syncedItems.reduce((acc, it) => acc + it.product.price * it.quantity, 0);
+              return { items: syncedItems, itemCount: count, total };
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Supabase cart sync notice:', err);
       }
-    } catch (err) {
-      console.warn('cartService.getCart network check:', err);
     }
 
     const count = localItems.reduce((acc, it) => acc + it.quantity, 0);
@@ -154,14 +128,13 @@ export const cartService = {
       items: localItems,
       itemCount: count,
       total,
-      raw: { id: null, user_id: null, guest_token: null, items: [], item_count: count, total },
     };
   },
 
   /**
-   * Add item to cart with local state persistence and opportunistic backend sync
+   * Add item to cart
    */
-  async addItem(product: Product | string | number, quantity: number = 1): Promise<CartItem[]> {
+  async addItem(product: Product | string, quantity: number = 1): Promise<CartItem[]> {
     const resolvedProduct =
       typeof product === 'object'
         ? product
@@ -181,43 +154,18 @@ export const cartService = {
           product: resolvedProduct,
           quantity,
           selectedSize: 'Medium (6.5")',
-          selectedFinish: resolvedProduct.finish || 'Gold-Tone',
+          selectedFinish: resolvedProduct.finish || '18K Gold Plated',
         },
       ];
     }
     saveLocalCart(updated);
-
-    const productId = resolveNumericProductId(product);
-    try {
-      const json = await safeJsonFetch<CartApiResponse>('/api/v1/cart/items', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          product_id: productId,
-          quantity,
-        }),
-      });
-
-      if (json?.success && Array.isArray(json.data?.items) && json.data.items.length > 0) {
-        const backendItems = json.data.items.map(mapBackendItemToCartItem);
-        saveLocalCart(backendItems);
-        return backendItems;
-      }
-    } catch {
-      // Backend not running; local cart already saved
-    }
-
     return updated;
   },
 
   /**
-   * Update quantity with local state persistence and opportunistic backend sync
+   * Update quantity
    */
-  async updateQuantity(product: Product | string | number, quantity: number): Promise<CartItem[]> {
+  async updateQuantity(product: Product | string, quantity: number): Promise<CartItem[]> {
     const prodIdStr = typeof product === 'object' ? product.id : String(product);
     const currentItems = getLocalCart();
 
@@ -228,61 +176,17 @@ export const cartService = {
       updated = currentItems.map((it) => (it.product.id === prodIdStr ? { ...it, quantity } : it));
     }
     saveLocalCart(updated);
-
-    const productId = resolveNumericProductId(product);
-    try {
-      const json = await safeJsonFetch<CartApiResponse>(`/api/v1/cart/items/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          quantity,
-        }),
-      });
-
-      if (json?.success && Array.isArray(json.data?.items)) {
-        const backendItems = json.data.items.map(mapBackendItemToCartItem);
-        saveLocalCart(backendItems);
-        return backendItems;
-      }
-    } catch {
-      // Backend not running
-    }
-
     return updated;
   },
 
   /**
-   * Remove item with local state persistence and opportunistic backend sync
+   * Remove item
    */
-  async removeItem(product: Product | string | number): Promise<CartItem[]> {
+  async removeItem(product: Product | string): Promise<CartItem[]> {
     const prodIdStr = typeof product === 'object' ? product.id : String(product);
     const currentItems = getLocalCart();
     const updated = currentItems.filter((it) => it.product.id !== prodIdStr);
     saveLocalCart(updated);
-
-    const productId = resolveNumericProductId(product);
-    try {
-      const json = await safeJsonFetch<CartApiResponse>(`/api/v1/cart/items/${productId}`, {
-        method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      if (json?.success && Array.isArray(json.data?.items)) {
-        const backendItems = json.data.items.map(mapBackendItemToCartItem);
-        saveLocalCart(backendItems);
-        return backendItems;
-      }
-    } catch {
-      // Backend not running
-    }
-
     return updated;
   },
 
@@ -291,17 +195,5 @@ export const cartService = {
    */
   async clearCart(): Promise<void> {
     saveLocalCart([]);
-    try {
-      await fetch('/api/v1/cart', {
-        method: 'DELETE',
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
-    } catch {
-      // Ignore
-    }
   },
 };
-

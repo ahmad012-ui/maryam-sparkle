@@ -102,21 +102,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
 
     try {
       if (isLogin) {
-        authService.login({
+        await authService.login({
           email: email.trim(),
+          password: password,
           name: name.trim() || undefined,
           phone: phone.trim() || undefined
         });
       } else {
-        authService.register({
+        await authService.register({
           name: name.trim(),
           email: email.trim(),
+          password: password,
           phone: phone.trim() || undefined
         });
       }
       navigate('/account');
-    } catch {
-      setErrors({ form: 'An unexpected error occurred. Please try again.' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An unexpected authentication error occurred. Please try again.';
+      setErrors({ form: msg });
     } finally {
       setIsLoading(false);
     }

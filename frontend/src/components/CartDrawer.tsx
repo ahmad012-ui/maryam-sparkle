@@ -1,10 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck, Truck, User, AlertCircle } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Minus,
+  Trash2,
+  ShoppingBag,
+  ArrowRight,
+  CheckCircle2,
+  Sparkles,
+  Tag,
+  ShieldCheck,
+  Truck,
+  User,
+  AlertCircle,
+  Upload,
+  Copy,
+  Check,
+  Loader2,
+  Smartphone,
+  CreditCard,
+  Banknote
+} from 'lucide-react';
 import { CartItem, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { authService } from '../services/authService';
 import { orderService } from '../services/orderService';
+import {
+  uploadImageFile,
+  validateImageFile,
+  createLocalPreviewUrl,
+  revokeLocalPreviewUrl
+} from '../services/imageUploadService';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -38,18 +65,86 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     city: 'Lahore',
     address: '',
     paymentMethod: PAYMENT_METHODS.COD as PaymentMethodId,
+    transactionReference: '',
     orderNotes: '',
   });
+
+  const [proofOfPaymentUrl, setProofOfPaymentUrl] = useState<string>('');
+  const [proofOfPaymentPreview, setProofOfPaymentPreview] = useState<string>('');
+  const [isUploadingProof, setIsUploadingProof] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [paymentErrors, setPaymentErrors] = useState<{ transactionReference?: string; proofOfPayment?: string }>({});
+
   const [phoneError, setPhoneError] = useState('');
   const [drawerError, setDrawerError] = useState<string | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   const currentUser = authService.getCurrentUser();
 
+  // Clean up Object URL on unmount/close
+  useEffect(() => {
+    return () => {
+      if (proofOfPaymentPreview) {
+        revokeLocalPreviewUrl(proofOfPaymentPreview);
+      }
+    };
+  }, [proofOfPaymentPreview]);
+
+  // Handle proof of payment upload in drawer
+  const handleProofFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error || 'Invalid file format or size');
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingProof(true);
+
+    const preview = createLocalPreviewUrl(file);
+    setProofOfPaymentPreview(preview);
+
+    try {
+      const uploadedUrl = await uploadImageFile(file, 'payment-proofs');
+      setProofOfPaymentUrl(uploadedUrl);
+      setPaymentErrors((prev) => {
+        const next = { ...prev };
+        delete next.proofOfPayment;
+        return next;
+      });
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to upload proof of payment.');
+      setProofOfPaymentUrl('');
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  const handleRemoveProof = () => {
+    if (proofOfPaymentPreview) {
+      revokeLocalPreviewUrl(proofOfPaymentPreview);
+    }
+    setProofOfPaymentPreview('');
+    setProofOfPaymentUrl('');
+    setUploadError(null);
+  };
+
+  const handleCopy = (text: string, fieldKey: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedField(fieldKey);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   // Prefill when drawer opens if logged in
   useEffect(() => {
     if (isOpen) {
       setDrawerError(null);
+      setPaymentErrors({});
+      setUploadError(null);
       const user = authService.getCurrentUser();
       if (user) {
         const defAddr = user.addresses.find((a) => a.isDefault) || user.addresses[0];
@@ -98,6 +193,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     e.preventDefault();
     setPhoneError('');
     setDrawerError(null);
+    setPaymentErrors({});
 
     if (!isValidPhoneNumber(checkoutData.phone)) {
       setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
@@ -105,6 +201,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     }
 
     if (!checkoutData.fullName.trim() || !checkoutData.address.trim()) {
+      return;
+    }
+
+    const isNonCod = checkoutData.paymentMethod !== PAYMENT_METHODS.COD;
+    const errors: { transactionReference?: string; proofOfPayment?: string } = {};
+
+    if (isNonCod) {
+      if (!checkoutData.transactionReference.trim()) {
+        errors.transactionReference = 'Transaction / Reference ID is required for verification.';
+      }
+      if (!proofOfPaymentUrl) {
+        errors.proofOfPayment = 'Please upload a screenshot proof of payment.';
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPaymentErrors(errors);
+      setDrawerError('Please provide your transaction ID and upload a screenshot proof of payment to proceed.');
       return;
     }
 
@@ -143,6 +257,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           id: pmId,
           title: pmTitle
         },
+        transactionReference: isNonCod ? checkoutData.transactionReference.trim() : undefined,
+        proofOfPaymentUrl: isNonCod ? proofOfPaymentUrl.trim() : undefined,
         items: [...cartItems],
         subtotal,
         shippingCost: shippingFee,
@@ -246,6 +362,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <span className="text-[#888888]">Shipping to:</span>
                 <span className="font-medium text-[#333333]">{checkoutData.city}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-[#888888]">Payment Method:</span>
+                <span className="font-medium text-[#333333]">
+                  {checkoutData.paymentMethod === PAYMENT_METHODS.COD
+                    ? 'Cash on Delivery (COD)'
+                    : checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA
+                    ? 'EasyPaisa Mobile'
+                    : checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH
+                    ? 'JazzCash Mobile'
+                    : 'Direct Bank Transfer'}
+                </span>
+              </div>
+              {checkoutData.transactionReference && (
+                <div className="flex justify-between items-center pt-1 border-t border-[#e0d8c8]/60">
+                  <span className="text-[#888888]">Transaction Ref:</span>
+                  <span className="font-mono font-bold text-[#333333]">{checkoutData.transactionReference}</span>
+                </div>
+              )}
+              {proofOfPaymentPreview && (
+                <div className="pt-2 border-t border-[#e0d8c8]/60">
+                  <span className="text-[#888888] block mb-1">Proof Attached:</span>
+                  <img src={proofOfPaymentPreview} alt="Receipt" className="w-14 h-14 object-cover rounded-lg border border-[#e0d8c8]" />
+                </div>
+              )}
             </div>
 
             <div className="w-full space-y-2.5">
@@ -362,45 +502,326 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
 
               <div>
-                <label className="block text-[#444444] font-medium mb-1.5">Payment Method</label>
+                <label className="block text-[#444444] font-medium mb-1.5">Payment Method *</label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 p-2.5 bg-white rounded-xl border border-[#e0d8c8] cursor-pointer">
+                  {/* COD */}
+                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                    checkoutData.paymentMethod === PAYMENT_METHODS.COD
+                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
+                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
+                  }`}>
                     <input
                       type="radio"
-                      name="paymentMethod"
+                      name="drawerPaymentMethod"
                       value={PAYMENT_METHODS.COD}
                       checked={checkoutData.paymentMethod === PAYMENT_METHODS.COD}
-                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.COD })}
-                      className="text-[#2d5a61] focus:ring-[#2d5a61]"
+                      onChange={() => {
+                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.COD });
+                        setPaymentErrors({});
+                      }}
+                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
                     />
-                    <span className="font-medium text-[#333333]">Cash on Delivery (COD)</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-[#333333] flex items-center gap-1.5">
+                          <Banknote className="w-3.5 h-3.5 text-[#2d5a61]" />
+                          Cash on Delivery (COD)
+                        </span>
+                        <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full">
+                          Popular
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#666666] mt-0.5">
+                        Pay cash directly to courier rider upon delivery.
+                      </p>
+                    </div>
                   </label>
 
-                  <label className="flex items-center gap-2 p-2.5 bg-white rounded-xl border border-[#e0d8c8] cursor-pointer">
+                  {/* EasyPaisa */}
+                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                    checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA
+                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
+                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
+                  }`}>
                     <input
                       type="radio"
-                      name="paymentMethod"
+                      name="drawerPaymentMethod"
                       value={PAYMENT_METHODS.EASYPAISA}
                       checked={checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA}
-                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.EASYPAISA })}
-                      className="text-[#2d5a61] focus:ring-[#2d5a61]"
+                      onChange={() => {
+                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.EASYPAISA });
+                        setPaymentErrors({});
+                      }}
+                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
                     />
-                    <span className="font-medium text-[#333333]">EasyPaisa / JazzCash</span>
+                    <div className="flex-1">
+                      <span className="font-medium text-[#333333] flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-[#2d5a61]" />
+                        EasyPaisa Mobile Account
+                      </span>
+                      <p className="text-[10px] text-[#666666] mt-0.5">
+                        Transfer to 0300-1234567 and attach payment receipt.
+                      </p>
+                    </div>
                   </label>
 
-                  <label className="flex items-center gap-2 p-2.5 bg-white rounded-xl border border-[#e0d8c8] cursor-pointer">
+                  {/* JazzCash */}
+                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                    checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH
+                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
+                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
+                  }`}>
                     <input
                       type="radio"
-                      name="paymentMethod"
+                      name="drawerPaymentMethod"
+                      value={PAYMENT_METHODS.JAZZCASH}
+                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH}
+                      onChange={() => {
+                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.JAZZCASH });
+                        setPaymentErrors({});
+                      }}
+                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium text-[#333333] flex items-center gap-1.5">
+                        <Smartphone className="w-3.5 h-3.5 text-[#2d5a61]" />
+                        JazzCash Mobile Account
+                      </span>
+                      <p className="text-[10px] text-[#666666] mt-0.5">
+                        Transfer to 0300-7654321 and attach payment receipt.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Direct Bank Transfer */}
+                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                    checkoutData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
+                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
+                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="drawerPaymentMethod"
                       value={PAYMENT_METHODS.BANK_TRANSFER}
                       checked={checkoutData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
-                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.BANK_TRANSFER })}
-                      className="text-[#2d5a61] focus:ring-[#2d5a61]"
+                      onChange={() => {
+                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.BANK_TRANSFER });
+                        setPaymentErrors({});
+                      }}
+                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
                     />
-                    <span className="font-medium text-[#333333]">Direct Bank Transfer</span>
+                    <div className="flex-1">
+                      <span className="font-medium text-[#333333] flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5 text-[#2d5a61]" />
+                        Direct Bank Transfer (Meezan Bank)
+                      </span>
+                      <p className="text-[10px] text-[#666666] mt-0.5">
+                        Online transfer to Meezan Bank studio account.
+                      </p>
+                    </div>
                   </label>
                 </div>
               </div>
+
+              {/* Non-COD Transfer Instructions & Proof Capture in Drawer */}
+              {checkoutData.paymentMethod !== PAYMENT_METHODS.COD && (
+                <div className="p-3.5 bg-[#fdfaf5] border border-[#e0d8c8] rounded-2xl space-y-3">
+                  {/* EasyPaisa Box */}
+                  {checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA && (
+                    <div className="bg-white p-3 rounded-xl border border-[#e0d8c8] text-[11px] space-y-1.5">
+                      <div className="flex justify-between font-medium text-[#2d5a61] pb-1 border-b border-[#e0d8c8]">
+                        <span>EasyPaisa Details</span>
+                        <span>Pay: Rs. {grandTotal.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-0.5">
+                        <span className="text-[#666666]">Number:</span>
+                        <div className="flex items-center gap-1.5">
+                          <strong className="font-mono text-[#333333]">0300-1234567</strong>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy('03001234567', 'ep_num')}
+                            className="text-[10px] text-[#2d5a61] hover:underline flex items-center"
+                          >
+                            {copiedField === 'ep_num' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[#666666]">
+                        <span>Title:</span>
+                        <strong className="text-[#333333]">Maryam Sparkle Studio</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* JazzCash Box */}
+                  {checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH && (
+                    <div className="bg-white p-3 rounded-xl border border-[#e0d8c8] text-[11px] space-y-1.5">
+                      <div className="flex justify-between font-medium text-[#2d5a61] pb-1 border-b border-[#e0d8c8]">
+                        <span>JazzCash Details</span>
+                        <span>Pay: Rs. {grandTotal.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-0.5">
+                        <span className="text-[#666666]">Number:</span>
+                        <div className="flex items-center gap-1.5">
+                          <strong className="font-mono text-[#333333]">0300-7654321</strong>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy('03007654321', 'jc_num')}
+                            className="text-[10px] text-[#2d5a61] hover:underline flex items-center"
+                          >
+                            {copiedField === 'jc_num' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[#666666]">
+                        <span>Title:</span>
+                        <strong className="text-[#333333]">Maryam Sparkle Studio</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bank Transfer Box */}
+                  {checkoutData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && (
+                    <div className="bg-white p-3 rounded-xl border border-[#e0d8c8] text-[11px] space-y-1.5">
+                      <div className="flex justify-between font-medium text-[#2d5a61] pb-1 border-b border-[#e0d8c8]">
+                        <span>Meezan Bank Details</span>
+                        <span>Pay: Rs. {grandTotal.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-[#666666]">
+                        <span>Title:</span>
+                        <strong className="text-[#333333]">Maryam Sparkle Studio</strong>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#666666]">Account:</span>
+                        <div className="flex items-center gap-1.5">
+                          <strong className="font-mono text-[#333333]">01020304050607</strong>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy('01020304050607', 'acc_num')}
+                            className="text-[10px] text-[#2d5a61] hover:underline"
+                          >
+                            {copiedField === 'acc_num' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#666666]">IBAN:</span>
+                        <div className="flex items-center gap-1.5">
+                          <strong className="font-mono text-[10px] text-[#333333]">PK36MEZN...0607</strong>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy('PK36MEZN0001020304050607', 'iban_num')}
+                            className="text-[10px] text-[#2d5a61] hover:underline"
+                          >
+                            {copiedField === 'iban_num' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transaction ID Input */}
+                  <div>
+                    <label className="block text-[#444444] font-medium mb-1">
+                      Transaction / Reference ID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={checkoutData.transactionReference}
+                      onChange={(e) => {
+                        setCheckoutData({ ...checkoutData, transactionReference: e.target.value });
+                        if (paymentErrors.transactionReference) {
+                          setPaymentErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.transactionReference;
+                            return next;
+                          });
+                        }
+                      }}
+                      placeholder="e.g. TRX12345678 or 0987654321"
+                      className={`w-full bg-white border ${
+                        paymentErrors.transactionReference ? 'border-red-400 bg-red-50/20' : 'border-[#e0d8c8]'
+                      } rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#2d5a61]`}
+                    />
+                    {paymentErrors.transactionReference && (
+                      <p className="text-[10px] text-red-500 mt-1">{paymentErrors.transactionReference}</p>
+                    )}
+                  </div>
+
+                  {/* Proof of Payment Screenshot Upload */}
+                  <div>
+                    <label className="block text-[#444444] font-medium mb-1">
+                      Proof of Payment Screenshot <span className="text-red-500">*</span>
+                    </label>
+
+                    {proofOfPaymentPreview || proofOfPaymentUrl ? (
+                      <div className="bg-white p-2.5 rounded-xl border border-[#e0d8c8] flex items-center justify-between gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-10 h-10 rounded-lg bg-[#efe8dc] overflow-hidden shrink-0 border border-[#e0d8c8]">
+                            <img
+                              src={proofOfPaymentPreview || proofOfPaymentUrl}
+                              alt="Payment Proof"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-[#333333] truncate flex items-center gap-1">
+                              {isUploadingProof ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin text-[#2d5a61]" />
+                                  <span>Uploading...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span className="text-emerald-700">Receipt Attached</span>
+                                </>
+                              )}
+                            </p>
+                            <span className="text-[10px] text-[#777777]">
+                              {isUploadingProof ? 'Please wait' : 'Ready to verify'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleRemoveProof}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <label className={`block border-2 border-dashed ${
+                        paymentErrors.proofOfPayment ? 'border-red-300 bg-red-50/20' : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
+                      } rounded-xl p-3 text-center cursor-pointer transition-colors`}>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                          onChange={handleProofFileUpload}
+                          className="hidden"
+                          disabled={isUploadingProof}
+                        />
+                        <div className="flex flex-col items-center gap-1">
+                          <Upload className="w-5 h-5 text-[#2d5a61]" />
+                          <span className="text-xs font-medium text-[#2d5a61]">
+                            {isUploadingProof ? 'Uploading...' : 'Tap to Upload Screenshot'}
+                          </span>
+                          <span className="text-[10px] text-[#888888]">JPG, PNG, or WEBP (max 5MB)</span>
+                        </div>
+                      </label>
+                    )}
+
+                    {uploadError && (
+                      <p className="text-[10px] text-red-500 mt-1">{uploadError}</p>
+                    )}
+                    {paymentErrors.proofOfPayment && !uploadError && (
+                      <p className="text-[10px] text-red-500 mt-1">{paymentErrors.proofOfPayment}</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Order total preview */}
               <div className="bg-[#fdfaf5] p-3.5 rounded-xl border border-[#e0d8c8] space-y-1 text-xs">

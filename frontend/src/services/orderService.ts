@@ -2,6 +2,8 @@ import { Order, CartItem, OrderTimelineStep, OrderStatus, PaymentMethodId, PAYME
 import { PRODUCTS } from '../data/products';
 import { adminStorage } from '../admin/adminData';
 import { AdminOrder, AdminNotification } from '../admin/types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { authService } from './authService';
 
 export interface CreateOrderPayload {
   customer: { fullName: string; email: string; phone: string };
@@ -20,29 +22,10 @@ export interface CreateOrderPayload {
 }
 
 /**
- * Helper to safely parse JSON from a fetch Response without throwing SyntaxError on empty/non-JSON responses
- */
-async function parseJsonSafely<T>(res: Response): Promise<T | null> {
-  try {
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      return null;
-    }
-    const text = await res.text();
-    if (!text || !text.trim()) {
-      return null;
-    }
-    return JSON.parse(text) as T;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Normalizes backend/admin order status to frontend OrderStatus
  */
-function normalizeStatus(backendStatus: string): OrderStatus {
-  const s = (backendStatus || '').toLowerCase();
+function normalizeStatus(statusStr: string): OrderStatus {
+  const s = (statusStr || '').toLowerCase();
   if (s === 'placed') return 'placed';
   if (s === 'confirmed') return 'confirmed';
   if (s === 'processing') return 'processing';
@@ -90,9 +73,95 @@ function buildTimeline(status: OrderStatus, createdAt: string): OrderTimelineSte
   }));
 }
 
-/**
- * Maps an AdminOrder record to the frontend Order interface
- */
+function mapSupabaseOrderToOrder(so: Record<string, any>): Order {
+  const normStatus = normalizeStatus(so.status);
+  const items: CartItem[] = Array.isArray(so.order_items) && so.order_items.length > 0
+    ? so.order_items.map((it: any) => {
+        const found = PRODUCTS.find((p) => p.slug === it.product_slug || p.id === it.product_id);
+        return {
+          product: found || {
+            id: it.product_id || it.id,
+            slug: it.product_slug || 'handmade-piece',
+            name: it.product_name || 'Handmade Jewelry',
+            category: 'Bracelets',
+            price: parseFloat(it.unit_price) || 0,
+            image: it.product_image || PRODUCTS[0]?.image || '',
+            images: it.product_image ? [it.product_image] : [PRODUCTS[0]?.image || ''],
+            description: 'Handmade artisanal jewelry crafted with love in our Karachi atelier.',
+            materials: ['Glass Beads', 'Gold-Tone Accents'],
+            stock: 10,
+            inStock: true,
+          },
+          quantity: parseInt(it.quantity, 10) || 1,
+          selectedSize: it.size || 'Medium (6.5")',
+          selectedFinish: it.finish || '18K Gold Plated',
+        };
+      })
+    : [];
+
+  const rawAddr = so.shipping_address || {};
+  const paymentRecord = Array.isArray(so.payments) && so.payments.length > 0 ? so.payments[0] : null;
+
+  const paymentMethodKey: PaymentMethodId =
+    so.payment_method === 'jazzcash'
+      ? PAYMENT_METHODS.JAZZCASH
+      : so.payment_method === 'easypaisa'
+      ? PAYMENT_METHODS.EASYPAISA
+      : so.payment_method === 'bank_transfer'
+      ? PAYMENT_METHODS.BANK_TRANSFER
+      : PAYMENT_METHODS.COD;
+
+  const paymentTitles: Record<PaymentMethodId, string> = {
+    [PAYMENT_METHODS.COD]: 'Cash on Delivery (COD)',
+    [PAYMENT_METHODS.EASYPAISA]: 'EasyPaisa Mobile Account',
+    [PAYMENT_METHODS.JAZZCASH]: 'JazzCash Mobile Account',
+    [PAYMENT_METHODS.BANK_TRANSFER]: 'Direct Bank Transfer',
+  };
+
+  return {
+    id: so.id,
+    orderNumber: so.order_number,
+    createdAt: so.created_at || new Date().toISOString(),
+    status: normStatus,
+    customer: {
+      fullName: so.customer_name || rawAddr.full_name || 'Valued Patron',
+      email: so.customer_email || '',
+      phone: so.customer_phone || rawAddr.phone || '',
+    },
+    shippingAddress: {
+      address: rawAddr.address_line_1 || rawAddr.address || '',
+      city: rawAddr.city || 'Karachi',
+      postalCode: rawAddr.postal_code || '75500',
+      province: rawAddr.state || 'Sindh',
+      country: rawAddr.country || 'Pakistan',
+    },
+    deliveryMethod: {
+      id: so.delivery_method === 'express' ? 'express' : 'standard',
+      title: so.delivery_method === 'express' ? 'Express Delivery (1–2 Days)' : 'Standard Tracked Delivery (2–4 Days)',
+      cost: parseFloat(so.shipping_fee) || 200,
+      estimatedDays: so.delivery_method === 'express' ? '1–2 business days' : '2–4 business days',
+    },
+    paymentMethod: {
+      id: paymentMethodKey,
+      title: paymentTitles[paymentMethodKey] || 'Cash on Delivery (COD)',
+    },
+    items,
+    subtotal: parseFloat(so.subtotal) || 0,
+    shippingCost: parseFloat(so.shipping_fee) || 0,
+    discount: parseFloat(so.discount) || 0,
+    couponCode: so.coupon_code || undefined,
+    total: parseFloat(so.total) || 0,
+    paymentStatus: (so.payment_status || 'pending').toLowerCase() === 'paid' ? 'paid' : 'pending',
+    transactionReference: paymentRecord?.transaction_reference || undefined,
+    proofOfPaymentUrl: paymentRecord?.proof_of_payment_url || paymentRecord?.proof_of_payment_path || undefined,
+    courierName: so.courier_name || undefined,
+    trackingNumber: so.tracking_number || undefined,
+    estimatedDelivery: so.estimated_delivery || undefined,
+    timeline: buildTimeline(normStatus, so.created_at || new Date().toISOString()),
+    notes: so.notes || undefined,
+  };
+}
+
 function mapAdminOrderToOrder(ao: AdminOrder): Order {
   const normStatus = normalizeStatus(ao.orderStatus);
   const items: CartItem[] = (ao.items || []).map((it) => {
@@ -113,7 +182,7 @@ function mapAdminOrderToOrder(ao: AdminOrder): Order {
       },
       quantity: it.quantity,
       selectedSize: it.size || 'Medium (6.5")',
-      selectedFinish: it.finish || 'Gold-Tone',
+      selectedFinish: it.finish || '18K Gold Plated',
     };
   });
 
@@ -139,7 +208,7 @@ function mapAdminOrderToOrder(ao: AdminOrder): Order {
     shippingAddress: {
       address: ao.address,
       city: ao.city,
-      postalCode: '54000',
+      postalCode: '75500',
       province: 'Sindh',
       country: 'Pakistan',
     },
@@ -167,186 +236,45 @@ function mapAdminOrderToOrder(ao: AdminOrder): Order {
   };
 }
 
-/**
- * Maps a raw backend order record to the frontend Order interface
- */
-function mapBackendOrderToOrder(raw: any, fallbackPayload?: CreateOrderPayload): Order {
-  const normStatus = normalizeStatus(raw.status);
-  const items: CartItem[] = Array.isArray(raw.items) && raw.items.length > 0
-    ? raw.items.map((it: any) => {
-        const found = PRODUCTS.find((p) => p.slug === it.current_product_slug || p.id === String(it.product_id));
-        return {
-          product: found || {
-            id: String(it.product_id || it.id),
-            slug: it.current_product_slug || 'handmade-piece',
-            name: it.product_name || 'Handmade Jewelry',
-            category: 'Bracelets',
-            price: parseFloat(it.unit_price) || 0,
-            image: it.primary_image || PRODUCTS[0]?.image || '',
-            images: it.primary_image ? [it.primary_image] : [PRODUCTS[0]?.image || ''],
-            description: 'Handmade artisanal jewelry crafted with love in our Karachi atelier.',
-            materials: ['Glass Beads', 'Gold-Tone Accents'],
-            stock: 10,
-            inStock: true,
-          },
-          quantity: parseInt(it.quantity, 10) || 1,
-          selectedSize: 'Medium (6.5")',
-          selectedFinish: 'Gold-Tone',
-        };
-      })
-    : fallbackPayload?.items || [];
-
-  const rawAddr = raw.shipping_address || {};
-
-  const paymentMethodId = (raw.payment_method || fallbackPayload?.paymentMethod?.id || PAYMENT_METHODS.COD).toLowerCase() as PaymentMethodId;
-
-  const paymentTitles: Record<PaymentMethodId, string> = {
-    [PAYMENT_METHODS.COD]: 'Cash on Delivery (COD)',
-    [PAYMENT_METHODS.EASYPAISA]: 'EasyPaisa Mobile Account',
-    [PAYMENT_METHODS.JAZZCASH]: 'JazzCash Mobile Account',
-    [PAYMENT_METHODS.BANK_TRANSFER]: 'Direct Bank Transfer',
-  };
-
-  return {
-    id: String(raw.id || raw.order_number),
-    orderNumber: raw.order_number,
-    createdAt: raw.created_at || new Date().toISOString(),
-    status: normStatus,
-    customer: {
-      fullName: raw.customer_name || rawAddr.full_name || fallbackPayload?.customer?.fullName || 'Customer',
-      email: raw.customer_email || fallbackPayload?.customer?.email || '',
-      phone: raw.customer_phone || rawAddr.phone || fallbackPayload?.customer?.phone || '',
-    },
-    shippingAddress: {
-      address: rawAddr.address_line_1 || rawAddr.address || fallbackPayload?.shippingAddress?.address || '',
-      city: rawAddr.city || fallbackPayload?.shippingAddress?.city || 'Karachi',
-      postalCode: rawAddr.postal_code || fallbackPayload?.shippingAddress?.postalCode || '',
-      province: rawAddr.state || fallbackPayload?.shippingAddress?.province || 'Sindh',
-      country: rawAddr.country || fallbackPayload?.shippingAddress?.country || 'Pakistan',
-    },
-    deliveryMethod: fallbackPayload?.deliveryMethod || {
-      id: 'standard',
-      title: 'Standard Tracked Delivery (2–4 Days)',
-      cost: parseFloat(raw.shipping_fee) || 200,
-      estimatedDays: '2–4 business days',
-    },
-    paymentMethod: {
-      id: paymentMethodId,
-      title: paymentTitles[paymentMethodId] || 'Cash on Delivery (COD)',
-    },
-    items,
-    subtotal: parseFloat(raw.subtotal) || fallbackPayload?.subtotal || 0,
-    shippingCost: parseFloat(raw.shipping_fee) || fallbackPayload?.shippingCost || 0,
-    discount: parseFloat(raw.discount) || fallbackPayload?.discount || 0,
-    couponCode: fallbackPayload?.couponCode,
-    total: parseFloat(raw.total) || fallbackPayload?.total || 0,
-    paymentStatus: (raw.payment_status || 'Pending').toLowerCase() === 'paid' ? 'paid' : 'pending',
-    transactionReference: raw.transaction_reference || raw.payment?.transaction_reference || fallbackPayload?.transactionReference,
-    proofOfPaymentUrl: raw.proof_of_payment_path || raw.payment?.proof_of_payment_path || fallbackPayload?.proofOfPaymentUrl,
-    courierName: raw.courier_name || undefined,
-    trackingNumber: raw.tracking_number || undefined,
-    estimatedDelivery: raw.estimated_delivery || undefined,
-    timeline: buildTimeline(normStatus, raw.created_at || new Date().toISOString()),
-    notes: fallbackPayload?.notes,
-  };
-}
-
 export const orderService = {
   /**
-   * Get all orders for the user from backend API or local admin storage
+   * Get all orders for the current customer or all orders if admin
    */
   async getAllOrders(): Promise<Order[]> {
-    try {
-      const res = await fetch('/api/v1/orders', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
+    if (isSupabaseConfigured()) {
+      try {
+        const currentUser = authService.getCurrentUser();
+        let query = supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (*),
+            payments (*)
+          `)
+          .order('created_at', { ascending: false });
 
-      const json = await parseJsonSafely<any>(res);
-      if (res.ok && json?.success && Array.isArray(json?.data?.orders) && json.data.orders.length > 0) {
-        return json.data.orders.map((ord: any) => mapBackendOrderToOrder(ord));
+        if (currentUser?.id && !currentUser.id.startsWith('usr-') && currentUser.role !== 'admin') {
+          query = query.eq('user_id', currentUser.id);
+        }
+
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          return data.map(mapSupabaseOrderToOrder);
+        }
+      } catch (err) {
+        console.warn('Supabase getAllOrders fallback to local storage:', err);
       }
-    } catch (err) {
-      console.warn('orderService.getAllOrders API fallback:', err);
     }
 
-    // Fall back to local admin storage
     const localOrders = adminStorage.getOrders();
     return localOrders.map(mapAdminOrderToOrder);
   },
 
   /**
-   * Get order by orderNumber or ID
+   * Look up order by ID or orderNumber
    */
   async getOrder(lookupQuery: string, emailOrPhone?: string): Promise<Order | null> {
-    const cleanQuery = lookupQuery.trim();
-    if (!cleanQuery) return null;
-
-    // 1. Check local storage first for fastest retrieval
-    const localOrders = adminStorage.getOrders();
-    const cleanNum = cleanQuery.toUpperCase();
-    const localMatch = localOrders.find(
-      (o) =>
-        o.orderNumber.toUpperCase() === cleanNum ||
-        o.id.toUpperCase() === cleanNum ||
-        (cleanQuery.length >= 7 && o.customerPhone.replace(/\D/g, '').includes(cleanQuery.replace(/\D/g, '')))
-    );
-    if (localMatch) {
-      return mapAdminOrderToOrder(localMatch);
-    }
-
-    // 2. Try fetching by numeric ID or order ID if authenticated
-    if (/^\d+$/.test(cleanQuery)) {
-      try {
-        const res = await fetch(`/api/v1/orders/${cleanQuery}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-          credentials: 'include',
-        });
-
-        const json = await parseJsonSafely<any>(res);
-        if (res.ok && json?.success && json.data?.order) {
-          return mapBackendOrderToOrder(json.data.order);
-        }
-      } catch (e) {
-        // Ignore
-      }
-    }
-
-    // 3. Try guest tracking with order_number
-    try {
-      const trackParams = new URLSearchParams({
-        order_number: cleanQuery,
-      });
-
-      if (emailOrPhone && emailOrPhone.includes('@')) {
-        trackParams.set('email', emailOrPhone.trim());
-      } else if (emailOrPhone) {
-        trackParams.set('phone', emailOrPhone.trim());
-      }
-
-      const trackRes = await fetch(`/api/v1/orders/track?${trackParams.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      const json = await parseJsonSafely<any>(trackRes);
-      if (trackRes.ok && json?.success && json.data?.order) {
-        return mapBackendOrderToOrder(json.data.order);
-      }
-    } catch (err) {
-      console.warn('orderService.getOrder tracking fallback error:', err);
-    }
-
-    return null;
+    return this.trackOrder(lookupQuery, emailOrPhone);
   },
 
   /**
@@ -356,7 +284,36 @@ export const orderService = {
     const cleanNum = orderNumber.trim();
     if (!cleanNum) return null;
 
-    // 1. Check local storage
+    if (isSupabaseConfigured()) {
+      try {
+        let query = supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (*),
+            payments (*)
+          `)
+          .ilike('order_number', cleanNum);
+
+        if (phoneOrEmail) {
+          const cleanContact = phoneOrEmail.trim();
+          if (cleanContact.includes('@')) {
+            query = query.ilike('customer_email', cleanContact);
+          } else {
+            query = query.ilike('customer_phone', `%${cleanContact.replace(/\D/g, '')}%`);
+          }
+        }
+
+        const { data, error } = await query.maybeSingle();
+        if (!error && data) {
+          return mapSupabaseOrderToOrder(data);
+        }
+      } catch (err) {
+        console.warn('Supabase order tracking query fallback:', err);
+      }
+    }
+
+    // Local fallback
     const localOrders = adminStorage.getOrders();
     const cleanQuery = cleanNum.toUpperCase();
     const cleanPhone = (phoneOrEmail || '').replace(/\D/g, '');
@@ -374,44 +331,13 @@ export const orderService = {
       return mapAdminOrderToOrder(localMatch);
     }
 
-    // 2. Try remote API with safe JSON parsing
-    try {
-      const params = new URLSearchParams({
-        order_number: cleanNum,
-      });
-
-      if (phoneOrEmail && phoneOrEmail.includes('@')) {
-        params.set('email', phoneOrEmail.trim());
-      } else if (phoneOrEmail) {
-        params.set('phone', phoneOrEmail.trim());
-      }
-
-      const res = await fetch(`/api/v1/orders/track?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      const json = await parseJsonSafely<any>(res);
-      if (res.ok && json?.success && json.data?.order) {
-        return mapBackendOrderToOrder(json.data.order);
-      }
-      return null;
-    } catch (err) {
-      console.warn('orderService.trackOrder error:', err);
-      return null;
-    }
+    return null;
   },
 
   /**
-   * Create a new order via drawer or checkout.
-   * Guarantees that order creation is resilient, saving to local adminStorage
-   * and optionally synchronizing with any available backend endpoint without crashing.
+   * Create a new order with order_items and payments records in Supabase
    */
   async createOrder(orderPayload: CreateOrderPayload): Promise<Order> {
-    // Generate unique order code (e.g. MS-5821)
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const orderNumber = `MS-${randomSuffix}`;
 
@@ -424,6 +350,8 @@ export const orderService = {
       shippingAddress: orderPayload.shippingAddress,
       deliveryMethod: orderPayload.deliveryMethod,
       paymentMethod: orderPayload.paymentMethod,
+      transactionReference: orderPayload.transactionReference,
+      proofOfPaymentUrl: orderPayload.proofOfPaymentUrl,
       items: [...orderPayload.items],
       subtotal: orderPayload.subtotal,
       shippingCost: orderPayload.shippingCost,
@@ -438,7 +366,7 @@ export const orderService = {
       notes: orderPayload.notes,
     };
 
-    // 1. Persist directly to local admin storage
+    // 1. Always update local adminStorage for instant reactive admin view
     try {
       const pmMap: Record<string, 'COD' | 'JazzCash' | 'Easypaisa' | 'Bank Transfer'> = {
         cod: 'COD',
@@ -478,7 +406,6 @@ export const orderService = {
         ...existingOrders.filter((o) => o.orderNumber !== adminOrder.orderNumber),
       ]);
 
-      // Add Admin Notification
       const existingNotifs = adminStorage.getNotifications();
       const newNotif: AdminNotification = {
         id: `notif-${Date.now()}`,
@@ -494,51 +421,80 @@ export const orderService = {
       console.warn('Failed to save order to local adminStorage:', storageErr);
     }
 
-    // 2. Opportunistically sync with backend if available
-    try {
-      const body = {
-        order_number: orderNumber,
-        payment_method: orderPayload.paymentMethod.id,
-        transaction_reference: orderPayload.transactionReference || '',
-        proof_of_payment_path: orderPayload.proofOfPaymentUrl || '',
-        customer: {
-          name: orderPayload.customer.fullName,
-          email: orderPayload.customer.email,
-          phone: orderPayload.customer.phone,
-        },
-        shipping_address: {
-          full_name: orderPayload.customer.fullName,
-          phone: orderPayload.customer.phone,
-          address_line_1: orderPayload.shippingAddress.address,
-          address_line_2: '',
-          city: orderPayload.shippingAddress.city,
-          state: orderPayload.shippingAddress.province || 'Sindh',
-          postal_code: orderPayload.shippingAddress.postalCode,
-          country: orderPayload.shippingAddress.country || 'Pakistan',
-        },
-        delivery_method: orderPayload.deliveryMethod.id,
-        notes: orderPayload.notes || '',
-      };
+    // 2. Persist to Supabase Database
+    if (isSupabaseConfigured()) {
+      try {
+        const currentUser = authService.getCurrentUser();
+        const validUserId = currentUser?.id && !currentUser.id.startsWith('usr-') ? currentUser.id : null;
 
-      const res = await fetch('/api/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
+        const { data: insertedOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            order_number: orderNumber,
+            user_id: validUserId,
+            customer_name: orderPayload.customer.fullName,
+            customer_email: orderPayload.customer.email,
+            customer_phone: orderPayload.customer.phone,
+            subtotal: orderPayload.subtotal,
+            shipping_fee: orderPayload.shippingCost,
+            discount: orderPayload.discount,
+            coupon_code: orderPayload.couponCode || null,
+            total: orderPayload.total,
+            status: 'placed',
+            payment_status: 'pending',
+            payment_method: orderPayload.paymentMethod.id,
+            shipping_address: {
+              full_name: orderPayload.customer.fullName,
+              phone: orderPayload.customer.phone,
+              address_line_1: orderPayload.shippingAddress.address,
+              city: orderPayload.shippingAddress.city,
+              state: orderPayload.shippingAddress.province || 'Sindh',
+              postal_code: orderPayload.shippingAddress.postalCode,
+              country: orderPayload.shippingAddress.country || 'Pakistan',
+            },
+            delivery_method: orderPayload.deliveryMethod.id,
+            notes: orderPayload.notes || null,
+          })
+          .select()
+          .single();
 
-      const json = await parseJsonSafely<any>(res);
-      if (res.ok && json?.success && json.data?.order) {
-        return mapBackendOrderToOrder(json.data.order, orderPayload);
+        if (orderError) {
+          console.error('Supabase order creation error:', orderError);
+        } else if (insertedOrder?.id) {
+          // Insert order items
+          const itemRows = orderPayload.items.map((it) => ({
+            order_id: insertedOrder.id,
+            product_name: it.product.name,
+            product_slug: it.product.slug,
+            product_image: it.product.image,
+            sku: it.product.sku || `MS-${it.product.name.slice(0, 3).toUpperCase()}`,
+            quantity: it.quantity,
+            unit_price: it.product.price,
+            subtotal: it.product.price * it.quantity,
+            size: it.selectedSize || 'Medium (6.5")',
+            finish: it.selectedFinish || '18K Gold Plated',
+          }));
+
+          await supabase.from('order_items').insert(itemRows);
+
+          // Insert payment record
+          await supabase.from('payments').insert({
+            order_id: insertedOrder.id,
+            transaction_reference: orderPayload.transactionReference || null,
+            proof_of_payment_path: orderPayload.proofOfPaymentUrl || null,
+            proof_of_payment_url: orderPayload.proofOfPaymentUrl || null,
+            amount: orderPayload.total,
+            method: orderPayload.paymentMethod.id,
+            status: 'pending',
+          });
+
+          newOrder.id = insertedOrder.id;
+        }
+      } catch (dbErr) {
+        console.warn('Failed to insert into Supabase orders:', dbErr);
       }
-    } catch (apiErr) {
-      console.warn('Backend API sync unavailable, order preserved locally:', apiErr);
     }
 
     return newOrder;
   },
 };
-

@@ -167,6 +167,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone: string;
+  role?: 'customer' | 'admin';
   joinedDate: string;
   addresses: UserAddress[];
 }

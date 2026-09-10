@@ -291,7 +291,7 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200">
             <span className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-amber-600" />
-              Pending Laravel Upload ({pendingItems.length})
+              Pending Storage Upload ({pendingItems.length})
             </span>
             <span className="text-[10px] text-amber-700 dark:text-amber-300 font-normal">
               Not saved to database until uploaded
@@ -325,11 +325,11 @@ export const MultiImageUpload: React.FC<MultiImageUploadProps> = ({
                     {(item.file.size / (1024 * 1024)).toFixed(2)} MB •{' '}
                     {item.status === 'uploading' ? (
                       <span className="text-[#2d5a61] dark:text-teal-400 font-medium">
-                        Uploading to Laravel...
+                        Uploading to Supabase Storage...
                       </span>
                     ) : (
                       <span className="text-rose-600 dark:text-rose-400 font-medium">
-                        Backend unreachable
+                        Storage upload failed
                       </span>
                     )}
                   </p>
