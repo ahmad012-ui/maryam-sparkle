@@ -1,4 +1,4 @@
-import { Order, CartItem, OrderTimelineStep, OrderStatus } from '../types';
+import { Order, CartItem, OrderTimelineStep, OrderStatus, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { PRODUCTS } from '../data/products';
 import { adminStorage } from '../admin/adminData';
 import { AdminOrder, AdminNotification } from '../admin/types';
@@ -7,7 +7,7 @@ export interface CreateOrderPayload {
   customer: { fullName: string; email: string; phone: string };
   shippingAddress: { address: string; city: string; postalCode: string; province?: string; country: string };
   deliveryMethod: { id: 'standard' | 'express'; title: string; cost: number; estimatedDays: string };
-  paymentMethod: { id: 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer'; title: string; instructions?: string };
+  paymentMethod: { id: PaymentMethodId; title: string; instructions?: string };
   items: CartItem[];
   subtotal: number;
   shippingCost: number;
@@ -115,14 +115,14 @@ function mapAdminOrderToOrder(ao: AdminOrder): Order {
     };
   });
 
-  const paymentMethodKey =
+  const paymentMethodKey: PaymentMethodId =
     ao.paymentMethod === 'JazzCash'
-      ? 'jazzcash'
+      ? PAYMENT_METHODS.JAZZCASH
       : ao.paymentMethod === 'Easypaisa'
-      ? 'easypaisa'
+      ? PAYMENT_METHODS.EASYPAISA
       : ao.paymentMethod === 'Bank Transfer'
-      ? 'bank_transfer'
-      : 'cod';
+      ? PAYMENT_METHODS.BANK_TRANSFER
+      : PAYMENT_METHODS.COD;
 
   return {
     id: ao.id || ao.orderNumber,
@@ -196,17 +196,13 @@ function mapBackendOrderToOrder(raw: any, fallbackPayload?: CreateOrderPayload):
 
   const rawAddr = raw.shipping_address || {};
 
-  const paymentMethodId = (raw.payment_method || fallbackPayload?.paymentMethod?.id || 'cod').toLowerCase() as
-    | 'cod'
-    | 'easypaisa'
-    | 'jazzcash'
-    | 'bank_transfer';
+  const paymentMethodId = (raw.payment_method || fallbackPayload?.paymentMethod?.id || PAYMENT_METHODS.COD).toLowerCase() as PaymentMethodId;
 
-  const paymentTitles: Record<string, string> = {
-    cod: 'Cash on Delivery (COD)',
-    easypaisa: 'EasyPaisa Mobile Account',
-    jazzcash: 'JazzCash Mobile Account',
-    bank_transfer: 'Direct Bank Transfer',
+  const paymentTitles: Record<PaymentMethodId, string> = {
+    [PAYMENT_METHODS.COD]: 'Cash on Delivery (COD)',
+    [PAYMENT_METHODS.EASYPAISA]: 'EasyPaisa Mobile Account',
+    [PAYMENT_METHODS.JAZZCASH]: 'JazzCash Mobile Account',
+    [PAYMENT_METHODS.BANK_TRANSFER]: 'Direct Bank Transfer',
   };
 
   return {

@@ -16,7 +16,7 @@ import {
   LogOut,
   ArrowRight
 } from 'lucide-react';
-import { CartItem, Order, UserProfile, UserAddress } from '../types';
+import { CartItem, Order, UserProfile, UserAddress, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { orderService } from '../services/orderService';
 import { cartService } from '../services/cartService';
 import { authService } from '../services/authService';
@@ -26,6 +26,15 @@ import {
   sanitizePostalCode,
   isValidPostalCode
 } from '../utils/validation';
+
+export { PAYMENT_METHODS };
+
+export const PAYMENT_METHOD_TITLES: Record<PaymentMethodId, string> = {
+  [PAYMENT_METHODS.COD]: 'Cash on Delivery (COD)',
+  [PAYMENT_METHODS.EASYPAISA]: 'EasyPaisa Mobile Account',
+  [PAYMENT_METHODS.JAZZCASH]: 'JazzCash Mobile Account',
+  [PAYMENT_METHODS.BANK_TRANSFER]: 'Direct Bank Transfer',
+};
 
 interface CheckoutPageProps {
   cart: CartItem[];
@@ -65,7 +74,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
     province: 'Sindh',
     country: 'Pakistan',
     deliveryMethod: 'standard' as 'standard' | 'express',
-    paymentMethod: 'cod' as 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer',
+    paymentMethod: PAYMENT_METHODS.COD as PaymentMethodId,
     notes: ''
   });
 
@@ -205,13 +214,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
           ? 'Express Courier (1-2 Days)'
           : 'Standard Tracked Delivery (2-4 Days)';
 
-      const paymentTitles: Record<'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer', string> = {
-        cod: 'Cash on Delivery (COD)',
-        easypaisa: 'EasyPaisa Mobile Account',
-        jazzcash: 'JazzCash Mobile Account',
-        bank_transfer: 'Direct Bank Transfer'
-      };
-
       const newOrder: Order = await orderService.createOrder({
         customer: {
           fullName: formData.fullName,
@@ -233,7 +235,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         },
         paymentMethod: {
           id: formData.paymentMethod,
-          title: paymentTitles[formData.paymentMethod]
+          title: PAYMENT_METHOD_TITLES[formData.paymentMethod]
         },
         items: [...activeCart],
         subtotal,
@@ -598,7 +600,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   {/* COD */}
                   <label
                     className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
-                      formData.paymentMethod === 'cod'
+                      formData.paymentMethod === PAYMENT_METHODS.COD
                         ? 'border-[#2d5a61] bg-[#efe8dc]/50 ring-2 ring-[#2d5a61]/20'
                         : 'border-[#e0d8c8] bg-white/60 hover:bg-[#efe8dc]/30'
                     }`}
@@ -606,8 +608,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                     <input
                       type="radio"
                       name="paymentMethod"
-                      checked={formData.paymentMethod === 'cod'}
-                      onChange={() => setFormData({ ...formData, paymentMethod: 'cod' })}
+                      value={PAYMENT_METHODS.COD}
+                      checked={formData.paymentMethod === PAYMENT_METHODS.COD}
+                      onChange={() => setFormData({ ...formData, paymentMethod: PAYMENT_METHODS.COD })}
                       className="mt-0.5 text-[#2d5a61]"
                     />
                     <div className="flex-1 text-xs">
@@ -629,7 +632,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   {/* EasyPaisa */}
                   <label
                     className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
-                      formData.paymentMethod === 'easypaisa'
+                      formData.paymentMethod === PAYMENT_METHODS.EASYPAISA
                         ? 'border-[#2d5a61] bg-[#efe8dc]/50 ring-2 ring-[#2d5a61]/20'
                         : 'border-[#e0d8c8] bg-white/60 hover:bg-[#efe8dc]/30'
                     }`}
@@ -637,8 +640,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                     <input
                       type="radio"
                       name="paymentMethod"
-                      checked={formData.paymentMethod === 'easypaisa'}
-                      onChange={() => setFormData({ ...formData, paymentMethod: 'easypaisa' })}
+                      value={PAYMENT_METHODS.EASYPAISA}
+                      checked={formData.paymentMethod === PAYMENT_METHODS.EASYPAISA}
+                      onChange={() => setFormData({ ...formData, paymentMethod: PAYMENT_METHODS.EASYPAISA })}
                       className="mt-0.5 text-[#2d5a61]"
                     />
                     <div className="flex-1 text-xs">
@@ -657,7 +661,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   {/* JazzCash */}
                   <label
                     className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
-                      formData.paymentMethod === 'jazzcash'
+                      formData.paymentMethod === PAYMENT_METHODS.JAZZCASH
                         ? 'border-[#2d5a61] bg-[#efe8dc]/50 ring-2 ring-[#2d5a61]/20'
                         : 'border-[#e0d8c8] bg-white/60 hover:bg-[#efe8dc]/30'
                     }`}
@@ -665,8 +669,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                     <input
                       type="radio"
                       name="paymentMethod"
-                      checked={formData.paymentMethod === 'jazzcash'}
-                      onChange={() => setFormData({ ...formData, paymentMethod: 'jazzcash' })}
+                      value={PAYMENT_METHODS.JAZZCASH}
+                      checked={formData.paymentMethod === PAYMENT_METHODS.JAZZCASH}
+                      onChange={() => setFormData({ ...formData, paymentMethod: PAYMENT_METHODS.JAZZCASH })}
                       className="mt-0.5 text-[#2d5a61]"
                     />
                     <div className="flex-1 text-xs">
@@ -685,7 +690,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   {/* Direct Bank Transfer */}
                   <label
                     className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
-                      formData.paymentMethod === 'bank_transfer'
+                      formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
                         ? 'border-[#2d5a61] bg-[#efe8dc]/50 ring-2 ring-[#2d5a61]/20'
                         : 'border-[#e0d8c8] bg-white/60 hover:bg-[#efe8dc]/30'
                     }`}
@@ -693,8 +698,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                     <input
                       type="radio"
                       name="paymentMethod"
-                      checked={formData.paymentMethod === 'bank_transfer'}
-                      onChange={() => setFormData({ ...formData, paymentMethod: 'bank_transfer' })}
+                      value={PAYMENT_METHODS.BANK_TRANSFER}
+                      checked={formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
+                      onChange={() => setFormData({ ...formData, paymentMethod: PAYMENT_METHODS.BANK_TRANSFER })}
                       className="mt-0.5 text-[#2d5a61]"
                     />
                     <div className="flex-1 text-xs">

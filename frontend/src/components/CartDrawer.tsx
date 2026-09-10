@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck, Truck, User, AlertCircle } from 'lucide-react';
-import { CartItem } from '../types';
+import { CartItem, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { authService } from '../services/authService';
 import { orderService } from '../services/orderService';
@@ -37,7 +37,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     phone: '',
     city: 'Lahore',
     address: '',
-    paymentMethod: 'cod',
+    paymentMethod: PAYMENT_METHODS.COD as PaymentMethodId,
     orderNotes: '',
   });
   const [phoneError, setPhoneError] = useState('');
@@ -111,12 +111,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmittingOrder(true);
 
     try {
-      const pmId = checkoutData.paymentMethod === 'bank' ? 'bank_transfer' : (checkoutData.paymentMethod as any);
+      const pmId: PaymentMethodId = checkoutData.paymentMethod;
       const pmTitle =
-        checkoutData.paymentMethod === 'cod'
+        checkoutData.paymentMethod === PAYMENT_METHODS.COD
           ? 'Cash on Delivery (COD)'
-          : checkoutData.paymentMethod === 'easypaisa'
+          : checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA
           ? 'EasyPaisa Mobile Account'
+          : checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH
+          ? 'JazzCash Mobile Account'
           : 'Direct Bank Transfer';
 
       const newOrder = await orderService.createOrder({
@@ -366,9 +368,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <input
                       type="radio"
                       name="paymentMethod"
-                      value="cod"
-                      checked={checkoutData.paymentMethod === 'cod'}
-                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: 'cod' })}
+                      value={PAYMENT_METHODS.COD}
+                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.COD}
+                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.COD })}
                       className="text-[#2d5a61] focus:ring-[#2d5a61]"
                     />
                     <span className="font-medium text-[#333333]">Cash on Delivery (COD)</span>
@@ -378,9 +380,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <input
                       type="radio"
                       name="paymentMethod"
-                      value="easypaisa"
-                      checked={checkoutData.paymentMethod === 'easypaisa'}
-                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: 'easypaisa' })}
+                      value={PAYMENT_METHODS.EASYPAISA}
+                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA}
+                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.EASYPAISA })}
                       className="text-[#2d5a61] focus:ring-[#2d5a61]"
                     />
                     <span className="font-medium text-[#333333]">EasyPaisa / JazzCash</span>
@@ -390,9 +392,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <input
                       type="radio"
                       name="paymentMethod"
-                      value="bank"
-                      checked={checkoutData.paymentMethod === 'bank'}
-                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: 'bank' })}
+                      value={PAYMENT_METHODS.BANK_TRANSFER}
+                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
+                      onChange={() => setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.BANK_TRANSFER })}
                       className="text-[#2d5a61] focus:ring-[#2d5a61]"
                     />
                     <span className="font-medium text-[#333333]">Direct Bank Transfer</span>

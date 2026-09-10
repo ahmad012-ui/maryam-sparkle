@@ -85,6 +85,28 @@ export interface OrderTimelineStep {
   current: boolean;
 }
 
+export type PaymentMethodId = 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer';
+
+export const PAYMENT_METHODS = {
+  COD: 'cod',
+  EASYPAISA: 'easypaisa',
+  JAZZCASH: 'jazzcash',
+  BANK_TRANSFER: 'bank_transfer',
+} as const;
+
+export const ALLOWED_PAYMENT_METHODS: readonly PaymentMethodId[] = [
+  PAYMENT_METHODS.COD,
+  PAYMENT_METHODS.EASYPAISA,
+  PAYMENT_METHODS.JAZZCASH,
+  PAYMENT_METHODS.BANK_TRANSFER,
+] as const;
+
+export interface PaymentMethodOption {
+  id: PaymentMethodId;
+  title: string;
+  instructions?: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -109,7 +131,7 @@ export interface Order {
     estimatedDays: string;
   };
   paymentMethod: {
-    id: 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer';
+    id: PaymentMethodId;
     title: string;
     instructions?: string;
   };
