@@ -1,4 +1,3 @@
-import { PRODUCTS } from '../data/products';
 import {
   AdminProduct,
   AdminOrder,
@@ -8,374 +7,9 @@ import {
   StoreSettings,
   AdminThemeConfig,
 } from './types';
+import { supabase } from '../lib/supabase';
 
-const STORAGE_KEYS = {
-  PRODUCTS: 'maryam_sparkle_admin_products_v1',
-  ORDERS: 'maryam_sparkle_admin_orders_v1',
-  CUSTOM_ORDERS: 'maryam_sparkle_admin_custom_orders_v1',
-  CUSTOMERS: 'maryam_sparkle_admin_customers_v1',
-  NOTIFICATIONS: 'maryam_sparkle_admin_notifications_v1',
-  SETTINGS: 'maryam_sparkle_admin_settings_v1',
-  THEME: 'maryam_sparkle_admin_theme_v1',
-};
-
-// Initial Products derived from PRODUCTS catalog
-const INITIAL_PRODUCTS: AdminProduct[] = PRODUCTS.map((p, idx) => ({
-  id: p.id,
-  sku: p.sku || `MS-${p.category.substring(0, 3).toUpperCase()}-${String(idx + 1).padStart(3, '0')}`,
-  name: p.name,
-  category: p.category,
-  price: p.price,
-  compareAtPrice: p.compareAtPrice || p.originalPrice || undefined,
-  stock: p.stock ?? (idx % 3 === 0 ? 4 : idx % 5 === 0 ? 0 : 18),
-  image: p.image,
-  images: [
-    p.image,
-    'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&auto=format&fit=crop&q=60',
-  ],
-  materials: p.materials || ['Glass beads', 'Gold-plated wire'],
-  finish: p.finish || '18K Gold Plated',
-  description: p.description,
-  isFeatured: p.isFeatured,
-  isBestSeller: p.isBestSeller,
-  inStock: p.inStock,
-  createdAt: '2026-08-15',
-}));
-
-// Initial realistic Pakistani jewelry store orders
-const INITIAL_ORDERS: AdminOrder[] = [
-  {
-    id: 'ord-101',
-    orderNumber: 'MS-9821',
-    date: '2026-09-03',
-    customerName: 'Areeba Tariq',
-    customerEmail: 'areeba.tariq@gmail.com',
-    customerPhone: '+92 321 4455890',
-    city: 'Lahore',
-    address: 'House 42, Block C, Phase 5, DHA',
-    items: [
-      {
-        productId: '1',
-        productName: 'Pearl & Aventurine Stacking Bracelet',
-        image: 'https://images.unsplash.com/photo-1611591475819-797de2338ec8?w=500&auto=format&fit=crop&q=60',
-        quantity: 2,
-        price: 2450,
-        size: 'Medium (6.5")',
-        finish: '18K Gold Plated',
-      },
-    ],
-    totalAmount: 4900,
-    paymentMethod: 'COD',
-    paymentStatus: 'Pending',
-    orderStatus: 'Confirmed',
-    courierName: 'Trax Logistics',
-    trackingNumber: 'TRX-994821',
-    notes: 'Please double-box for delicate beads. Call before delivery.',
-  },
-  {
-    id: 'ord-102',
-    orderNumber: 'MS-9820',
-    date: '2026-09-02',
-    customerName: 'Zainab Fatima',
-    customerEmail: 'zainab.fatima@yahoo.com',
-    customerPhone: '+92 300 8765432',
-    city: 'Karachi',
-    address: 'Apartment 4B, Creek Vistas, Phase 8, DHA',
-    items: [
-      {
-        productId: '2',
-        productName: 'Rose Quartz & Seed Bead Choker',
-        image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60',
-        quantity: 1,
-        price: 3200,
-        finish: 'Rose Gold Plated',
-      },
-      {
-        productId: '3',
-        productName: 'Delicate Golden Bell Anklet',
-        image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&auto=format&fit=crop&q=60',
-        quantity: 1,
-        price: 1850,
-        size: 'Standard (9")',
-      },
-    ],
-    totalAmount: 5050,
-    paymentMethod: 'Easypaisa',
-    paymentStatus: 'Paid',
-    orderStatus: 'Processing',
-    courierName: 'TCS Express',
-    trackingNumber: 'TCS-8812903',
-  },
-  {
-    id: 'ord-103',
-    orderNumber: 'MS-9819',
-    date: '2026-09-01',
-    customerName: 'Hira Shah',
-    customerEmail: 'hira.shah@hotmail.com',
-    customerPhone: '+92 333 1239876',
-    city: 'Islamabad',
-    address: 'Sector F-7/2, Street 18, House 9',
-    items: [
-      {
-        productId: '4',
-        productName: 'Lapis Lazuli Bohemian Statement Drop',
-        image: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=500&auto=format&fit=crop&q=60',
-        quantity: 1,
-        price: 2750,
-      },
-    ],
-    totalAmount: 2750,
-    paymentMethod: 'JazzCash',
-    paymentStatus: 'Paid',
-    orderStatus: 'Shipped',
-    courierName: 'Leopards Courier',
-    trackingNumber: 'LCS-549102',
-  },
-  {
-    id: 'ord-104',
-    orderNumber: 'MS-9818',
-    date: '2026-08-31',
-    customerName: 'Maham Qureshi',
-    customerEmail: 'maham.q@gmail.com',
-    customerPhone: '+92 345 6789012',
-    city: 'Rawalpindi',
-    address: 'House 112, Bahria Town Phase 4',
-    items: [
-      {
-        productId: '5',
-        productName: 'Hand-Woven Micro-Beaded Ring Set (Trio)',
-        image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=500&auto=format&fit=crop&q=60',
-        quantity: 1,
-        price: 1650,
-      },
-    ],
-    totalAmount: 1650,
-    paymentMethod: 'COD',
-    paymentStatus: 'Paid',
-    orderStatus: 'Delivered',
-    courierName: 'Trax Logistics',
-    trackingNumber: 'TRX-882104',
-  },
-  {
-    id: 'ord-105',
-    orderNumber: 'MS-9817',
-    date: '2026-08-30',
-    customerName: 'Bismah Khan',
-    customerEmail: 'bismah.k@gmail.com',
-    customerPhone: '+92 312 9988776',
-    city: 'Faisalabad',
-    address: 'Canal Road, People’s Colony No. 1',
-    items: [
-      {
-        productId: '1',
-        productName: 'Pearl & Aventurine Stacking Bracelet',
-        image: 'https://images.unsplash.com/photo-1611591475819-797de2338ec8?w=500&auto=format&fit=crop&q=60',
-        quantity: 1,
-        price: 2450,
-      },
-    ],
-    totalAmount: 2450,
-    paymentMethod: 'Bank Transfer',
-    paymentStatus: 'Paid',
-    orderStatus: 'Delivered',
-  },
-];
-
-// Initial Custom Bespoke Requests (Custom Orders from clients)
-const INITIAL_CUSTOM_ORDERS: AdminCustomOrder[] = [
-  {
-    id: 'cst-01',
-    requestNumber: 'REQ-2041',
-    customerName: 'Natasha Rizvi',
-    email: 'natasha.rizvi@gmail.com',
-    phone: '+92 322 9900112',
-    jewelryType: 'Bridal Party Stacking Bracelets (Set of 5)',
-    preferredStones: ['Freshwater Pearl', 'Rose Quartz', 'Gold Hematite'],
-    wristSize: 'Custom fitted (6.25")',
-    metalFinish: '18K Gold Plated',
-    notes: 'Need pastel tones to match peach raw silk bridesmaids lenghas for my sister’s mehendi. Urgent delivery required by Sept 18th.',
-    budgetRange: 'PKR 12,000 - PKR 16,000',
-    date: '2026-09-03',
-    status: 'New Request',
-    quoteAmount: 14500,
-    referenceImages: [
-      'https://images.unsplash.com/photo-1611591475819-797de2338ec8?w=500&auto=format&fit=crop&q=60',
-      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&auto=format&fit=crop&q=60',
-    ],
-  },
-  {
-    id: 'cst-02',
-    requestNumber: 'REQ-2040',
-    customerName: 'Sana Farooq',
-    email: 'sana.f@outlook.com',
-    phone: '+92 301 4455221',
-    jewelryType: 'Emerald & Seed Bead Layered Choker',
-    preferredStones: ['Green Aventurine', 'Micro Seed Beads', 'Mother of Pearl'],
-    wristSize: '14" with 2" extender chain',
-    metalFinish: 'Antique Gold',
-    notes: 'Looking for rich deep forest green accent beads with gold spacers.',
-    budgetRange: 'PKR 4,000 - PKR 6,000',
-    date: '2026-09-02',
-    status: 'Quote Sent',
-    quoteAmount: 4800,
-    referenceImages: [
-      'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=500&auto=format&fit=crop&q=60',
-    ],
-  },
-  {
-    id: 'cst-03',
-    requestNumber: 'REQ-2039',
-    customerName: 'Mehwish Ali',
-    email: 'mehwish.ali@gmail.com',
-    phone: '+92 334 5566778',
-    jewelryType: 'Evil Eye Charm Anklet with Bells',
-    preferredStones: ['Glass Evil Eye', 'Turquoise', 'Golden Chime Bells'],
-    wristSize: '9.5" loose fit',
-    metalFinish: '18K Gold Plated',
-    notes: 'Tarnish-resistant wire please, for everyday beachwear and daily wear.',
-    budgetRange: 'PKR 2,500 - PKR 3,500',
-    date: '2026-08-29',
-    status: 'In Production',
-    quoteAmount: 2900,
-    referenceImages: [
-      'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=500&auto=format&fit=crop&q=60',
-    ],
-  },
-  {
-    id: 'cst-04',
-    requestNumber: 'REQ-2038',
-    customerName: 'Dr. Sarah Bilal',
-    email: 'sarah.bilal@hospital.pk',
-    phone: '+92 300 1122334',
-    jewelryType: 'Custom Birthstone Charm Necklace',
-    preferredStones: ['Amethyst', 'Aquamarine', 'Gold Beads'],
-    wristSize: '16" Princess Length',
-    metalFinish: 'Sterling Silver 925 Finish',
-    notes: 'Incorporating two birthstones of my newborn twins.',
-    budgetRange: 'PKR 5,000 - PKR 7,000',
-    date: '2026-08-25',
-    status: 'Completed',
-    quoteAmount: 5500,
-    referenceImages: [],
-  },
-];
-
-// Initial Customers
-const INITIAL_CUSTOMERS: AdminCustomer[] = [
-  {
-    id: 'c-01',
-    name: 'Areeba Tariq',
-    email: 'areeba.tariq@gmail.com',
-    phone: '+92 321 4455890',
-    city: 'Lahore',
-    joinedDate: 'Jan 2026',
-    totalOrders: 4,
-    totalSpent: 18200,
-    status: 'VIP',
-  },
-  {
-    id: 'c-02',
-    name: 'Zainab Fatima',
-    email: 'zainab.fatima@yahoo.com',
-    phone: '+92 300 8765432',
-    city: 'Karachi',
-    joinedDate: 'Feb 2026',
-    totalOrders: 3,
-    totalSpent: 12400,
-    status: 'VIP',
-  },
-  {
-    id: 'c-03',
-    name: 'Hira Shah',
-    email: 'hira.shah@hotmail.com',
-    phone: '+92 333 1239876',
-    city: 'Islamabad',
-    joinedDate: 'Mar 2026',
-    totalOrders: 2,
-    totalSpent: 6200,
-    status: 'Active',
-  },
-  {
-    id: 'c-04',
-    name: 'Maham Qureshi',
-    email: 'maham.q@gmail.com',
-    phone: '+92 345 6789012',
-    city: 'Rawalpindi',
-    joinedDate: 'Jun 2026',
-    totalOrders: 1,
-    totalSpent: 1650,
-    status: 'New',
-  },
-  {
-    id: 'c-05',
-    name: 'Natasha Rizvi',
-    email: 'natasha.rizvi@gmail.com',
-    phone: '+92 322 9900112',
-    city: 'Karachi',
-    joinedDate: 'Aug 2026',
-    totalOrders: 2,
-    totalSpent: 16950,
-    status: 'VIP',
-  },
-];
-
-// Initial Store Notifications
-const INITIAL_NOTIFICATIONS: AdminNotification[] = [
-  {
-    id: 'notif-1',
-    type: 'custom',
-    title: 'New Bespoke Request Received',
-    message: 'Natasha Rizvi requested 5 bridal stacking bracelets (PKR 14,500 estimate).',
-    timestamp: '15 mins ago',
-    read: false,
-    linkTab: 'custom-orders',
-    badge: 'Bespoke',
-  },
-  {
-    id: 'notif-2',
-    type: 'order',
-    title: 'New Order #MS-9821 Placed',
-    message: 'Areeba Tariq ordered 2x Pearl & Aventurine Stacking Bracelets (PKR 4,900 COD).',
-    timestamp: '42 mins ago',
-    read: false,
-    linkTab: 'orders',
-    badge: 'New Order',
-  },
-  {
-    id: 'notif-3',
-    type: 'stock',
-    title: 'Low Stock Alert: Rose Quartz Beads',
-    message: 'Only 3 units remaining for "Rose Quartz & Seed Bead Choker".',
-    timestamp: '2 hours ago',
-    read: false,
-    linkTab: 'products',
-    badge: 'Inventory',
-  },
-  {
-    id: 'notif-4',
-    type: 'order',
-    title: 'Payment Received for #MS-9820',
-    message: 'Easypaisa transaction confirmed by Zainab Fatima for PKR 5,050.',
-    timestamp: 'Yesterday',
-    read: true,
-    linkTab: 'orders',
-    badge: 'Paid',
-  },
-  {
-    id: 'notif-5',
-    type: 'system',
-    title: 'Daily Studio Backup Complete',
-    message: 'All inventory listings and customer records safely cached.',
-    timestamp: '1 day ago',
-    read: true,
-    linkTab: 'dashboard',
-    badge: 'System',
-  },
-];
-
-// Initial Store Settings
-const INITIAL_SETTINGS: StoreSettings = {
+const DEFAULT_SETTINGS: StoreSettings = {
   storeName: 'Maryam Sparkle',
   tagline: 'Handcrafted Artistry & Delicate Jewelry',
   currency: 'PKR',
@@ -391,150 +25,427 @@ const INITIAL_SETTINGS: StoreSettings = {
   courierPartners: ['Trax Logistics', 'TCS Express', 'Leopards Courier', 'Call Courier'],
 };
 
-// Initial Theme Config
-const INITIAL_THEME: AdminThemeConfig = {
+const DEFAULT_THEME: AdminThemeConfig = {
   sidebarColor: 'teal',
   sidenavType: 'white',
   darkMode: false,
   navbarFixed: true,
 };
 
-// LocalStorage helpers
+let settingsCache = DEFAULT_SETTINGS;
+let themeCache = DEFAULT_THEME;
+let notificationsCache: AdminNotification[] = [];
+
+const categorySlug = (category: AdminProduct['category']) =>
+  category === 'Custom Pieces' ? 'custom-pieces' : category.toLowerCase();
+
+const categoryName = (slug?: string | null): AdminProduct['category'] => {
+  const normalized = (slug || '').toLowerCase();
+  if (normalized === 'anklets') return 'Anklets';
+  if (normalized === 'necklaces') return 'Necklaces';
+  if (normalized === 'earrings') return 'Earrings';
+  if (normalized === 'rings') return 'Rings';
+  if (normalized === 'custom-pieces' || normalized === 'custom') return 'Custom Pieces';
+  return 'Bracelets';
+};
+
+const paymentMethod = (value?: string): AdminOrder['paymentMethod'] => {
+  if (value === 'easypaisa') return 'Easypaisa';
+  if (value === 'jazzcash') return 'JazzCash';
+  if (value === 'bank_transfer') return 'Bank Transfer';
+  return 'COD';
+};
+
+const dbPaymentMethod = (value: AdminOrder['paymentMethod']) => {
+  if (value === 'Easypaisa') return 'easypaisa';
+  if (value === 'JazzCash') return 'jazzcash';
+  if (value === 'Bank Transfer') return 'bank_transfer';
+  return 'cod';
+};
+
+const orderStatus = (value?: string): AdminOrder['orderStatus'] => {
+  const normalized = (value || '').toLowerCase();
+  if (normalized === 'confirmed') return 'Confirmed';
+  if (normalized === 'processing') return 'Processing';
+  if (normalized === 'shipped') return 'Shipped';
+  if (normalized === 'delivered') return 'Delivered';
+  if (normalized === 'cancelled') return 'Cancelled';
+  return 'Placed';
+};
+
+const dbOrderStatus = (value: AdminOrder['orderStatus']) => value.toLowerCase();
+
+const customStatus = (value?: string): AdminCustomOrder['status'] => {
+  switch ((value || '').toLowerCase()) {
+    case 'reviewing': return 'Quote Sent';
+    case 'quoted': return 'Quote Sent';
+    case 'approved': return 'In Production';
+    case 'in_progress': return 'In Production';
+    case 'completed': return 'Completed';
+    case 'cancelled': return 'Declined';
+    default: return 'New Request';
+  }
+};
+
+const dbCustomStatus = (value: AdminCustomOrder['status']) => {
+  switch (value) {
+    case 'Quote Sent': return 'quoted';
+    case 'In Production': return 'in_progress';
+    case 'Completed': return 'completed';
+    case 'Declined': return 'cancelled';
+    default: return 'pending';
+  }
+};
+
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+async function getProducts(): Promise<AdminProduct[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, product_images(*)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  return (data || []).map((p: any) => {
+    const images = (p.product_images || [])
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((img: any) => img.image_url)
+      .filter(Boolean);
+    return {
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      category: categoryName(p.category_slug),
+      price: Number(p.price) || 0,
+      compareAtPrice: p.compare_at_price == null ? undefined : Number(p.compare_at_price),
+      stock: Number(p.stock) || 0,
+      image: images[0] || '',
+      images,
+      materials: p.materials || [],
+      finish: p.finish || '',
+      description: p.description || '',
+      isFeatured: !!p.is_featured,
+      isBestSeller: !!p.is_best_seller,
+      inStock: !!p.in_stock,
+      createdAt: p.created_at || new Date().toISOString(),
+    };
+  });
+}
+
+async function saveProducts(products: AdminProduct[]): Promise<void> {
+  const { data: existing, error: existingError } = await supabase.from('products').select('id');
+  if (existingError) throw existingError;
+  const existingIds = (existing || []).map((p: any) => p.id);
+  const keepIds = products.filter((p) => isUuid(p.id)).map((p) => p.id);
+  const deletedIds = existingIds.filter((id) => !keepIds.includes(id));
+
+  if (deletedIds.length) {
+    const { error } = await supabase.from('products').delete().in('id', deletedIds);
+    if (error) throw error;
+  }
+
+  for (const product of products) {
+    const row: Record<string, any> = {
+      name: product.name.trim(),
+      slug: product.id && isUuid(product.id) ? product.id : `${product.sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+      description: product.description || '',
+      price: product.price,
+      compare_at_price: product.compareAtPrice ?? null,
+      sku: product.sku,
+      stock: Math.max(0, product.stock),
+      materials: product.materials || [],
+      finish: product.finish || null,
+      is_featured: !!product.isFeatured,
+      is_best_seller: !!product.isBestSeller,
+      in_stock: product.stock > 0,
+      category_slug: categorySlug(product.category),
+      status: 'active',
+    };
+    if (isUuid(product.id)) row.id = product.id;
+
+    const { data: saved, error } = await supabase.from('products').upsert(row, { onConflict: 'sku' }).select('id').single();
+    if (error) throw error;
+    const productId = saved.id;
+
+    await supabase.from('inventory').upsert(
+      { product_id: productId, quantity: Math.max(0, product.stock), updated_at: new Date().toISOString() },
+      { onConflict: 'product_id' }
+    );
+
+    const { error: imageDeleteError } = await supabase.from('product_images').delete().eq('product_id', productId);
+    if (imageDeleteError) throw imageDeleteError;
+
+    const images = (product.images?.length ? product.images : [product.image]).filter(Boolean);
+    if (images.length) {
+      const { error: imageError } = await supabase.from('product_images').insert(
+        images.map((url, index) => ({ product_id: productId, image_url: url, sort_order: index, is_primary: index === 0 }))
+      );
+      if (imageError) throw imageError;
+    }
+  }
+}
+
+async function getOrders(): Promise<AdminOrder[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*), payments(*)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  return (data || []).map((o: any) => {
+    const address = o.shipping_address || {};
+    return {
+      id: o.id,
+      orderNumber: o.order_number,
+      date: o.created_at,
+      customerName: o.customer_name,
+      customerEmail: o.customer_email,
+      customerPhone: o.customer_phone,
+      city: address.city || '',
+      address: address.address_line_1 || address.address || '',
+      items: (o.order_items || []).map((item: any) => ({
+        productId: item.product_id || '',
+        productName: item.product_name,
+        image: item.product_image || '',
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.unit_price) || 0,
+        size: item.size || undefined,
+        finish: item.finish || undefined,
+      })),
+      totalAmount: Number(o.total) || 0,
+      paymentMethod: paymentMethod(o.payment_method),
+      paymentStatus: o.payment_status === 'paid' ? 'Paid' : 'Pending',
+      orderStatus: orderStatus(o.status),
+      courierName: o.courier_name || undefined,
+      trackingNumber: o.tracking_number || undefined,
+      notes: o.notes || undefined,
+    };
+  });
+}
+
+async function saveOrders(orders: AdminOrder[]): Promise<void> {
+  for (const order of orders) {
+    if (!isUuid(order.id)) continue;
+    const { error } = await supabase.from('orders').update({
+      status: dbOrderStatus(order.orderStatus),
+      payment_status: order.paymentStatus === 'Paid' ? 'paid' : 'pending',
+      payment_method: dbPaymentMethod(order.paymentMethod),
+      courier_name: order.courierName || null,
+      tracking_number: order.trackingNumber || null,
+      notes: order.notes || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', order.id);
+    if (error) throw error;
+
+    const { error: paymentError } = await supabase.from('payments').update({
+      status: order.paymentStatus === 'Paid' ? 'paid' : 'pending',
+      method: dbPaymentMethod(order.paymentMethod),
+      updated_at: new Date().toISOString(),
+    }).eq('order_id', order.id);
+    if (paymentError) console.warn('Payment sync skipped:', paymentError.message);
+  }
+}
+
+async function getCustomOrders(): Promise<AdminCustomOrder[]> {
+  const { data, error } = await supabase
+    .from('custom_orders')
+    .select('*, custom_order_images(*)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  return (data || []).map((c: any) => ({
+    id: c.id,
+    requestNumber: `REQ-${String(c.id).slice(0, 8).toUpperCase()}`,
+    customerName: c.customer_name,
+    email: c.customer_email || '',
+    phone: c.customer_phone,
+    jewelryType: c.jewelry_type,
+    preferredStones: c.preferred_stones || [],
+    wristSize: c.wrist_size || '',
+    metalFinish: c.metal_finish || '',
+    notes: c.special_notes || '',
+    budgetRange: c.budget_range || '',
+    date: c.created_at,
+    status: customStatus(c.status),
+    quoteAmount: c.quote_amount == null ? undefined : Number(c.quote_amount),
+    referenceImages: (c.custom_order_images || [])
+      .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((i: any) => i.image_url)
+      .filter(Boolean),
+  }));
+}
+
+async function saveCustomOrders(customOrders: AdminCustomOrder[]): Promise<void> {
+  for (const order of customOrders) {
+    if (!isUuid(order.id)) continue;
+    const { error } = await supabase.from('custom_orders').update({
+      status: dbCustomStatus(order.status),
+      quote_amount: order.quoteAmount ?? null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', order.id);
+    if (error) throw error;
+  }
+}
+
+async function getCustomers(): Promise<AdminCustomer[]> {
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const { data: orders, error: ordersError } = await supabase.from('orders').select('user_id,total');
+  if (ordersError) throw ordersError;
+
+  const aggregates = new Map<string, { count: number; spent: number }>();
+  (orders || []).forEach((o: any) => {
+    if (!o.user_id) return;
+    const current = aggregates.get(o.user_id) || { count: 0, spent: 0 };
+    current.count += 1;
+    current.spent += Number(o.total) || 0;
+    aggregates.set(o.user_id, current);
+  });
+
+  return (profiles || []).filter((p: any) => p.role === 'customer').map((p: any) => {
+    const aggregate = aggregates.get(p.id) || { count: 0, spent: 0 };
+    return {
+      id: p.id,
+      name: p.full_name || [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email,
+      email: p.email,
+      phone: p.phone || '',
+      city: '',
+      joinedDate: new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      totalOrders: aggregate.count,
+      totalSpent: aggregate.spent,
+      status: aggregate.count === 0 ? 'New' : aggregate.spent >= 10000 ? 'VIP' : 'Active',
+      avatar: p.avatar_url || undefined,
+    };
+  });
+}
+
+async function saveCustomers(customers: AdminCustomer[]): Promise<void> {
+  for (const customer of customers) {
+    if (!isUuid(customer.id)) continue;
+    const { error } = await supabase.from('profiles').update({
+      full_name: customer.name,
+      phone: customer.phone || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', customer.id);
+    if (error) throw error;
+  }
+}
+
+async function getNotifications(products: AdminProduct[], orders: AdminOrder[], customOrders: AdminCustomOrder[]): Promise<AdminNotification[]> {
+  const notifications: AdminNotification[] = [];
+  orders.slice(0, 10).forEach((order) => {
+    notifications.push({
+      id: `order-${order.id}`,
+      type: 'order',
+      title: `Order #${order.orderNumber} ${order.orderStatus}`,
+      message: `${order.customerName} — PKR ${order.totalAmount.toLocaleString()}.`,
+      timestamp: order.date,
+      read: false,
+      isRead: false,
+      linkTab: 'orders',
+      badge: order.paymentStatus === 'Paid' ? 'Paid' : 'Order',
+      targetId: order.id,
+    });
+  });
+  customOrders.slice(0, 10).forEach((order) => {
+    notifications.push({
+      id: `custom-${order.id}`,
+      type: 'custom',
+      title: `Bespoke Request ${order.requestNumber}`,
+      message: `${order.customerName} requested ${order.jewelryType}.`,
+      timestamp: order.date,
+      read: false,
+      isRead: false,
+      linkTab: 'custom-orders',
+      badge: 'Bespoke',
+      targetId: order.id,
+    });
+  });
+  products.filter((p) => p.stock <= 5).slice(0, 10).forEach((product) => {
+    notifications.push({
+      id: `stock-${product.id}`,
+      type: 'stock',
+      title: `Low Stock: ${product.name}`,
+      message: `${product.stock} unit${product.stock === 1 ? '' : 's'} remaining.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      isRead: false,
+      linkTab: 'products',
+      badge: 'Inventory',
+      targetId: product.id,
+    });
+  });
+  return notifications.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+async function loadSettings(): Promise<void> {
+  const { data, error } = await supabase.from('store_settings').select('settings').eq('id', 'default').maybeSingle();
+  if (!error && data?.settings) {
+    settingsCache = { ...DEFAULT_SETTINGS, ...(data.settings.storeSettings || data.settings) };
+    if (data.settings.theme) themeCache = { ...DEFAULT_THEME, ...data.settings.theme };
+  }
+}
+
+async function saveSettings(settings: StoreSettings): Promise<void> {
+  settingsCache = settings;
+  const { error } = await supabase.from('store_settings').upsert({
+    id: 'default',
+    settings: { storeSettings: settings, theme: themeCache },
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
+async function saveTheme(theme: AdminThemeConfig): Promise<void> {
+  themeCache = theme;
+  const { error } = await supabase.from('store_settings').upsert({
+    id: 'default',
+    settings: { storeSettings: settingsCache, theme },
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
 export const adminStorage = {
-  getProducts(): AdminProduct[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-      return data ? JSON.parse(data) : INITIAL_PRODUCTS;
-    } catch {
-      return INITIAL_PRODUCTS;
-    }
+  async hydrate() {
+    await loadSettings();
+    const [products, orders, customOrders, customers] = await Promise.all([
+      getProducts(),
+      getOrders(),
+      getCustomOrders(),
+      getCustomers(),
+    ]);
+    notificationsCache = await getNotifications(products, orders, customOrders);
+    return { products, orders, customOrders, customers, notifications: notificationsCache };
   },
-  saveProducts(products: AdminProduct[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-      window.dispatchEvent(new Event('admin-products-updated'));
-    } catch (err) {
-      console.error('Failed to save products:', err);
-    }
+  getThemeConfig: () => themeCache,
+  getSettings: () => settingsCache,
+  getProducts,
+  getOrders,
+  getCustomOrders,
+  getCustomers,
+  getNotifications: async () => notificationsCache,
+  saveProducts,
+  saveOrders,
+  saveCustomOrders,
+  saveCustomers,
+  saveNotifications: async (notifs: AdminNotification[]) => {
+    notificationsCache = notifs;
   },
-
-  getOrders(): AdminOrder[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      return data ? JSON.parse(data) : INITIAL_ORDERS;
-    } catch {
-      return INITIAL_ORDERS;
-    }
-  },
-  saveOrders(orders: AdminOrder[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-      window.dispatchEvent(new Event('admin-orders-updated'));
-    } catch (err) {
-      console.error('Failed to save orders:', err);
-    }
-  },
-
-  getCustomOrders(): AdminCustomOrder[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.CUSTOM_ORDERS);
-      return data ? JSON.parse(data) : INITIAL_CUSTOM_ORDERS;
-    } catch {
-      return INITIAL_CUSTOM_ORDERS;
-    }
-  },
-  saveCustomOrders(customOrders: AdminCustomOrder[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.CUSTOM_ORDERS, JSON.stringify(customOrders));
-      window.dispatchEvent(new Event('admin-custom-orders-updated'));
-    } catch (err) {
-      console.error('Failed to save custom orders:', err);
-    }
-  },
-
-  getCustomers(): AdminCustomer[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
-      return data ? JSON.parse(data) : INITIAL_CUSTOMERS;
-    } catch {
-      return INITIAL_CUSTOMERS;
-    }
-  },
-  saveCustomers(customers: AdminCustomer[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
-      window.dispatchEvent(new Event('admin-customers-updated'));
-    } catch (err) {
-      console.error('Failed to save customers:', err);
-    }
-  },
-
-  getNotifications(): AdminNotification[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-      return data ? JSON.parse(data) : INITIAL_NOTIFICATIONS;
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
-  },
-  saveNotifications(notifs: AdminNotification[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifs));
-      window.dispatchEvent(new Event('admin-notifs-updated'));
-    } catch (err) {
-      console.error('Failed to save notifications:', err);
-    }
-  },
-
-  getSettings(): StoreSettings {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? JSON.parse(data) : INITIAL_SETTINGS;
-    } catch {
-      return INITIAL_SETTINGS;
-    }
-  },
-  saveSettings(settings: StoreSettings): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-    }
-  },
-
-  getTheme(): AdminThemeConfig {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.THEME);
-      return data ? JSON.parse(data) : INITIAL_THEME;
-    } catch {
-      return INITIAL_THEME;
-    }
-  },
-  getThemeConfig(): AdminThemeConfig {
-    return this.getTheme();
-  },
-  saveTheme(theme: AdminThemeConfig): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(theme));
-    } catch (err) {
-      console.error('Failed to save theme:', err);
-    }
-  },
-  saveThemeConfig(theme: AdminThemeConfig): void {
-    this.saveTheme(theme);
-  },
-
-  resetToDefaults(): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(INITIAL_PRODUCTS));
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(INITIAL_ORDERS));
-      localStorage.setItem(STORAGE_KEYS.CUSTOM_ORDERS, JSON.stringify(INITIAL_CUSTOM_ORDERS));
-      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(INITIAL_CUSTOMERS));
-      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(INITIAL_NOTIFICATIONS));
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(INITIAL_SETTINGS));
-      localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(INITIAL_THEME));
-    } catch (err) {
-      console.error('Failed to reset data:', err);
-    }
+  saveSettings,
+  saveThemeConfig: saveTheme,
+  resetToDefaults: async () => {
+    settingsCache = DEFAULT_SETTINGS;
+    themeCache = DEFAULT_THEME;
+    await supabase.from('store_settings').upsert({
+      id: 'default',
+      settings: { storeSettings: settingsCache, theme: themeCache },
+      updated_at: new Date().toISOString(),
+    });
   },
 };
