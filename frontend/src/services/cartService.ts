@@ -1,199 +1,141 @@
 import { CartItem, Product } from '../types';
 import { PRODUCTS } from '../data/products';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { authService } from './authService';
 
-const CART_STORAGE_KEY = 'maryam_sparkle_cart_v1';
-const GUEST_TOKEN_KEY = 'maryam_sparkle_guest_token_v1';
+const GUEST_CART_KEY = 'maryam_sparkle_guest_cart_v1';
 
-function getOrCreateGuestToken(): string {
-  if (typeof window === 'undefined') return 'guest_default';
-  let token = localStorage.getItem(GUEST_TOKEN_KEY);
-  if (!token) {
-    token = `gst_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
-    localStorage.setItem(GUEST_TOKEN_KEY, token);
-  }
-  return token;
-}
-
-function getLocalCart(): CartItem[] {
+function getGuestCart(): CartItem[] {
   try {
-    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    const raw = localStorage.getItem(GUEST_CART_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
+function saveGuestCart(items: CartItem[]) {
+  localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+  window.dispatchEvent(new Event('cart-updated'));
+}
+function totals(items: CartItem[]) {
+  return {
+    items,
+    itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+    total: items.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
+  };
+}
+function guestOrUser() {
+  return authService.getCurrentUser();
+}
 
-function saveLocalCart(items: CartItem[]): void {
-  try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-    window.dispatchEvent(new Event('cart-updated'));
-  } catch (e) {
-    console.warn('Failed to save cart to localStorage:', e);
+async function getUserCartId(userId: string, create = true): Promise<string | null> {
+  const { data, error } = await supabase.from('carts').select('id').eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  if (data?.id || !create) return data?.id || null;
+  const { data: created, error: createError } = await supabase.from('carts').insert({ user_id: userId }).select('id').single();
+  if (createError) throw createError;
+  return created.id;
+}
+
+async function fetchRemoteCart(userId: string): Promise<CartItem[]> {
+  const cartId = await getUserCartId(userId, false);
+  if (!cartId) return [];
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select('id, quantity, size, finish, custom_note, products(id,name,slug,price,stock,in_stock,finish,materials,product_images(image_url,is_primary))')
+    .eq('cart_id', cartId);
+  if (error) throw error;
+  return (data || []).filter((row: any) => row.products).map((row: any) => {
+    const product = row.products;
+    const image = product.product_images?.find((i: any) => i.is_primary)?.image_url || product.product_images?.[0]?.image_url || '';
+    const catalogProduct: Product = {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: Number(product.price) || 0,
+      category: 'Bracelets',
+      image,
+      images: image ? [image] : [],
+      description: 'Handmade artisanal jewelry',
+      materials: product.materials || [],
+      stock: Number(product.stock) || 0,
+      inStock: product.in_stock !== false,
+      finish: product.finish || undefined,
+    };
+    return { product: catalogProduct, quantity: Number(row.quantity) || 1, selectedSize: row.size || undefined, selectedFinish: row.finish || undefined, customNote: row.custom_note || undefined };
+  });
+}
+
+async function remoteAdd(userId: string, product: Product, quantity: number): Promise<CartItem[]> {
+  const cartId = await getUserCartId(userId, true);
+  if (!cartId) throw new Error('Unable to create the customer cart.');
+  const size = 'Medium (6.5")';
+  const finish = product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
+  const { data: existing, error: findError } = await supabase.from('cart_items').select('id,quantity').eq('cart_id', cartId).eq('product_id', product.id).eq('size', size).eq('finish', finish).maybeSingle();
+  if (findError) throw findError;
+  if (existing) {
+    const { error } = await supabase.from('cart_items').update({ quantity: existing.quantity + quantity, updated_at: new Date().toISOString() }).eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('cart_items').insert({ cart_id: cartId, product_id: product.id, quantity, size, finish });
+    if (error) throw error;
   }
+  return fetchRemoteCart(userId);
 }
 
 export const cartService = {
-  /**
-   * Fetch current cart with resilient local storage and Supabase sync
-   */
   async getCart(): Promise<{ items: CartItem[]; itemCount: number; total: number }> {
-    const localItems = getLocalCart();
-
-    if (isSupabaseConfigured()) {
-      try {
-        const currentUser = authService.getCurrentUser();
-        const guestToken = getOrCreateGuestToken();
-
-        let cartQuery = supabase.from('carts').select('id');
-        if (currentUser?.id && !currentUser.id.startsWith('usr-')) {
-          cartQuery = cartQuery.eq('user_id', currentUser.id);
-        } else {
-          cartQuery = cartQuery.eq('guest_token', guestToken);
-        }
-
-        const { data: cartData } = await cartQuery.maybeSingle();
-
-        if (cartData?.id) {
-          const { data: itemRows } = await supabase
-            .from('cart_items')
-            .select(`
-              id,
-              quantity,
-              size,
-              finish,
-              custom_note,
-              products (
-                id,
-                name,
-                slug,
-                price,
-                stock,
-                in_stock,
-                finish,
-                product_images ( image_url, is_primary )
-              )
-            `)
-            .eq('cart_id', cartData.id);
-
-          if (itemRows && itemRows.length > 0) {
-            const syncedItems: CartItem[] = itemRows
-              .filter((r: any) => r.products)
-              .map((r: any) => {
-                const prod = r.products;
-                const img =
-                  prod.product_images?.find((i: any) => i.is_primary)?.image_url ||
-                  prod.product_images?.[0]?.image_url ||
-                  PRODUCTS[0].image;
-
-                const catalogProduct: Product = {
-                  id: prod.id,
-                  name: prod.name,
-                  slug: prod.slug,
-                  price: Number(prod.price),
-                  category: 'Bracelets',
-                  image: img,
-                  images: [img],
-                  description: 'Handmade artisanal jewelry',
-                  materials: ['Glass Beads', 'Gold-Tone Accents'],
-                  stock: prod.stock ?? 10,
-                  inStock: prod.in_stock ?? true,
-                };
-
-                return {
-                  product: catalogProduct,
-                  quantity: r.quantity,
-                  selectedSize: r.size || 'Medium (6.5")',
-                  selectedFinish: r.finish || prod.finish || '18K Gold Plated',
-                };
-              });
-
-            if (syncedItems.length > 0) {
-              saveLocalCart(syncedItems);
-              const count = syncedItems.reduce((acc, it) => acc + it.quantity, 0);
-              const total = syncedItems.reduce((acc, it) => acc + it.product.price * it.quantity, 0);
-              return { items: syncedItems, itemCount: count, total };
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Supabase cart sync notice:', err);
-      }
-    }
-
-    const count = localItems.reduce((acc, it) => acc + it.quantity, 0);
-    const total = localItems.reduce((acc, it) => acc + it.product.price * it.quantity, 0);
-    return {
-      items: localItems,
-      itemCount: count,
-      total,
-    };
+    const user = guestOrUser();
+    if (user?.id && !user.id.startsWith('usr-')) return totals(await fetchRemoteCart(user.id));
+    return totals(getGuestCart());
   },
 
-  /**
-   * Add item to cart
-   */
-  async addItem(product: Product | string, quantity: number = 1): Promise<CartItem[]> {
-    const resolvedProduct =
-      typeof product === 'object'
-        ? product
-        : PRODUCTS.find((p) => p.id === String(product) || p.slug === String(product)) || PRODUCTS[0];
+  async addItem(product: Product | string, quantity = 1): Promise<CartItem[]> {
+    const resolved = typeof product === 'object' ? product : PRODUCTS.find((p) => p.id === String(product) || p.slug === String(product));
+    if (!resolved) throw new Error('Product not found.');
+    const user = guestOrUser();
+    if (user?.id && !user.id.startsWith('usr-')) return remoteAdd(user.id, resolved, quantity);
 
-    const currentItems = getLocalCart();
-    const existingIdx = currentItems.findIndex((it) => it.product.id === resolvedProduct.id);
-    let updated: CartItem[];
-
-    if (existingIdx > -1) {
-      updated = [...currentItems];
-      updated[existingIdx].quantity += quantity;
-    } else {
-      updated = [
-        ...currentItems,
-        {
-          product: resolvedProduct,
-          quantity,
-          selectedSize: 'Medium (6.5")',
-          selectedFinish: resolvedProduct.finish || '18K Gold Plated',
-        },
-      ];
-    }
-    saveLocalCart(updated);
+    const current = getGuestCart();
+    const index = current.findIndex((item) => item.product.id === resolved.id);
+    const updated = [...current];
+    if (index >= 0) updated[index] = { ...updated[index], quantity: updated[index].quantity + quantity };
+    else updated.push({ product: resolved, quantity, selectedSize: 'Medium (6.5")', selectedFinish: resolved.finish || 'Gold-Tone' });
+    saveGuestCart(updated);
     return updated;
   },
 
-  /**
-   * Update quantity
-   */
   async updateQuantity(product: Product | string, quantity: number): Promise<CartItem[]> {
-    const prodIdStr = typeof product === 'object' ? product.id : String(product);
-    const currentItems = getLocalCart();
-
-    let updated: CartItem[];
-    if (quantity <= 0) {
-      updated = currentItems.filter((it) => it.product.id !== prodIdStr);
-    } else {
-      updated = currentItems.map((it) => (it.product.id === prodIdStr ? { ...it, quantity } : it));
+    const id = typeof product === 'object' ? product.id : String(product);
+    const user = guestOrUser();
+    if (user?.id && !user.id.startsWith('usr-')) {
+      const cartId = await getUserCartId(user.id, false);
+      if (!cartId) return [];
+      const { error } = quantity <= 0
+        ? await supabase.from('cart_items').delete().eq('cart_id', cartId).eq('product_id', id)
+        : await supabase.from('cart_items').update({ quantity, updated_at: new Date().toISOString() }).eq('cart_id', cartId).eq('product_id', id);
+      if (error) throw error;
+      return fetchRemoteCart(user.id);
     }
-    saveLocalCart(updated);
+    const updated = quantity <= 0 ? getGuestCart().filter((item) => item.product.id !== id) : getGuestCart().map((item) => item.product.id === id ? { ...item, quantity } : item);
+    saveGuestCart(updated);
     return updated;
   },
 
-  /**
-   * Remove item
-   */
   async removeItem(product: Product | string): Promise<CartItem[]> {
-    const prodIdStr = typeof product === 'object' ? product.id : String(product);
-    const currentItems = getLocalCart();
-    const updated = currentItems.filter((it) => it.product.id !== prodIdStr);
-    saveLocalCart(updated);
-    return updated;
+    return this.updateQuantity(product, 0);
   },
 
-  /**
-   * Clear entire cart
-   */
   async clearCart(): Promise<void> {
-    saveLocalCart([]);
+    const user = guestOrUser();
+    if (user?.id && !user.id.startsWith('usr-')) {
+      const cartId = await getUserCartId(user.id, false);
+      if (cartId) {
+        const { error } = await supabase.from('cart_items').delete().eq('cart_id', cartId);
+        if (error) throw error;
+      }
+      return;
+    }
+    saveGuestCart([]);
   },
 };
