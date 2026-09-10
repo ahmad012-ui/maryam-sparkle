@@ -10,10 +10,14 @@ import {
   RotateCcw,
   Download,
   Upload,
+  Database,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { StoreSettings } from './types';
 import { adminStorage } from './adminData';
 import { MultiImageUpload } from './MultiImageUpload';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 interface AdminSettingsProps {
   settings: StoreSettings;
@@ -283,6 +287,37 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Database & Cloud Synchronization */}
+        <div className="bg-white dark:bg-[#1a1e24] p-5 sm:p-6 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-[#2d5a61] dark:text-teal-400" />
+              <h3 className="font-serif text-base font-bold text-gray-900 dark:text-white">
+                Database & Cloud Synchronization (Supabase)
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {isSupabaseConfigured() ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Cloud Connected (Auto-Fallback Ready)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Local Storage Mode
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            {isSupabaseConfigured()
+              ? 'Supabase credentials are detected. Orders, custom requests, and inquiries automatically sync to your PostgreSQL database. If your tables are freshly created, the schema script in supabase/schema.sql provides all tables and atomic order RPCs.'
+              : 'The studio operates seamlessly with browser local storage. When you add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment, data will automatically persist to your cloud database.'}
+          </p>
         </div>
 
         {/* Lookbook & Store Banners Photography */}

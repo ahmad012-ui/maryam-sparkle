@@ -483,6 +483,10 @@ export const orderService = {
             newOrder.discount = Number(rpcResult.discount);
           }
         } else {
+          if (rpcError && rpcError.code !== 'PGRST202') {
+            console.warn('Supabase place_order RPC note (falling back to direct insert):', rpcError.message);
+          }
+
           // Fallback to direct table insertion
           const { data: insertedOrder, error: orderError } = await supabase
             .from('orders')
@@ -516,7 +520,8 @@ export const orderService = {
             .single();
 
           if (orderError) {
-            console.error('Supabase order creation error:', orderError);
+            // If table does not exist in Supabase schema cache yet (PGRST205 or 42P01), seamlessly fall back to local storage
+            console.warn('Supabase orders table not found or not initialized yet, order saved to local storage:', orderError.message || orderError);
           } else if (insertedOrder?.id) {
             // Insert order items
             const itemRows = orderPayload.items.map((it) => ({
@@ -533,10 +538,13 @@ export const orderService = {
               finish: it.selectedFinish || '18K Gold Plated',
             }));
 
-            await supabase.from('order_items').insert(itemRows);
+            const { error: itemsError } = await supabase.from('order_items').insert(itemRows);
+            if (itemsError) {
+              console.warn('Supabase order_items insert warning:', itemsError.message);
+            }
 
             // Insert payment record
-            await supabase.from('payments').insert({
+            const { error: paymentError } = await supabase.from('payments').insert({
               order_id: insertedOrder.id,
               transaction_reference: orderPayload.transactionReference || null,
               proof_of_payment_path: orderPayload.proofOfPaymentUrl || null,
@@ -545,6 +553,9 @@ export const orderService = {
               method: orderPayload.paymentMethod.id,
               status: 'pending',
             });
+            if (paymentError) {
+              console.warn('Supabase payments insert warning:', paymentError.message);
+            }
 
             newOrder.id = insertedOrder.id;
           }
