@@ -26,170 +26,186 @@ interface AdminAppProps {
 export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [themeConfig, setThemeConfig] = useState<AdminThemeConfig>(adminStorage.getThemeConfig());
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [customOrders, setCustomOrders] = useState<AdminCustomOrder[]>([]);
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+  const [settings, setSettings] = useState<StoreSettings>(adminStorage.getSettings());
+  const [isHydrating, setIsHydrating] = useState(true);
 
-  // Domain data states
-  const [products, setProducts] = useState<AdminProduct[]>(() => adminStorage.getProducts());
-  const [orders, setOrders] = useState<AdminOrder[]>(() => adminStorage.getOrders());
-  const [customOrders, setCustomOrders] = useState<AdminCustomOrder[]>(() => adminStorage.getCustomOrders());
-  const [customers, setCustomers] = useState<AdminCustomer[]>(() => adminStorage.getCustomers());
-  const [notifications, setNotifications] = useState<AdminNotification[]>(() => adminStorage.getNotifications());
-  const [settings, setSettings] = useState<StoreSettings>(() => adminStorage.getSettings());
-
-  // Sub-modal triggers
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isAddCustomOrderOpen, setIsAddCustomOrderOpen] = useState(false);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<AdminOrder | null>(null);
   const [selectedCustomOrderForModal, setSelectedCustomOrderForModal] = useState<AdminCustomOrder | null>(null);
 
-  // Sync dark mode class to html document or root
   useEffect(() => {
-    if (themeConfig.darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (themeConfig.darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [themeConfig.darkMode]);
 
-  const handleUpdateTheme = (updated: AdminThemeConfig) => {
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const data = await adminStorage.hydrate();
+        if (!active) return;
+        setProducts(data.products);
+        setOrders(data.orders);
+        setCustomOrders(data.customOrders);
+        setCustomers(data.customers);
+        setNotifications(data.notifications);
+        setSettings(adminStorage.getSettings());
+        setThemeConfig(adminStorage.getThemeConfig());
+      } catch (error) {
+        console.error('Failed to hydrate admin data from Supabase:', error);
+      } finally {
+        if (active) setIsHydrating(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const refreshNotifications = async (nextProducts = products, nextOrders = orders, nextCustomOrders = customOrders) => {
+    try {
+      const next = await adminStorage.getNotifications(nextProducts, nextOrders, nextCustomOrders);
+      setNotifications(next);
+    } catch (error) {
+      console.error('Failed to refresh admin notifications:', error);
+    }
+  };
+
+  const handleUpdateTheme = async (updated: AdminThemeConfig) => {
     setThemeConfig(updated);
-    adminStorage.saveThemeConfig(updated);
+    try { await adminStorage.saveThemeConfig(updated); }
+    catch (error) { console.error('Failed to save admin theme:', error); }
   };
 
-  const handleSaveProducts = (newProds: AdminProduct[]) => {
+  const handleSaveProducts = async (newProds: AdminProduct[]) => {
     setProducts(newProds);
-    adminStorage.saveProducts(newProds);
+    try {
+      await adminStorage.saveProducts(newProds);
+      await refreshNotifications(newProds, orders, customOrders);
+    } catch (error) {
+      console.error('Failed to save products:', error);
+    }
   };
 
-  const handleSaveOrders = (newOrders: AdminOrder[]) => {
+  const handleSaveOrders = async (newOrders: AdminOrder[]) => {
     setOrders(newOrders);
-    adminStorage.saveOrders(newOrders);
+    try {
+      await adminStorage.saveOrders(newOrders);
+      await refreshNotifications(products, newOrders, customOrders);
+    } catch (error) {
+      console.error('Failed to save orders:', error);
+    }
   };
 
-  const handleSaveCustomOrders = (newCustom: AdminCustomOrder[]) => {
+  const handleSaveCustomOrders = async (newCustom: AdminCustomOrder[]) => {
     setCustomOrders(newCustom);
-    adminStorage.saveCustomOrders(newCustom);
+    try {
+      await adminStorage.saveCustomOrders(newCustom);
+      await refreshNotifications(products, orders, newCustom);
+    } catch (error) {
+      console.error('Failed to save custom orders:', error);
+    }
   };
 
-  const handleSaveCustomers = (newCust: AdminCustomer[]) => {
+  const handleSaveCustomers = async (newCust: AdminCustomer[]) => {
     setCustomers(newCust);
-    adminStorage.saveCustomers(newCust);
+    try { await adminStorage.saveCustomers(newCust); }
+    catch (error) { console.error('Failed to save customers:', error); }
   };
 
-  const handleSaveNotifications = (newNotifs: AdminNotification[]) => {
+  const handleSaveNotifications = async (newNotifs: AdminNotification[]) => {
     setNotifications(newNotifs);
-    adminStorage.saveNotifications(newNotifs);
+    await adminStorage.saveNotifications(newNotifs);
   };
 
-  const handleSaveSettings = (newSettings: StoreSettings) => {
+  const handleSaveSettings = async (newSettings: StoreSettings) => {
     setSettings(newSettings);
-    adminStorage.saveSettings(newSettings);
+    try { await adminStorage.saveSettings(newSettings); }
+    catch (error) { console.error('Failed to save store settings:', error); }
   };
 
-  const handleResetDefaults = () => {
-    adminStorage.resetToDefaults();
-    setProducts(adminStorage.getProducts());
-    setOrders(adminStorage.getOrders());
-    setCustomOrders(adminStorage.getCustomOrders());
-    setCustomers(adminStorage.getCustomers());
-    setNotifications(adminStorage.getNotifications());
-    setSettings(adminStorage.getSettings());
+  const handleResetDefaults = async () => {
+    try {
+      await adminStorage.resetToDefaults();
+      setSettings(adminStorage.getSettings());
+      setThemeConfig(adminStorage.getThemeConfig());
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+    }
   };
 
   const handleNotificationClick = (notif: AdminNotification) => {
-    // 1. Mark notification as read
     const updatedNotifs = notifications.map((n) =>
       n.id === notif.id ? { ...n, read: true, isRead: true } : n
     );
-    handleSaveNotifications(updatedNotifs);
+    void handleSaveNotifications(updatedNotifs);
 
-    // 2. Handle Order Notification -> Redirect to orders tab & open details modal
     if (notif.type === 'order' || notif.linkTab === 'orders') {
       let matchedOrder: AdminOrder | undefined;
-
-      // Match by targetId
       if (notif.targetId) {
-        matchedOrder = orders.find(
-          (o) => o.id === notif.targetId || o.orderNumber === notif.targetId
-        );
+        matchedOrder = orders.find((o) => o.id === notif.targetId || o.orderNumber === notif.targetId);
       }
-
-      // Match by orderNumber extraction from title/message
       if (!matchedOrder) {
         const matchRegex = (notif.title + ' ' + notif.message).match(/MS-?\d+/i);
         if (matchRegex) {
           const rawNum = matchRegex[0].replace('#', '').toUpperCase();
-          matchedOrder = orders.find((o) =>
-            o.orderNumber.toUpperCase().includes(rawNum)
-          );
+          matchedOrder = orders.find((o) => o.orderNumber.toUpperCase().includes(rawNum));
         }
       }
-
-      // Match by customer name
       if (!matchedOrder) {
-        matchedOrder = orders.find(
-          (o) =>
-            (notif.title && notif.title.includes(o.customerName)) ||
-            (notif.message && notif.message.includes(o.customerName))
+        matchedOrder = orders.find((o) =>
+          (notif.title && notif.title.includes(o.customerName)) ||
+          (notif.message && notif.message.includes(o.customerName))
         );
       }
-
-      if (matchedOrder) {
-        setSelectedOrderForModal(matchedOrder);
-      }
+      if (matchedOrder) setSelectedOrderForModal(matchedOrder);
       setActiveTab('orders');
       return;
     }
 
-    // 3. Handle Bespoke Request Notification -> Redirect to custom-orders tab & open details
     if (notif.type === 'custom' || notif.linkTab === 'custom-orders') {
       let matchedCustomOrder: AdminCustomOrder | undefined;
-
       if (notif.targetId) {
-        matchedCustomOrder = customOrders.find(
-          (c) => c.id === notif.targetId || c.requestNumber === notif.targetId
-        );
+        matchedCustomOrder = customOrders.find((c) => c.id === notif.targetId || c.requestNumber === notif.targetId);
       }
-
       if (!matchedCustomOrder) {
-        const matchRegex = (notif.title + ' ' + notif.message).match(/REQ-?\d+/i);
+        const matchRegex = (notif.title + ' ' + notif.message).match(/REQ-?\w+/i);
         if (matchRegex) {
           const rawReq = matchRegex[0].toUpperCase();
-          matchedCustomOrder = customOrders.find((c) =>
-            c.requestNumber.toUpperCase().includes(rawReq)
-          );
+          matchedCustomOrder = customOrders.find((c) => c.requestNumber.toUpperCase().includes(rawReq));
         }
       }
-
       if (!matchedCustomOrder) {
-        matchedCustomOrder = customOrders.find(
-          (c) =>
-            (notif.title && notif.title.includes(c.customerName)) ||
-            (notif.message && notif.message.includes(c.customerName))
+        matchedCustomOrder = customOrders.find((c) =>
+          (notif.title && notif.title.includes(c.customerName)) ||
+          (notif.message && notif.message.includes(c.customerName))
         );
       }
-
-      if (matchedCustomOrder) {
-        setSelectedCustomOrderForModal(matchedCustomOrder);
-      }
+      if (matchedCustomOrder) setSelectedCustomOrderForModal(matchedCustomOrder);
       setActiveTab('custom-orders');
       return;
     }
 
-    // 4. Handle Stock Notification -> Redirect to products tab
     if (notif.type === 'stock' || notif.linkTab === 'products') {
       setActiveTab('products');
       return;
     }
-
-    // 5. General fallback
-    if (notif.linkTab) {
-      setActiveTab(notif.linkTab);
-    } else {
-      setActiveTab('dashboard');
-    }
+    setActiveTab(notif.linkTab || 'dashboard');
   };
 
   const unreadCount = notifications.filter((n) => !n.read && !n.isRead).length;
+
+  if (isHydrating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#101318] text-gray-500 dark:text-gray-300">
+        Loading admin data…
+      </div>
+    );
+  }
 
   return (
     <AdminLayout
@@ -202,9 +218,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
       notifications={notifications}
       onNotificationClick={handleNotificationClick}
       onMarkAllNotificationsAsRead={() =>
-        handleSaveNotifications(
-          notifications.map((n) => ({ ...n, read: true, isRead: true }))
-        )
+        void handleSaveNotifications(notifications.map((n) => ({ ...n, read: true, isRead: true })))
       }
     >
       {activeTab === 'dashboard' && (
@@ -213,21 +227,11 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           customOrders={customOrders}
           products={products}
           onNavigateTab={setActiveTab}
-          onOpenNewProduct={() => {
-            setActiveTab('products');
-            setIsAddProductOpen(true);
-          }}
-          onOpenNewCustomOrder={() => {
-            setActiveTab('custom-orders');
-            setIsAddCustomOrderOpen(true);
-          }}
-          onSelectOrder={(ord) => {
-            setSelectedOrderForModal(ord);
-            setActiveTab('orders');
-          }}
+          onOpenNewProduct={() => { setActiveTab('products'); setIsAddProductOpen(true); }}
+          onOpenNewCustomOrder={() => { setActiveTab('custom-orders'); setIsAddCustomOrderOpen(true); }}
+          onSelectOrder={(ord) => { setSelectedOrderForModal(ord); setActiveTab('orders'); }}
         />
       )}
-
       {activeTab === 'products' && (
         <AdminProducts
           products={products}
@@ -236,7 +240,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           onCloseAddModal={() => setIsAddProductOpen(false)}
         />
       )}
-
       {activeTab === 'orders' && (
         <AdminOrders
           orders={orders}
@@ -245,7 +248,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           onClearSelectedOrder={() => setSelectedOrderForModal(null)}
         />
       )}
-
       {activeTab === 'custom-orders' && (
         <AdminCustomOrders
           customOrders={customOrders}
@@ -256,14 +258,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           onClearSelectedCustomOrder={() => setSelectedCustomOrderForModal(null)}
         />
       )}
-
-      {activeTab === 'customers' && (
-        <AdminCustomers
-          customers={customers}
-          onSaveCustomers={handleSaveCustomers}
-        />
-      )}
-
+      {activeTab === 'customers' && <AdminCustomers customers={customers} onSaveCustomers={handleSaveCustomers} />}
       {activeTab === 'notifications' && (
         <AdminNotifications
           notifications={notifications}
@@ -272,7 +267,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           onNotificationClick={handleNotificationClick}
         />
       )}
-
       {activeTab === 'settings' && (
         <AdminSettings
           settings={settings}
