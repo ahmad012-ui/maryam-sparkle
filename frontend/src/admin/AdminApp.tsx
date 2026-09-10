@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from './AdminLayout';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminProducts } from './AdminProducts';
@@ -18,12 +19,16 @@ import {
   StoreSettings,
 } from './types';
 import { adminStorage } from './adminData';
+import { authService } from '../services/authService';
 
 interface AdminAppProps {
   onBackToStore: () => void;
 }
 
 export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
+  const navigate = useNavigate();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAuthorizing, setIsAuthorizing] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [themeConfig, setThemeConfig] = useState<AdminThemeConfig>(adminStorage.getThemeConfig());
   const [products, setProducts] = useState<AdminProduct[]>([]);
@@ -40,9 +45,37 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
   const [selectedCustomOrderForModal, setSelectedCustomOrderForModal] = useState<AdminCustomOrder | null>(null);
 
   useEffect(() => {
+    let active = true;
+    const cleanupAuthListener = authService.initAuthListener();
+
+    (async () => {
+      try {
+        const allowed = await authService.isAdmin();
+        if (!active) return;
+        if (!allowed) {
+          navigate('/login', { replace: true });
+          return;
+        }
+        setIsAuthorized(true);
+      } catch (error) {
+        console.error('Admin authorization check failed:', error);
+        if (active) navigate('/login', { replace: true });
+      } finally {
+        if (active) setIsAuthorizing(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+      cleanupAuthListener();
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!isAuthorized) return;
     if (themeConfig.darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
-  }, [themeConfig.darkMode]);
+  }, [themeConfig.darkMode, isAuthorized]);
 
   const refreshFromSupabase = async () => {
     try {
@@ -60,6 +93,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
   };
 
   useEffect(() => {
+    if (!isAuthorized) return;
     let active = true;
     (async () => {
       try {
@@ -79,7 +113,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [isAuthorized]);
 
   const handleUpdateTheme = async (updated: AdminThemeConfig) => {
     setThemeConfig(updated);
@@ -188,6 +222,16 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
   };
 
   const unreadCount = notifications.filter((n) => !n.read && !n.isRead).length;
+
+  if (isAuthorizing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#101318] text-gray-500 dark:text-gray-300">
+        Checking admin access…
+      </div>
+    );
+  }
+
+  if (!isAuthorized) return null;
 
   if (isHydrating) {
     return (
