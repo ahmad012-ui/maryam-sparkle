@@ -44,6 +44,21 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
     else document.documentElement.classList.remove('dark');
   }, [themeConfig.darkMode]);
 
+  const refreshFromSupabase = async () => {
+    try {
+      const data = await adminStorage.hydrate();
+      setProducts(data.products);
+      setOrders(data.orders);
+      setCustomOrders(data.customOrders);
+      setCustomers(data.customers);
+      setNotifications(data.notifications);
+      setSettings(adminStorage.getSettings());
+      setThemeConfig(adminStorage.getThemeConfig());
+    } catch (error) {
+      console.error('Failed to refresh admin data from Supabase:', error);
+    }
+  };
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -66,15 +81,6 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
     return () => { active = false; };
   }, []);
 
-  const refreshNotifications = async (nextProducts = products, nextOrders = orders, nextCustomOrders = customOrders) => {
-    try {
-      const next = await adminStorage.getNotifications(nextProducts, nextOrders, nextCustomOrders);
-      setNotifications(next);
-    } catch (error) {
-      console.error('Failed to refresh admin notifications:', error);
-    }
-  };
-
   const handleUpdateTheme = async (updated: AdminThemeConfig) => {
     setThemeConfig(updated);
     try { await adminStorage.saveThemeConfig(updated); }
@@ -83,37 +89,25 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
 
   const handleSaveProducts = async (newProds: AdminProduct[]) => {
     setProducts(newProds);
-    try {
-      await adminStorage.saveProducts(newProds);
-      await refreshNotifications(newProds, orders, customOrders);
-    } catch (error) {
-      console.error('Failed to save products:', error);
-    }
+    try { await adminStorage.saveProducts(newProds); await refreshFromSupabase(); }
+    catch (error) { console.error('Failed to save products:', error); }
   };
 
   const handleSaveOrders = async (newOrders: AdminOrder[]) => {
     setOrders(newOrders);
-    try {
-      await adminStorage.saveOrders(newOrders);
-      await refreshNotifications(products, newOrders, customOrders);
-    } catch (error) {
-      console.error('Failed to save orders:', error);
-    }
+    try { await adminStorage.saveOrders(newOrders); await refreshFromSupabase(); }
+    catch (error) { console.error('Failed to save orders:', error); }
   };
 
   const handleSaveCustomOrders = async (newCustom: AdminCustomOrder[]) => {
     setCustomOrders(newCustom);
-    try {
-      await adminStorage.saveCustomOrders(newCustom);
-      await refreshNotifications(products, orders, newCustom);
-    } catch (error) {
-      console.error('Failed to save custom orders:', error);
-    }
+    try { await adminStorage.saveCustomOrders(newCustom); await refreshFromSupabase(); }
+    catch (error) { console.error('Failed to save custom orders:', error); }
   };
 
   const handleSaveCustomers = async (newCust: AdminCustomer[]) => {
     setCustomers(newCust);
-    try { await adminStorage.saveCustomers(newCust); }
+    try { await adminStorage.saveCustomers(newCust); await refreshFromSupabase(); }
     catch (error) { console.error('Failed to save customers:', error); }
   };
 
@@ -146,9 +140,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
 
     if (notif.type === 'order' || notif.linkTab === 'orders') {
       let matchedOrder: AdminOrder | undefined;
-      if (notif.targetId) {
-        matchedOrder = orders.find((o) => o.id === notif.targetId || o.orderNumber === notif.targetId);
-      }
+      if (notif.targetId) matchedOrder = orders.find((o) => o.id === notif.targetId || o.orderNumber === notif.targetId);
       if (!matchedOrder) {
         const matchRegex = (notif.title + ' ' + notif.message).match(/MS-?\d+/i);
         if (matchRegex) {
@@ -169,9 +161,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
 
     if (notif.type === 'custom' || notif.linkTab === 'custom-orders') {
       let matchedCustomOrder: AdminCustomOrder | undefined;
-      if (notif.targetId) {
-        matchedCustomOrder = customOrders.find((c) => c.id === notif.targetId || c.requestNumber === notif.targetId);
-      }
+      if (notif.targetId) matchedCustomOrder = customOrders.find((c) => c.id === notif.targetId || c.requestNumber === notif.targetId);
       if (!matchedCustomOrder) {
         const matchRegex = (notif.title + ' ' + notif.message).match(/REQ-?\w+/i);
         if (matchRegex) {
