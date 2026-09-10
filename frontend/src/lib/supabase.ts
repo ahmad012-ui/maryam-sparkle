@@ -1,35 +1,40 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Environment variables for Supabase connection
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL) as string | undefined;
+// Supabase project configuration. Environment variables can override these values,
+// while the public project URL/key keep the frontend functional when Vercel/local
+// environment variables have not been added yet.
+const DEFAULT_SUPABASE_URL = 'https://tfcuyfjyqqvononlvvdo.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_fKT_b9Vt9d9ssk1Nkq2KdA_jNycWPjo';
+
+const supabaseUrl = (
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.SUPABASE_URL ||
+  DEFAULT_SUPABASE_URL
+) as string;
+
 const supabaseAnonKey = (
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.SUPABASE_ANON_KEY
-) as string | undefined;
+  import.meta.env.SUPABASE_ANON_KEY ||
+  DEFAULT_SUPABASE_PUBLISHABLE_KEY
+) as string;
 
 /**
- * Validates if Supabase credentials are configured with valid formats
+ * Validates that the frontend has a usable Supabase URL and public key.
  */
 export function isSupabaseConfigured(): boolean {
   return (
     typeof supabaseUrl === 'string' &&
     supabaseUrl.trim().length > 0 &&
     supabaseUrl.startsWith('http') &&
-    !supabaseUrl.includes('your-project-id') &&
     typeof supabaseAnonKey === 'string' &&
-    supabaseAnonKey.trim().length > 0 &&
-    !supabaseAnonKey.includes('your-anon-public-key')
+    supabaseAnonKey.trim().length > 0
   );
 }
 
-// Fallback dummy client for preview / unconfigured environments to prevent initialization crashes
-const fallbackUrl = 'https://placeholder.supabase.co';
-const fallbackKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder';
-
 export const supabase: SupabaseClient = createClient(
-  isSupabaseConfigured() ? supabaseUrl! : fallbackUrl,
-  isSupabaseConfigured() ? supabaseAnonKey! : fallbackKey,
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
