@@ -193,13 +193,20 @@ if ($normalizedPath === 'orders' || str_starts_with($normalizedPath, 'orders/'))
     exit;
 }
 
-// 16. Route Foundation for Planned Modules (Phase 7+)
+// 16. Media API Endpoints: /api/v1/media/...
+if ($normalizedPath === 'media' || str_starts_with($normalizedPath, 'media/')) {
+    $routeSubPath = substr($normalizedPath, strlen('media'));
+    $routeSubPath = trim($routeSubPath, '/');
+    require __DIR__ . '/media/index.php';
+    exit;
+}
+
+// 17. Route Foundation for Planned Modules (Phase 8+)
 // Planned modules:
 // - /api/v1/users
 // - /api/v1/custom-orders
-// - /api/v1/media
 //
-// In Phase 6, any unhandled route returns a standardized 404 JSON response.
+// In Phase 7B, any unhandled route returns a standardized 404 JSON response.
 sendError('Route not found', [
     'path'   => '/' . $routePath,
     'method' => $method,

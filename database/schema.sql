@@ -291,6 +291,7 @@ CREATE TABLE payments (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id INT UNSIGNED NOT NULL,
     transaction_reference VARCHAR(255) NULL,
+    proof_of_payment_path VARCHAR(500) NULL,
     amount DECIMAL(10,2) NOT NULL,
     method ENUM('cod', 'easypaisa', 'jazzcash', 'bank_transfer') NOT NULL,
     status ENUM('pending', 'paid', 'failed', 'refunded') NOT NULL DEFAULT 'pending',

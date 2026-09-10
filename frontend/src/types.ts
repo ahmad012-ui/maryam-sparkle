@@ -142,6 +142,8 @@ export interface Order {
   couponCode?: string;
   total: number;
   paymentStatus: 'pending' | 'paid';
+  transactionReference?: string;
+  proofOfPaymentUrl?: string;
   courierName?: string;
   trackingNumber?: string;
   estimatedDelivery?: string;

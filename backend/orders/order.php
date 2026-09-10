@@ -102,7 +102,9 @@ class Order {
         array $customerData,
         ?int $addressId,
         ?array $newAddressData,
-        string $paymentMethod
+        string $paymentMethod,
+        ?string $transactionReference = null,
+        ?string $proofOfPaymentPath = null
     ): array {
         // Step 0: Ensure transaction is started
         $this->pdo->beginTransaction();
@@ -310,12 +312,14 @@ class Order {
             // Step 8: Insert payment record (Pending status, no fake gateway confirmations)
             $payInsert = $this->pdo->prepare(
                 'INSERT INTO payments (
-                    order_id, transaction_reference, amount, method, status, paid_at
+                    order_id, transaction_reference, proof_of_payment_path, amount, method, status, paid_at
                 ) VALUES (
-                    :order_id, NULL, :amount, :method, :status, NULL
+                    :order_id, :transaction_reference, :proof_of_payment_path, :amount, :method, :status, NULL
                 )'
             );
             $payInsert->bindValue(':order_id', $orderId, PDO::PARAM_INT);
+            $payInsert->bindValue(':transaction_reference', $transactionReference !== null && $transactionReference !== '' ? $transactionReference : null, $transactionReference !== null && $transactionReference !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL);
+            $payInsert->bindValue(':proof_of_payment_path', $proofOfPaymentPath !== null && $proofOfPaymentPath !== '' ? $proofOfPaymentPath : null, $proofOfPaymentPath !== null && $proofOfPaymentPath !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL);
             $payInsert->bindValue(':amount', $total, PDO::PARAM_STR);
             $payInsert->bindValue(':method', $paymentMethod, PDO::PARAM_STR);
             $payInsert->bindValue(':status', 'pending', PDO::PARAM_STR);
@@ -548,7 +552,7 @@ class Order {
 
         // Retrieve latest payment record
         $payStmt = $this->pdo->prepare(
-            'SELECT id, transaction_reference, amount, method, status, paid_at, created_at
+            'SELECT id, transaction_reference, proof_of_payment_path, amount, method, status, paid_at, created_at
              FROM payments
              WHERE order_id = :order_id
              ORDER BY id DESC
@@ -563,6 +567,7 @@ class Order {
             $payment = [
                 'id'                    => (int) $payRow['id'],
                 'transaction_reference' => $payRow['transaction_reference'] !== null ? (string) $payRow['transaction_reference'] : null,
+                'proof_of_payment_path' => $payRow['proof_of_payment_path'] !== null ? (string) $payRow['proof_of_payment_path'] : null,
                 'amount'                => (float) $payRow['amount'],
                 'method'                => (string) $payRow['method'],
                 'status'                => (string) $payRow['status'],

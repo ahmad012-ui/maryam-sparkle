@@ -8,6 +8,8 @@ export interface CreateOrderPayload {
   shippingAddress: { address: string; city: string; postalCode: string; province?: string; country: string };
   deliveryMethod: { id: 'standard' | 'express'; title: string; cost: number; estimatedDays: string };
   paymentMethod: { id: PaymentMethodId; title: string; instructions?: string };
+  transactionReference?: string;
+  proofOfPaymentUrl?: string;
   items: CartItem[];
   subtotal: number;
   shippingCost: number;
@@ -239,6 +241,8 @@ function mapBackendOrderToOrder(raw: any, fallbackPayload?: CreateOrderPayload):
     couponCode: fallbackPayload?.couponCode,
     total: parseFloat(raw.total) || fallbackPayload?.total || 0,
     paymentStatus: (raw.payment_status || 'Pending').toLowerCase() === 'paid' ? 'paid' : 'pending',
+    transactionReference: raw.transaction_reference || raw.payment?.transaction_reference || fallbackPayload?.transactionReference,
+    proofOfPaymentUrl: raw.proof_of_payment_path || raw.payment?.proof_of_payment_path || fallbackPayload?.proofOfPaymentUrl,
     courierName: raw.courier_name || undefined,
     trackingNumber: raw.tracking_number || undefined,
     estimatedDelivery: raw.estimated_delivery || undefined,
@@ -495,6 +499,8 @@ export const orderService = {
       const body = {
         order_number: orderNumber,
         payment_method: orderPayload.paymentMethod.id,
+        transaction_reference: orderPayload.transactionReference || '',
+        proof_of_payment_path: orderPayload.proofOfPaymentUrl || '',
         customer: {
           name: orderPayload.customer.fullName,
           email: orderPayload.customer.email,

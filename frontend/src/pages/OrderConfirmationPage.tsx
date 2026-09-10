@@ -229,6 +229,49 @@ export const OrderConfirmationPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Payment Details */}
+            <div className="bg-[#fdfaf5] rounded-3xl p-6 border border-[#e0d8c8] shadow-xs space-y-3">
+              <h3 className="font-serif text-base text-[#333333] pb-2 border-b border-[#e0d8c8]">
+                Payment Information
+              </h3>
+              <div className="space-y-2 text-xs text-[#555555]">
+                <div className="flex justify-between items-center">
+                  <span>Method:</span>
+                  <strong className="text-[#333333]">{order.paymentMethod.title}</strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Payment Status:</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    order.paymentStatus === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : order.paymentStatus === 'Failed'
+                      ? 'bg-red-100 text-red-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {order.paymentStatus || 'Pending Verification'}
+                  </span>
+                </div>
+                {order.transactionReference && (
+                  <div className="flex justify-between items-center pt-1 border-t border-[#e0d8c8]/60">
+                    <span>Transaction Ref:</span>
+                    <strong className="text-[#333333] font-mono">{order.transactionReference}</strong>
+                  </div>
+                )}
+                {order.proofOfPaymentUrl && (
+                  <div className="pt-2 border-t border-[#e0d8c8]/60">
+                    <span className="block mb-1.5 text-[11px] text-[#666666]">Attached Proof of Payment:</span>
+                    <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#efe8dc] border border-[#e0d8c8]">
+                      <img
+                        src={order.proofOfPaymentUrl}
+                        alt="Payment Proof"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="bg-[#2d5a61]/10 rounded-3xl p-6 border border-[#2d5a61]/20 space-y-3">
               <h4 className="font-serif text-sm font-semibold text-[#2d5a61] flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />

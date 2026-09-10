@@ -53,6 +53,23 @@ if ($method === 'POST' && $subPath === '') {
         ], 422);
     }
 
+    // 1b. Validate proof of payment & transaction reference for non-COD payment methods
+    $proofOfPaymentPath = isset($input['proof_of_payment_path']) ? trim((string)$input['proof_of_payment_path']) : (isset($input['proof_of_payment']) ? trim((string)$input['proof_of_payment']) : '');
+    $transactionReference = isset($input['transaction_reference']) ? trim((string)$input['transaction_reference']) : (isset($input['transaction_id']) ? trim((string)$input['transaction_id']) : '');
+
+    if ($paymentMethod !== 'cod') {
+        $paymentErrors = [];
+        if ($proofOfPaymentPath === '') {
+            $paymentErrors['proof_of_payment_path'] = 'Proof of payment screenshot is required for ' . ucfirst($paymentMethod) . ' orders.';
+        }
+        if ($transactionReference === '') {
+            $paymentErrors['transaction_reference'] = 'Transaction/Reference ID is required for ' . ucfirst($paymentMethod) . ' orders.';
+        }
+        if (!empty($paymentErrors)) {
+            sendError('Validation failed', $paymentErrors, 422);
+        }
+    }
+
     // 2. Resolve existing cart
     $cart = $cartModel->resolveCurrentCart($userId, $guestToken, false);
     if (!$cart) {
@@ -192,7 +209,9 @@ if ($method === 'POST' && $subPath === '') {
             $customerData,
             $addressId,
             $newAddressData,
-            $paymentMethod
+            $paymentMethod,
+            $transactionReference !== '' ? $transactionReference : null,
+            $proofOfPaymentPath !== '' ? $proofOfPaymentPath : null
         );
 
         sendSuccess('Order created successfully', [

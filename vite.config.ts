@@ -74,6 +74,22 @@ function apiMockPlugin(): Plugin {
           return;
         }
 
+        // Handle Media upload endpoint
+        if (req.url.startsWith('/api/v1/media/upload') && req.method === 'POST') {
+          const uniqueId = Math.random().toString(36).substring(2, 10);
+          const timestamp = Date.now();
+          const mockUrl = `/uploads/payment-proofs/${uniqueId}_${timestamp}.jpg`;
+          res.statusCode = 200;
+          res.end(
+            JSON.stringify({
+              success: true,
+              message: 'File uploaded successfully',
+              data: { url: mockUrl },
+            })
+          );
+          return;
+        }
+
         // Handle Cart endpoints
         if (req.url.startsWith('/api/v1/cart')) {
           res.statusCode = 200;

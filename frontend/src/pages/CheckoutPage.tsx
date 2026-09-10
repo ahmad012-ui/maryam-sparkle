@@ -14,12 +14,24 @@ import {
   User,
   MapPin,
   LogOut,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  X,
+  Copy,
+  Check,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { CartItem, Order, UserProfile, UserAddress, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { orderService } from '../services/orderService';
 import { cartService } from '../services/cartService';
 import { authService } from '../services/authService';
+import {
+  uploadImageFile,
+  validateImageFile,
+  createLocalPreviewUrl,
+  revokeLocalPreviewUrl
+} from '../services/imageUploadService';
 import {
   sanitizePhoneNumber,
   isValidPhoneNumber,
@@ -75,13 +87,78 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
     country: 'Pakistan',
     deliveryMethod: 'standard' as 'standard' | 'express',
     paymentMethod: PAYMENT_METHODS.COD as PaymentMethodId,
+    transactionReference: '',
     notes: ''
   });
+
+  const [proofOfPaymentUrl, setProofOfPaymentUrl] = useState<string>('');
+  const [proofOfPaymentPreview, setProofOfPaymentPreview] = useState<string>('');
+  const [isUploadingProof, setIsUploadingProof] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const [couponCode, setCouponCode] = useState('SPARKLE10');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Clean up Object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (proofOfPaymentPreview) {
+        revokeLocalPreviewUrl(proofOfPaymentPreview);
+      }
+    };
+  }, [proofOfPaymentPreview]);
+
+  // Handle proof of payment file upload
+  const handleProofFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error || 'Invalid file format or size');
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingProof(true);
+
+    // Set temporary local preview
+    const preview = createLocalPreviewUrl(file);
+    setProofOfPaymentPreview(preview);
+
+    try {
+      const uploadedUrl = await uploadImageFile(file, 'payment-proofs');
+      setProofOfPaymentUrl(uploadedUrl);
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.proofOfPayment;
+        return next;
+      });
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to upload proof of payment. Please try again.');
+      setProofOfPaymentUrl('');
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  const handleRemoveProof = () => {
+    if (proofOfPaymentPreview) {
+      revokeLocalPreviewUrl(proofOfPaymentPreview);
+    }
+    setProofOfPaymentPreview('');
+    setProofOfPaymentUrl('');
+    setUploadError(null);
+  };
+
+  const handleCopy = (text: string, fieldKey: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedField(fieldKey);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   // Backend Cart synchronization (Phase 7: Real Cart API)
   const [liveCart, setLiveCart] = useState<CartItem[]>(cart);
@@ -197,6 +274,17 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
     if (formData.postalCode && !isValidPostalCode(formData.postalCode)) {
       errors.postalCode = 'Postal code must be 4 to 6 digits';
     }
+
+    // Strict validation for Non-COD payment methods (Easypaisa, JazzCash, Bank Transfer)
+    if (formData.paymentMethod !== PAYMENT_METHODS.COD) {
+      if (!formData.transactionReference.trim()) {
+        errors.transactionReference = 'Transaction/Reference ID is required';
+      }
+      if (!proofOfPaymentUrl.trim()) {
+        errors.proofOfPayment = 'Proof of payment screenshot is required';
+      }
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -213,6 +301,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         formData.deliveryMethod === 'express'
           ? 'Express Courier (1-2 Days)'
           : 'Standard Tracked Delivery (2-4 Days)';
+
+      const isNonCod = formData.paymentMethod !== PAYMENT_METHODS.COD;
 
       const newOrder: Order = await orderService.createOrder({
         customer: {
@@ -235,8 +325,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         },
         paymentMethod: {
           id: formData.paymentMethod,
-          title: PAYMENT_METHOD_TITLES[formData.paymentMethod]
+          title: PAYMENT_METHOD_TITLES[formData.paymentMethod],
+          instructions: isNonCod ? `Ref: ${formData.transactionReference.trim()}` : undefined
         },
+        transactionReference: isNonCod ? formData.transactionReference.trim() : undefined,
+        proofOfPaymentUrl: isNonCod ? proofOfPaymentUrl.trim() : undefined,
         items: [...activeCart],
         subtotal,
         shippingCost: shippingFee,
@@ -709,11 +802,292 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                         Direct Online Bank Transfer (Meezan / HBL)
                       </span>
                       <p className="text-[11px] text-[#666666] mt-1">
-                        Bank details are displayed on the confirmation receipt.
+                        Transfer to our official Meezan Bank account and submit transaction receipt.
                       </p>
                     </div>
                   </label>
                 </div>
+
+                {/* Non-COD Payment Details & Proof Upload Section */}
+                {formData.paymentMethod !== PAYMENT_METHODS.COD ? (
+                  <div className="mt-5 p-5 bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-2xl space-y-4">
+                    {/* Method-specific transfer info box */}
+                    {formData.paymentMethod === PAYMENT_METHODS.EASYPAISA && (
+                      <div className="bg-white/80 p-4 rounded-xl border border-[#e0d8c8] text-xs space-y-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-[#e0d8c8]">
+                          <span className="font-serif font-bold text-[#2d5a61]">EasyPaisa Transfer Details</span>
+                          <span className="font-semibold text-[#333333]">Amount: Rs. {total.toLocaleString()}</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                          <div>
+                            <span className="text-[#666666] block">Mobile Number:</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <strong className="text-[#333333] font-mono text-xs">0300-1234567</strong>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy('03001234567', 'easypaisa_num')}
+                                className="text-[10px] text-[#2d5a61] hover:underline flex items-center gap-0.5"
+                              >
+                                {copiedField === 'easypaisa_num' ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-600">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[#666666] block">Account Title:</span>
+                            <strong className="text-[#333333] text-xs">Maryam Sparkle Studio</strong>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-[#666666] italic pt-1">
+                          Please send the exact order amount (Rs. {total.toLocaleString()}) via your EasyPaisa app.
+                        </p>
+                      </div>
+                    )}
+
+                    {formData.paymentMethod === PAYMENT_METHODS.JAZZCASH && (
+                      <div className="bg-white/80 p-4 rounded-xl border border-[#e0d8c8] text-xs space-y-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-[#e0d8c8]">
+                          <span className="font-serif font-bold text-[#2d5a61]">JazzCash Transfer Details</span>
+                          <span className="font-semibold text-[#333333]">Amount: Rs. {total.toLocaleString()}</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                          <div>
+                            <span className="text-[#666666] block">Mobile Number:</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <strong className="text-[#333333] font-mono text-xs">0300-7654321</strong>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy('03007654321', 'jazzcash_num')}
+                                className="text-[10px] text-[#2d5a61] hover:underline flex items-center gap-0.5"
+                              >
+                                {copiedField === 'jazzcash_num' ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-600">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[#666666] block">Account Title:</span>
+                            <strong className="text-[#333333] text-xs">Maryam Sparkle Studio</strong>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-[#666666] italic pt-1">
+                          Please send the exact order amount (Rs. {total.toLocaleString()}) via your JazzCash app.
+                        </p>
+                      </div>
+                    )}
+
+                    {formData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER && (
+                      <div className="bg-white/80 p-4 rounded-xl border border-[#e0d8c8] text-xs space-y-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-[#e0d8c8]">
+                          <span className="font-serif font-bold text-[#2d5a61]">Bank Transfer Details</span>
+                          <span className="font-semibold text-[#333333]">Amount: Rs. {total.toLocaleString()}</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-[11px]">
+                          <div>
+                            <span className="text-[#666666] block">Bank Name:</span>
+                            <strong className="text-[#333333]">Meezan Bank Limited</strong>
+                          </div>
+                          <div>
+                            <span className="text-[#666666] block">Account Title:</span>
+                            <strong className="text-[#333333]">Maryam Sparkle Studio</strong>
+                          </div>
+                          <div>
+                            <span className="text-[#666666] block">Account Number:</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <strong className="text-[#333333] font-mono">01020304050607</strong>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy('01020304050607', 'bank_acc')}
+                                className="text-[10px] text-[#2d5a61] hover:underline flex items-center gap-0.5"
+                              >
+                                {copiedField === 'bank_acc' ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-600">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[#666666] block">IBAN:</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <strong className="text-[#333333] font-mono text-[10px]">PK36MEZN0001020304050607</strong>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy('PK36MEZN0001020304050607', 'bank_iban')}
+                                className="text-[10px] text-[#2d5a61] hover:underline flex items-center gap-0.5"
+                              >
+                                {copiedField === 'bank_iban' ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-600">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Transaction Reference ID Input */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#333333] mb-1.5">
+                        Transaction / Reference ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.transactionReference}
+                        onChange={(e) => {
+                          setFormData({ ...formData, transactionReference: e.target.value });
+                          if (formErrors.transactionReference) {
+                            setFormErrors((prev) => {
+                              const next = { ...prev };
+                              delete next.transactionReference;
+                              return next;
+                            });
+                          }
+                        }}
+                        placeholder="e.g. TRX12345678 or 0987654321"
+                        className={`w-full bg-white border ${
+                          formErrors.transactionReference ? 'border-red-400 bg-red-50/20' : 'border-[#e0d8c8]'
+                        } rounded-xl px-4 py-2.5 text-xs text-[#333333] focus:outline-none focus:border-[#2d5a61]`}
+                      />
+                      {formErrors.transactionReference && (
+                        <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {formErrors.transactionReference}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Proof of Payment Upload */}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#333333] mb-1.5">
+                        Proof of Payment Screenshot <span className="text-red-500">*</span>
+                      </label>
+
+                      {proofOfPaymentPreview || proofOfPaymentUrl ? (
+                        <div className="bg-white p-3 rounded-xl border border-[#e0d8c8] flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-12 h-12 rounded-lg bg-[#efe8dc] overflow-hidden shrink-0 border border-[#e0d8c8]">
+                              <img
+                                src={proofOfPaymentPreview || proofOfPaymentUrl}
+                                alt="Payment proof receipt"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-[#333333] truncate flex items-center gap-1.5">
+                                {isUploadingProof ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2d5a61]" />
+                                    <span>Uploading proof to server...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span className="text-emerald-700">Payment receipt attached</span>
+                                  </>
+                                )}
+                              </p>
+                              <span className="text-[10px] text-[#777777]">
+                                {isUploadingProof ? 'Please wait a moment' : 'Receipt verified & ready'}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemoveProof}
+                            disabled={isUploadingProof}
+                            className="p-1.5 text-[#888888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                            title="Remove screenshot"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          className={`flex flex-col items-center justify-center p-5 border-2 border-dashed rounded-xl cursor-pointer transition-all bg-white hover:bg-[#efe8dc]/20 ${
+                            formErrors.proofOfPayment ? 'border-red-400 bg-red-50/20' : 'border-[#d4cbb8]'
+                          }`}
+                        >
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp"
+                            onChange={handleProofFileUpload}
+                            disabled={isUploadingProof}
+                            className="hidden"
+                          />
+                          {isUploadingProof ? (
+                            <div className="flex flex-col items-center gap-2 py-2">
+                              <Loader2 className="w-6 h-6 animate-spin text-[#2d5a61]" />
+                              <span className="text-xs text-[#666666]">Uploading screenshot...</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1.5 text-center">
+                              <div className="w-9 h-9 rounded-full bg-[#efe8dc] flex items-center justify-center text-[#2d5a61]">
+                                <Upload className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-semibold text-[#2d5a61]">Click to upload payment screenshot</span>
+                              <span className="text-[11px] text-[#888888]">JPG, PNG, or WEBP (Max 5MB)</span>
+                            </div>
+                          )}
+                        </label>
+                      )}
+
+                      {uploadError && (
+                        <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {uploadError}
+                        </p>
+                      )}
+
+                      {formErrors.proofOfPayment && !uploadError && (
+                        <p className="text-[11px] text-red-500 mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          {formErrors.proofOfPayment}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 p-4 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-center gap-3">
+                    <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0" />
+                    <p className="text-xs text-emerald-900 leading-relaxed">
+                      <strong>Cash on Delivery:</strong> No advance payment or screenshot needed. Please have <strong>Rs. {total.toLocaleString()}</strong> ready upon delivery.
+                    </p>
+                  </div>
+                )}
 
                 {/* Special Artisan Instructions note */}
                 <div className="mt-5">
