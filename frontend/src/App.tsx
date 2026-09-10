@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { PRODUCTS, CATEGORIES } from './data/products';
 import { Product, CartItem } from './types';
+import { cartService } from './services/cartService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
@@ -50,12 +51,27 @@ function MainApp() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Initial cart items (3 items matching the design badge)
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { product: PRODUCTS[0], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Gold-Tone' },
-    { product: PRODUCTS[1], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Gold-Tone' },
-    { product: PRODUCTS[2], quantity: 1, selectedSize: 'Medium (6.5")', selectedFinish: 'Silver-Tone' },
-  ]);
+  // Cart items synced with real backend Cart API (Phase 5 & 7)
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  // Load cart from backend on initial mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBackendCart() {
+      try {
+        const res = await cartService.getCart();
+        if (isMounted && res.items && res.items.length > 0) {
+          setCartItems(res.items);
+        }
+      } catch (err) {
+        console.warn('Initial backend cart fetch error in App:', err);
+      }
+    }
+    loadBackendCart();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [wishlistIds, setWishlistIds] = useState<string[]>([PRODUCTS[0].id]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -88,72 +104,110 @@ function MainApp() {
     );
   }
 
-  // Cart operations
-  const handleAddToCart = (
+  // Cart operations with backend synchronization
+  const handleAddToCart = async (
     product: Product,
     size?: string,
     finish?: string,
     customNote?: string
   ) => {
-    const itemSize = size || 'Medium (6.5")';
-    const itemFinish = finish || product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) =>
-          item.product.id === product.id &&
-          item.selectedSize === itemSize &&
-          item.selectedFinish === itemFinish
-      );
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex].quantity += 1;
-        return updated;
+    try {
+      const updated = await cartService.addItem(product, 1);
+      if (updated && updated.length > 0) {
+        setCartItems(updated);
       }
-      return [
-        ...prev,
-        {
-          product,
-          quantity: 1,
-          selectedSize: itemSize,
-          selectedFinish: itemFinish,
-          customNote,
-        },
-      ];
-    });
+    } catch (err) {
+      console.warn('Backend addItem error, falling back locally:', err);
+      const itemSize = size || 'Medium (6.5")';
+      const itemFinish = finish || product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
+      setCartItems((prev) => {
+        const existingIndex = prev.findIndex(
+          (item) =>
+            item.product.id === product.id &&
+            item.selectedSize === itemSize &&
+            item.selectedFinish === itemFinish
+        );
+        if (existingIndex > -1) {
+          const updated = [...prev];
+          updated[existingIndex].quantity += 1;
+          return updated;
+        }
+        return [
+          ...prev,
+          {
+            product,
+            quantity: 1,
+            selectedSize: itemSize,
+            selectedFinish: itemFinish,
+            customNote,
+          },
+        ];
+      });
+    }
     setIsCartOpen(true);
   };
 
-  const handleUpdateQuantity = (productId: string, delta: number, size?: string, finish?: string) => {
-    setCartItems((prev) =>
-      prev
-        .map((item) => {
+  const handleUpdateQuantity = async (productId: string, delta: number, size?: string, finish?: string) => {
+    const item = cartItems.find(
+      (it) =>
+        it.product.id === productId &&
+        (!size || it.selectedSize === size) &&
+        (!finish || it.selectedFinish === finish)
+    );
+    if (!item) return;
+
+    const newQty = item.quantity + delta;
+    try {
+      if (newQty <= 0) {
+        const updated = await cartService.removeItem(productId);
+        setCartItems(updated);
+      } else {
+        const updated = await cartService.updateQuantity(productId, newQty);
+        setCartItems(updated);
+      }
+    } catch (err) {
+      console.warn('Backend updateQuantity error, updating locally:', err);
+      setCartItems((prev) =>
+        prev
+          .map((it) => {
+            const isMatch =
+              it.product.id === productId &&
+              (!size || it.selectedSize === size) &&
+              (!finish || it.selectedFinish === finish);
+            if (isMatch) {
+              return newQty > 0 ? { ...it, quantity: newQty } : null;
+            }
+            return it;
+          })
+          .filter(Boolean) as CartItem[]
+      );
+    }
+  };
+
+  const handleRemoveFromCart = async (productId: string, size?: string, finish?: string) => {
+    try {
+      const updated = await cartService.removeItem(productId);
+      setCartItems(updated);
+    } catch (err) {
+      console.warn('Backend removeItem error, updating locally:', err);
+      setCartItems((prev) =>
+        prev.filter((item) => {
           const isMatch =
             item.product.id === productId &&
             (!size || item.selectedSize === size) &&
             (!finish || item.selectedFinish === finish);
-          if (isMatch) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
+          return !isMatch;
         })
-        .filter(Boolean) as CartItem[]
-    );
+      );
+    }
   };
 
-  const handleRemoveFromCart = (productId: string, size?: string, finish?: string) => {
-    setCartItems((prev) =>
-      prev.filter((item) => {
-        const isMatch =
-          item.product.id === productId &&
-          (!size || item.selectedSize === size) &&
-          (!finish || item.selectedFinish === finish);
-        return !isMatch;
-      })
-    );
-  };
-
-  const handleClearCart = () => {
+  const handleClearCart = async () => {
+    try {
+      await cartService.clearCart();
+    } catch (err) {
+      console.warn('Backend clearCart error:', err);
+    }
     setCartItems([]);
   };
 

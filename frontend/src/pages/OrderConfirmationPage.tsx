@@ -125,7 +125,7 @@ export const OrderConfirmationPage: React.FC = () => {
               <Calendar className="w-5 h-5 text-[#2d5a61] shrink-0" />
               <div>
                 <span className="text-[11px] text-[#666666] block">Estimated Delivery</span>
-                <strong className="text-xs text-[#333333]">{order.estimatedDelivery}</strong>
+                <strong className="text-xs text-[#333333]">{order.estimatedDelivery || 'Pending dispatch calculation'}</strong>
               </div>
             </div>
 
@@ -141,7 +141,7 @@ export const OrderConfirmationPage: React.FC = () => {
               <Truck className="w-5 h-5 text-[#2d5a61] shrink-0" />
               <div>
                 <span className="text-[11px] text-[#666666] block">Courier Service</span>
-                <strong className="text-xs text-[#333333]">{order.courierName || 'TCS Express'}</strong>
+                <strong className="text-xs text-[#333333]">{order.courierName || 'Not assigned yet'}</strong>
               </div>
             </div>
           </div>

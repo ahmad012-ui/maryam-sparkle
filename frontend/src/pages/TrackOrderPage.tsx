@@ -286,9 +286,9 @@ function convertOrderToTrackingOrder(ord: Order): TrackingOrder {
     destinationCity: `${ord.shippingAddress.city}, ${ord.shippingAddress.province || 'Pakistan'}`,
     address: `${ord.shippingAddress.address}, ${ord.shippingAddress.city}`,
     orderDate: new Date(ord.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    estimatedDelivery: ord.estimatedDelivery || 'In 2-3 business days',
-    carrier: ord.courierName || 'TCS Express Logistics',
-    trackingNumber: ord.trackingNumber || `TCS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+    estimatedDelivery: ord.estimatedDelivery || 'Pending dispatch calculation',
+    carrier: ord.courierName || 'Not assigned yet',
+    trackingNumber: ord.trackingNumber || 'Not assigned yet',
     paymentMethod: ord.paymentMethod.title,
     paymentStatus: ord.paymentStatus === 'paid' ? 'Paid' : 'Pending Cash on Delivery',
     currentStep: stepMap[ord.status] || 1,
@@ -360,73 +360,9 @@ export const TrackOrderPage: React.FC = () => {
       return;
     }
 
-    // 3. Fallback dynamically generated order if not in storage
-    const dynamicOrder: TrackingOrder = {
-        id: cleanQuery.startsWith('MS-') ? cleanQuery : `MS-${cleanQuery.slice(-4) || '5501'}`,
-        customerName: 'Valued Sparkle Patron',
-        phone: cleanQuery.startsWith('03') ? cleanQuery : '0300-1234567',
-        destinationCity: 'Pakistan',
-        address: 'Standard Domestic Delivery Address',
-        orderDate: 'Recent Order',
-        estimatedDelivery: 'Estimated in 2-3 business days',
-        carrier: 'TCS Express Logistics',
-        trackingNumber: `TCS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-        paymentMethod: 'Cash on Delivery (COD)',
-        paymentStatus: 'Pending Cash on Delivery',
-        currentStep: 3,
-        statusText: 'Packaging & Quality Inspection',
-        statusDescription: 'Your jewelry has been handcrafted and is undergoing ultrasonic polishing & gift wrapping.',
-        items: [
-          {
-            productId: PRODUCTS[0].id,
-            productName: PRODUCTS[0].name,
-            image: PRODUCTS[0].image,
-            quantity: 1,
-            price: PRODUCTS[0].price,
-            size: 'Medium (6.5")',
-            finish: '18k Gold Finish'
-          }
-        ],
-        timeline: [
-          {
-            title: 'Order Confirmed',
-            description: 'Order registered in our atelier system.',
-            timestamp: 'Yesterday',
-            completed: true
-          },
-          {
-            title: 'Handcrafted at Atelier',
-            description: 'Assembled by hand with natural stones.',
-            timestamp: 'Today, Morning',
-            completed: true
-          },
-          {
-            title: 'Velvet Packaging & QA',
-            description: 'Polished and packaged in luxury pouch.',
-            timestamp: 'In Progress',
-            completed: true
-          },
-          {
-            title: 'Courier Dispatch',
-            description: 'Handover to courier rider.',
-            timestamp: 'Upcoming',
-            completed: false
-          },
-          {
-            title: 'Out for Delivery',
-            description: 'Delivery to your doorstep.',
-            timestamp: 'Upcoming',
-            completed: false
-          },
-          {
-            title: 'Delivered',
-            description: 'Delivered & signed.',
-            timestamp: 'Expected Soon',
-            completed: false
-          }
-        ]
-      };
-      setActiveOrder(dynamicOrder);
+    // 3. Order not found
+    setActiveOrder(null);
+    setErrorMessage(`We could not locate any order with ID or details "${cleanQuery}". Please double check your order number.`);
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {

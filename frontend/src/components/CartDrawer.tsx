@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck, Truck, User } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, CheckCircle2, Sparkles, Tag, ShieldCheck, Truck, User, AlertCircle } from 'lucide-react';
 import { CartItem } from '../types';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { authService } from '../services/authService';
@@ -41,6 +41,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     orderNotes: '',
   });
   const [phoneError, setPhoneError] = useState('');
+  const [drawerError, setDrawerError] = useState<string | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   const currentUser = authService.getCurrentUser();
@@ -48,6 +49,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   // Prefill when drawer opens if logged in
   useEffect(() => {
     if (isOpen) {
+      setDrawerError(null);
       const user = authService.getCurrentUser();
       if (user) {
         const defAddr = user.addresses.find((a) => a.isDefault) || user.addresses[0];
@@ -95,6 +97,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
+    setDrawerError(null);
+
     if (!isValidPhoneNumber(checkoutData.phone)) {
       setPhoneError('Please enter a valid phone number (e.g. 0300 1234567 or +92 300 1234567)');
       return;
@@ -107,6 +111,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setIsSubmittingOrder(true);
 
     try {
+      const pmId = checkoutData.paymentMethod === 'bank' ? 'bank_transfer' : (checkoutData.paymentMethod as any);
+      const pmTitle =
+        checkoutData.paymentMethod === 'cod'
+          ? 'Cash on Delivery (COD)'
+          : checkoutData.paymentMethod === 'easypaisa'
+          ? 'EasyPaisa Mobile Account'
+          : 'Direct Bank Transfer';
+
       const newOrder = await orderService.createOrder({
         customer: {
           fullName: checkoutData.fullName.trim(),
@@ -126,8 +138,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
           estimatedDays: '2-4 Days'
         },
         paymentMethod: {
-          id: checkoutData.paymentMethod as any,
-          title: checkoutData.paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Direct Bank / Mobile Wallet'
+          id: pmId,
+          title: pmTitle
         },
         items: [...cartItems],
         subtotal,
@@ -141,8 +153,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       setOrderId(newOrder.orderNumber);
       setOrderComplete(true);
       onClearCart();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating order from drawer:', err);
+      setDrawerError(err?.message || 'We could not complete your order at this time. Please try again.');
     } finally {
       setIsSubmittingOrder(false);
     }
@@ -395,12 +408,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
               </div>
 
+              {drawerError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{drawerError}</span>
+                </div>
+              )}
+
               <button
                 type="submit"
-                className="w-full bg-[#2d5a61] text-white py-3.5 rounded-full font-medium text-sm hover:bg-[#1e3c41] transition-colors shadow-md flex items-center justify-center gap-2"
+                disabled={isSubmittingOrder}
+                className="w-full bg-[#2d5a61] text-white py-3.5 rounded-full font-medium text-sm hover:bg-[#1e3c41] transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span>Place Handcrafted Order</span>
-                <ArrowRight className="w-4 h-4" />
+                {isSubmittingOrder ? (
+                  <span>Securing Handcrafted Order...</span>
+                ) : (
+                  <>
+                    <span>Place Handcrafted Order</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           </div>

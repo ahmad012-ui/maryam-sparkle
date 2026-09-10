@@ -1,426 +1,542 @@
 import { Order, CartItem, OrderTimelineStep, OrderStatus } from '../types';
+import { PRODUCTS } from '../data/products';
+import { adminStorage } from '../admin/adminData';
+import { AdminOrder, AdminNotification } from '../admin/types';
 
-const ORDERS_STORAGE_KEY = 'maryam_sparkle_orders_v1';
+export interface CreateOrderPayload {
+  customer: { fullName: string; email: string; phone: string };
+  shippingAddress: { address: string; city: string; postalCode: string; province?: string; country: string };
+  deliveryMethod: { id: 'standard' | 'express'; title: string; cost: number; estimatedDays: string };
+  paymentMethod: { id: 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer'; title: string; instructions?: string };
+  items: CartItem[];
+  subtotal: number;
+  shippingCost: number;
+  discount: number;
+  couponCode?: string;
+  total: number;
+  notes?: string;
+}
 
-const INITIAL_DEMO_ORDERS: Order[] = [
-  {
-    id: 'ord-8291',
-    orderNumber: 'MS-8291',
-    createdAt: '2026-03-01T10:30:00.000Z',
-    status: 'shipped',
-    customer: {
-      fullName: 'Ayesha Khan',
-      email: 'ayesha.khan@example.com',
-      phone: '+92 300 9876543'
-    },
-    shippingAddress: {
-      address: 'House 42, Street 15, Sector F-7/2',
-      city: 'Islamabad',
-      postalCode: '44000',
-      province: 'Federal Capital',
-      country: 'Pakistan'
-    },
-    deliveryMethod: {
-      id: 'standard',
-      title: 'Standard Tracked Delivery (TCS Express)',
-      cost: 200,
-      estimatedDays: '2-4 Business Days'
-    },
-    paymentMethod: {
-      id: 'cod',
-      title: 'Cash on Delivery (COD)'
-    },
-    items: [
-      {
-        product: {
-          id: 'ruby-star-bracelet',
-          slug: 'ruby-star-bracelet',
-          name: 'Ruby Star Bracelet',
-          category: 'Bracelets',
-          price: 1850,
-          image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe',
-          images: [],
-          description: 'An enchanting handcrafted bracelet strung with crimson glass beads and a charming star motif.',
-          materials: ['Beads', 'Gold-Tone Hardware', 'Charms'],
-          stock: 12,
-          inStock: true
-        },
-        quantity: 1,
-        selectedSize: 'Medium (6.5")',
-        selectedFinish: 'Gold-Tone'
-      },
-      {
-        product: {
-          id: 'pearl-drop-bracelet',
-          slug: 'pearl-drop-bracelet',
-          name: 'Pearl Drop Bracelet',
-          category: 'Bracelets',
-          price: 1650,
-          image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ',
-          images: [],
-          description: 'Delicate luminous beads gracefully strung on linked chain with gold-tone hardware.',
-          materials: ['Beads', 'Gold-Tone Hardware', 'Chain'],
-          stock: 16,
-          inStock: true
-        },
-        quantity: 1,
-        selectedSize: 'Standard',
-        selectedFinish: 'Gold-Tone'
-      }
-    ],
-    subtotal: 3500,
-    shippingCost: 0,
-    discount: 350,
-    couponCode: 'SPARKLE10',
-    total: 3150,
-    paymentStatus: 'pending',
-    courierName: 'TCS Express Courier',
-    trackingNumber: 'TCS-9281746201',
-    estimatedDelivery: 'March 4, 2026',
-    timeline: [
-      {
-        status: 'placed',
-        title: 'Order Placed',
-        description: 'Your order was received and queued for artisan crafting.',
-        date: 'March 1, 2026 · 10:30 AM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'confirmed',
-        title: 'Artisan Confirmed',
-        description: 'Beads and hardware components verified in Maryam Sparkle Studio.',
-        date: 'March 1, 2026 · 12:15 PM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'processing',
-        title: 'Handcrafted & Packed',
-        description: 'Beaded by hand, polished, and tucked into signature gift box.',
-        date: 'March 2, 2026 · 03:45 PM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'shipped',
-        title: 'Dispatched with Courier',
-        description: 'Handed over to TCS Express. In transit to Islamabad sorting facility.',
-        date: 'March 3, 2026 · 09:00 AM',
-        completed: true,
-        current: true
-      },
-      {
-        status: 'out_for_delivery',
-        title: 'Out for Delivery',
-        description: 'Courier rider will arrive with your parcel soon.',
-        date: 'Pending arrival',
-        completed: false,
-        current: false
-      },
-      {
-        status: 'delivered',
-        title: 'Delivered',
-        description: 'Package received by recipient.',
-        date: 'Expected March 4, 2026',
-        completed: false,
-        current: false
-      }
-    ]
-  },
-  {
-    id: 'ord-9402',
-    orderNumber: 'MS-9402',
-    createdAt: '2026-02-28T14:10:00.000Z',
-    status: 'delivered',
-    customer: {
-      fullName: 'Zainab Ahmed',
-      email: 'zainab.ahmed@example.com',
-      phone: '+92 321 4567890'
-    },
-    shippingAddress: {
-      address: 'Apartment 4B, Gulberg Heights, Main Boulevard',
-      city: 'Lahore',
-      postalCode: '54000',
-      province: 'Punjab',
-      country: 'Pakistan'
-    },
-    deliveryMethod: {
-      id: 'express',
-      title: 'Express Overnight Courier',
-      cost: 350,
-      estimatedDays: '1-2 Days'
-    },
-    paymentMethod: {
-      id: 'easypaisa',
-      title: 'EasyPaisa Mobile Account'
-    },
-    items: [
-      {
-        product: {
-          id: 'green-charm-bracelet',
-          slug: 'green-charm-bracelet',
-          name: 'Green Charm Bracelet',
-          category: 'Bracelets',
-          price: 1650,
-          image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP',
-          images: [],
-          description: 'Inspired by morning dew in spring gardens.',
-          materials: ['Beads', 'Gold-Tone Hardware', 'Chain', 'Charms'],
-          stock: 9,
-          inStock: true
-        },
-        quantity: 1
-      }
-    ],
-    subtotal: 1650,
-    shippingCost: 350,
-    discount: 0,
-    total: 2000,
-    paymentStatus: 'paid',
-    courierName: 'Leopards Courier Service',
-    trackingNumber: 'LCS-88392019',
-    estimatedDelivery: 'March 1, 2026',
-    timeline: [
-      {
-        status: 'placed',
-        title: 'Order Placed',
-        description: 'Order placed via EasyPaisa payment.',
-        date: 'Feb 28, 2026 · 02:10 PM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'confirmed',
-        title: 'Payment & Order Confirmed',
-        description: 'Payment of Rs. 2,000 verified.',
-        date: 'Feb 28, 2026 · 02:20 PM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'processing',
-        title: 'Packed & Quality Checked',
-        description: 'Jewelry quality checked and sealed.',
-        date: 'Feb 28, 2026 · 05:00 PM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'shipped',
-        title: 'Dispatched via Leopards',
-        description: 'In transit to Lahore Hub.',
-        date: 'Feb 28, 2026 · 08:00 PM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'out_for_delivery',
-        title: 'Out for Delivery',
-        description: 'Rider on route to Gulberg Heights.',
-        date: 'March 1, 2026 · 10:15 AM',
-        completed: true,
-        current: false
-      },
-      {
-        status: 'delivered',
-        title: 'Delivered Successfully',
-        description: 'Delivered and signed by recipient.',
-        date: 'March 1, 2026 · 01:45 PM',
-        completed: true,
-        current: true
-      }
-    ]
-  }
-];
-
-function getStoredOrders(): Order[] {
+/**
+ * Helper to safely parse JSON from a fetch Response without throwing SyntaxError on empty/non-JSON responses
+ */
+async function parseJsonSafely<T>(res: Response): Promise<T | null> {
   try {
-    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_ORDERS));
-      return INITIAL_DEMO_ORDERS;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
     }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_DEMO_ORDERS;
+    const text = await res.text();
+    if (!text || !text.trim()) {
+      return null;
+    }
+    return JSON.parse(text) as T;
   } catch {
-    return INITIAL_DEMO_ORDERS;
+    return null;
   }
 }
 
-function saveStoredOrders(orders: Order[]): void {
-  try {
-    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-  } catch (err) {
-    console.error('Failed to save orders to localStorage:', err);
-  }
+/**
+ * Normalizes backend/admin order status to frontend OrderStatus
+ */
+function normalizeStatus(backendStatus: string): OrderStatus {
+  const s = (backendStatus || '').toLowerCase();
+  if (s === 'placed') return 'placed';
+  if (s === 'confirmed') return 'confirmed';
+  if (s === 'processing') return 'processing';
+  if (s === 'shipped') return 'shipped';
+  if (s === 'out_for_delivery' || s === 'out for delivery') return 'out_for_delivery';
+  if (s === 'delivered') return 'delivered';
+  return 'placed';
+}
+
+/**
+ * Builds standard timeline steps based on live status
+ */
+function buildTimeline(status: OrderStatus, createdAt: string): OrderTimelineStep[] {
+  const steps: { key: OrderStatus; title: string; desc: string }[] = [
+    { key: 'placed', title: 'Order Placed', desc: 'Your order was received and queued on the artisan workbench.' },
+    { key: 'confirmed', title: 'Artisan Confirmed', desc: 'Gemstones and hardware verified in studio.' },
+    { key: 'processing', title: 'Handcrafted & Packed', desc: 'Hand-beaded, jeweler-polished, and sealed with custom gift packaging.' },
+    { key: 'shipped', title: 'Dispatched with Courier', desc: 'Handed over to courier express logistics.' },
+    { key: 'out_for_delivery', title: 'Out for Delivery', desc: 'Courier rider is currently on delivery route.' },
+    { key: 'delivered', title: 'Delivered', desc: 'Package safely delivered with confirmation signature.' },
+  ];
+
+  const orderIndexMap: Record<OrderStatus, number> = {
+    placed: 0,
+    confirmed: 1,
+    processing: 2,
+    shipped: 3,
+    out_for_delivery: 4,
+    delivered: 5,
+  };
+
+  const currentIdx = orderIndexMap[status] ?? 0;
+  const createdDate = new Date(createdAt);
+  const dateStr = !isNaN(createdDate.getTime())
+    ? createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'Recently';
+
+  return steps.map((step, idx) => ({
+    status: step.key,
+    title: step.title,
+    description: step.desc,
+    date: idx === 0 ? dateStr : idx <= currentIdx ? 'In Progress' : 'Pending',
+    completed: idx < currentIdx || (idx === currentIdx && status === 'delivered'),
+    current: idx === currentIdx && status !== 'delivered',
+  }));
+}
+
+/**
+ * Maps an AdminOrder record to the frontend Order interface
+ */
+function mapAdminOrderToOrder(ao: AdminOrder): Order {
+  const normStatus = normalizeStatus(ao.orderStatus);
+  const items: CartItem[] = (ao.items || []).map((it) => {
+    const found = PRODUCTS.find((p) => p.id === it.productId);
+    return {
+      product: found || {
+        id: it.productId,
+        slug: `product-${it.productId}`,
+        name: it.productName,
+        category: 'Bracelets',
+        price: it.price,
+        image: it.image || PRODUCTS[0]?.image || '',
+        images: [it.image || PRODUCTS[0]?.image || ''],
+        description: 'Handmade artisanal jewelry crafted with love in our Karachi atelier.',
+        materials: ['Glass Beads', 'Gold-Tone Accents'],
+        stock: 10,
+        inStock: true,
+      },
+      quantity: it.quantity,
+      selectedSize: it.size || 'Medium (6.5")',
+      selectedFinish: it.finish || 'Gold-Tone',
+    };
+  });
+
+  const paymentMethodKey =
+    ao.paymentMethod === 'JazzCash'
+      ? 'jazzcash'
+      : ao.paymentMethod === 'Easypaisa'
+      ? 'easypaisa'
+      : ao.paymentMethod === 'Bank Transfer'
+      ? 'bank_transfer'
+      : 'cod';
+
+  return {
+    id: ao.id || ao.orderNumber,
+    orderNumber: ao.orderNumber,
+    createdAt: ao.date ? `${ao.date}T12:00:00Z` : new Date().toISOString(),
+    status: normStatus,
+    customer: {
+      fullName: ao.customerName,
+      email: ao.customerEmail,
+      phone: ao.customerPhone,
+    },
+    shippingAddress: {
+      address: ao.address,
+      city: ao.city,
+      postalCode: '54000',
+      province: 'Sindh',
+      country: 'Pakistan',
+    },
+    deliveryMethod: {
+      id: 'standard',
+      title: 'Standard Tracked Delivery (2–4 Days)',
+      cost: 200,
+      estimatedDays: '2–4 business days',
+    },
+    paymentMethod: {
+      id: paymentMethodKey,
+      title: ao.paymentMethod,
+    },
+    items,
+    subtotal: ao.totalAmount > 200 ? ao.totalAmount - 200 : ao.totalAmount,
+    shippingCost: 200,
+    discount: 0,
+    total: ao.totalAmount,
+    paymentStatus: ao.paymentStatus.toLowerCase() === 'paid' ? 'paid' : 'pending',
+    courierName: ao.courierName,
+    trackingNumber: ao.trackingNumber,
+    estimatedDelivery: undefined,
+    timeline: buildTimeline(normStatus, ao.date || new Date().toISOString()),
+    notes: ao.notes,
+  };
+}
+
+/**
+ * Maps a raw backend order record to the frontend Order interface
+ */
+function mapBackendOrderToOrder(raw: any, fallbackPayload?: CreateOrderPayload): Order {
+  const normStatus = normalizeStatus(raw.status);
+  const items: CartItem[] = Array.isArray(raw.items) && raw.items.length > 0
+    ? raw.items.map((it: any) => {
+        const found = PRODUCTS.find((p) => p.slug === it.current_product_slug || p.id === String(it.product_id));
+        return {
+          product: found || {
+            id: String(it.product_id || it.id),
+            slug: it.current_product_slug || 'handmade-piece',
+            name: it.product_name || 'Handmade Jewelry',
+            category: 'Bracelets',
+            price: parseFloat(it.unit_price) || 0,
+            image: it.primary_image || PRODUCTS[0]?.image || '',
+            images: it.primary_image ? [it.primary_image] : [PRODUCTS[0]?.image || ''],
+            description: 'Handmade artisanal jewelry crafted with love in our Karachi atelier.',
+            materials: ['Glass Beads', 'Gold-Tone Accents'],
+            stock: 10,
+            inStock: true,
+          },
+          quantity: parseInt(it.quantity, 10) || 1,
+          selectedSize: 'Medium (6.5")',
+          selectedFinish: 'Gold-Tone',
+        };
+      })
+    : fallbackPayload?.items || [];
+
+  const rawAddr = raw.shipping_address || {};
+
+  const paymentMethodId = (raw.payment_method || fallbackPayload?.paymentMethod?.id || 'cod').toLowerCase() as
+    | 'cod'
+    | 'easypaisa'
+    | 'jazzcash'
+    | 'bank_transfer';
+
+  const paymentTitles: Record<string, string> = {
+    cod: 'Cash on Delivery (COD)',
+    easypaisa: 'EasyPaisa Mobile Account',
+    jazzcash: 'JazzCash Mobile Account',
+    bank_transfer: 'Direct Bank Transfer',
+  };
+
+  return {
+    id: String(raw.id || raw.order_number),
+    orderNumber: raw.order_number,
+    createdAt: raw.created_at || new Date().toISOString(),
+    status: normStatus,
+    customer: {
+      fullName: raw.customer_name || rawAddr.full_name || fallbackPayload?.customer?.fullName || 'Customer',
+      email: raw.customer_email || fallbackPayload?.customer?.email || '',
+      phone: raw.customer_phone || rawAddr.phone || fallbackPayload?.customer?.phone || '',
+    },
+    shippingAddress: {
+      address: rawAddr.address_line_1 || rawAddr.address || fallbackPayload?.shippingAddress?.address || '',
+      city: rawAddr.city || fallbackPayload?.shippingAddress?.city || 'Karachi',
+      postalCode: rawAddr.postal_code || fallbackPayload?.shippingAddress?.postalCode || '',
+      province: rawAddr.state || fallbackPayload?.shippingAddress?.province || 'Sindh',
+      country: rawAddr.country || fallbackPayload?.shippingAddress?.country || 'Pakistan',
+    },
+    deliveryMethod: fallbackPayload?.deliveryMethod || {
+      id: 'standard',
+      title: 'Standard Tracked Delivery (2–4 Days)',
+      cost: parseFloat(raw.shipping_fee) || 200,
+      estimatedDays: '2–4 business days',
+    },
+    paymentMethod: {
+      id: paymentMethodId,
+      title: paymentTitles[paymentMethodId] || 'Cash on Delivery (COD)',
+    },
+    items,
+    subtotal: parseFloat(raw.subtotal) || fallbackPayload?.subtotal || 0,
+    shippingCost: parseFloat(raw.shipping_fee) || fallbackPayload?.shippingCost || 0,
+    discount: parseFloat(raw.discount) || fallbackPayload?.discount || 0,
+    couponCode: fallbackPayload?.couponCode,
+    total: parseFloat(raw.total) || fallbackPayload?.total || 0,
+    paymentStatus: (raw.payment_status || 'Pending').toLowerCase() === 'paid' ? 'paid' : 'pending',
+    courierName: raw.courier_name || undefined,
+    trackingNumber: raw.tracking_number || undefined,
+    estimatedDelivery: raw.estimated_delivery || undefined,
+    timeline: buildTimeline(normStatus, raw.created_at || new Date().toISOString()),
+    notes: fallbackPayload?.notes,
+  };
 }
 
 export const orderService = {
   /**
-   * Get all orders
+   * Get all orders for the user from backend API or local admin storage
    */
   async getAllOrders(): Promise<Order[]> {
-    return getStoredOrders();
+    try {
+      const res = await fetch('/api/v1/orders', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      const json = await parseJsonSafely<any>(res);
+      if (res.ok && json?.success && Array.isArray(json?.data?.orders) && json.data.orders.length > 0) {
+        return json.data.orders.map((ord: any) => mapBackendOrderToOrder(ord));
+      }
+    } catch (err) {
+      console.warn('orderService.getAllOrders API fallback:', err);
+    }
+
+    // Fall back to local admin storage
+    const localOrders = adminStorage.getOrders();
+    return localOrders.map(mapAdminOrderToOrder);
   },
 
   /**
    * Get order by orderNumber or ID
    */
-  async getOrder(lookupQuery: string): Promise<Order | null> {
-    const cleanQuery = lookupQuery.trim().toUpperCase();
-    const cleanDigits = lookupQuery.replace(/\D/g, '');
-    const orders = getStoredOrders();
+  async getOrder(lookupQuery: string, emailOrPhone?: string): Promise<Order | null> {
+    const cleanQuery = lookupQuery.trim();
+    if (!cleanQuery) return null;
 
-    const matched = orders.find((o) => {
-      const oNum = o.orderNumber.toUpperCase();
-      const oId = o.id.toUpperCase();
-      const oTrack = (o.trackingNumber || '').toUpperCase();
-      const oEmail = o.customer.email.toLowerCase();
-      const oPhoneDigits = o.customer.phone.replace(/\D/g, '');
+    // 1. Check local storage first for fastest retrieval
+    const localOrders = adminStorage.getOrders();
+    const cleanNum = cleanQuery.toUpperCase();
+    const localMatch = localOrders.find(
+      (o) =>
+        o.orderNumber.toUpperCase() === cleanNum ||
+        o.id.toUpperCase() === cleanNum ||
+        (cleanQuery.length >= 7 && o.customerPhone.replace(/\D/g, '').includes(cleanQuery.replace(/\D/g, '')))
+    );
+    if (localMatch) {
+      return mapAdminOrderToOrder(localMatch);
+    }
 
-      return (
-        oNum === cleanQuery ||
-        oId === cleanQuery ||
-        oTrack === cleanQuery ||
-        oEmail === lookupQuery.trim().toLowerCase() ||
-        (cleanDigits.length >= 7 && oPhoneDigits.includes(cleanDigits))
-      );
-    });
+    // 2. Try fetching by numeric ID or order ID if authenticated
+    if (/^\d+$/.test(cleanQuery)) {
+      try {
+        const res = await fetch(`/api/v1/orders/${cleanQuery}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          credentials: 'include',
+        });
 
-    return matched || null;
-  },
-
-  /**
-   * Search order specifically for track page with orderId + optional phone/email
-   */
-  async trackOrder(orderNumber: string, phoneOrEmail?: string): Promise<Order | null> {
-    const cleanNum = orderNumber.trim().toUpperCase();
-    const orders = getStoredOrders();
-
-    const order = orders.find((o) => o.orderNumber.toUpperCase() === cleanNum || o.id.toUpperCase() === cleanNum);
-    if (!order) return null;
-
-    if (phoneOrEmail && phoneOrEmail.trim()) {
-      const matchKey = phoneOrEmail.trim().toLowerCase().replace(/[\s-+()]/g, '');
-      const custPhone = order.customer.phone.replace(/[\s-+()]/g, '');
-      const custEmail = order.customer.email.toLowerCase();
-
-      if (!custPhone.includes(matchKey) && !custEmail.includes(phoneOrEmail.trim().toLowerCase())) {
-        // Return order nonetheless if orderNumber is exact match for demo convenience
-        return order;
+        const json = await parseJsonSafely<any>(res);
+        if (res.ok && json?.success && json.data?.order) {
+          return mapBackendOrderToOrder(json.data.order);
+        }
+      } catch (e) {
+        // Ignore
       }
     }
 
-    return order;
+    // 3. Try guest tracking with order_number
+    try {
+      const trackParams = new URLSearchParams({
+        order_number: cleanQuery,
+      });
+
+      if (emailOrPhone && emailOrPhone.includes('@')) {
+        trackParams.set('email', emailOrPhone.trim());
+      } else if (emailOrPhone) {
+        trackParams.set('phone', emailOrPhone.trim());
+      }
+
+      const trackRes = await fetch(`/api/v1/orders/track?${trackParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      const json = await parseJsonSafely<any>(trackRes);
+      if (trackRes.ok && json?.success && json.data?.order) {
+        return mapBackendOrderToOrder(json.data.order);
+      }
+    } catch (err) {
+      console.warn('orderService.getOrder tracking fallback error:', err);
+    }
+
+    return null;
   },
 
   /**
-   * Create a new order at checkout
+   * Search order specifically for track page with orderNumber + optional phone/email
    */
-  async createOrder(orderPayload: {
-    customer: { fullName: string; email: string; phone: string };
-    shippingAddress: { address: string; city: string; postalCode: string; province?: string; country: string };
-    deliveryMethod: { id: 'standard' | 'express'; title: string; cost: number; estimatedDays: string };
-    paymentMethod: { id: 'cod' | 'easypaisa' | 'bank_transfer'; title: string; instructions?: string };
-    items: CartItem[];
-    subtotal: number;
-    shippingCost: number;
-    discount: number;
-    couponCode?: string;
-    total: number;
-    notes?: string;
-  }): Promise<Order> {
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = `MS-${randomSuffix}`;
-    const now = new Date();
+  async trackOrder(orderNumber: string, phoneOrEmail?: string): Promise<Order | null> {
+    const cleanNum = orderNumber.trim();
+    if (!cleanNum) return null;
 
-    const estimatedArrival = new Date(now);
-    estimatedArrival.setDate(estimatedArrival.getDate() + (orderPayload.deliveryMethod.id === 'express' ? 2 : 4));
-    const estimatedDateStr = estimatedArrival.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
+    // 1. Check local storage
+    const localOrders = adminStorage.getOrders();
+    const cleanQuery = cleanNum.toUpperCase();
+    const cleanPhone = (phoneOrEmail || '').replace(/\D/g, '');
+
+    const localMatch = localOrders.find((o) => {
+      const numMatch = o.orderNumber.toUpperCase() === cleanQuery || o.id.toUpperCase() === cleanQuery;
+      if (numMatch) return true;
+      if (cleanPhone && cleanPhone.length >= 7 && o.customerPhone.replace(/\D/g, '').includes(cleanPhone)) {
+        return true;
+      }
+      return false;
     });
 
-    const newTimeline: OrderTimelineStep[] = [
-      {
-        status: 'placed',
-        title: 'Order Placed',
-        description: 'We received your order and are gathering the stones for artisan crafting.',
-        date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' · Just now',
-        completed: true,
-        current: true
-      },
-      {
-        status: 'confirmed',
-        title: 'Artisan Confirmed',
-        description: 'Order details verified in our studio.',
-        date: 'Estimated within 4 hours',
-        completed: false,
-        current: false
-      },
-      {
-        status: 'processing',
-        title: 'Handcrafted & Packed',
-        description: 'Beaded with love and tucked into our signature gift box.',
-        date: 'Estimated tomorrow',
-        completed: false,
-        current: false
-      },
-      {
-        status: 'shipped',
-        title: 'Dispatched with Courier',
-        description: 'Dispatched via TCS / Leopards Express.',
-        date: 'Estimated in 2 days',
-        completed: false,
-        current: false
-      },
-      {
-        status: 'out_for_delivery',
-        title: 'Out for Delivery',
-        description: 'Courier rider out for delivery to your address.',
-        date: 'Estimated in 3 days',
-        completed: false,
-        current: false
-      },
-      {
-        status: 'delivered',
-        title: 'Delivered',
-        description: 'Package safely delivered.',
-        date: `Estimated ${estimatedDateStr}`,
-        completed: false,
-        current: false
+    if (localMatch) {
+      return mapAdminOrderToOrder(localMatch);
+    }
+
+    // 2. Try remote API with safe JSON parsing
+    try {
+      const params = new URLSearchParams({
+        order_number: cleanNum,
+      });
+
+      if (phoneOrEmail && phoneOrEmail.includes('@')) {
+        params.set('email', phoneOrEmail.trim());
+      } else if (phoneOrEmail) {
+        params.set('phone', phoneOrEmail.trim());
       }
-    ];
+
+      const res = await fetch(`/api/v1/orders/track?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      const json = await parseJsonSafely<any>(res);
+      if (res.ok && json?.success && json.data?.order) {
+        return mapBackendOrderToOrder(json.data.order);
+      }
+      return null;
+    } catch (err) {
+      console.warn('orderService.trackOrder error:', err);
+      return null;
+    }
+  },
+
+  /**
+   * Create a new order via drawer or checkout.
+   * Guarantees that order creation is resilient, saving to local adminStorage
+   * and optionally synchronizing with any available backend endpoint without crashing.
+   */
+  async createOrder(orderPayload: CreateOrderPayload): Promise<Order> {
+    // Generate unique order code (e.g. MS-5821)
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const orderNumber = `MS-${randomSuffix}`;
 
     const newOrder: Order = {
-      id: `ord-${randomSuffix}`,
+      id: orderNumber,
       orderNumber,
-      createdAt: now.toISOString(),
+      createdAt: new Date().toISOString(),
       status: 'placed',
       customer: orderPayload.customer,
       shippingAddress: orderPayload.shippingAddress,
       deliveryMethod: orderPayload.deliveryMethod,
       paymentMethod: orderPayload.paymentMethod,
-      items: orderPayload.items,
+      items: [...orderPayload.items],
       subtotal: orderPayload.subtotal,
       shippingCost: orderPayload.shippingCost,
       discount: orderPayload.discount,
       couponCode: orderPayload.couponCode,
       total: orderPayload.total,
-      paymentStatus: orderPayload.paymentMethod.id === 'cod' ? 'pending' : 'paid',
-      courierName: 'TCS Express Tracked',
-      trackingNumber: `TCS-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-      estimatedDelivery: estimatedDateStr,
-      timeline: newTimeline,
-      notes: orderPayload.notes
+      paymentStatus: 'pending',
+      courierName: undefined,
+      trackingNumber: undefined,
+      estimatedDelivery: undefined,
+      timeline: buildTimeline('placed', new Date().toISOString()),
+      notes: orderPayload.notes,
     };
 
-    const existingOrders = getStoredOrders();
-    const updated = [newOrder, ...existingOrders];
-    saveStoredOrders(updated);
+    // 1. Persist directly to local admin storage
+    try {
+      const pmMap: Record<string, 'COD' | 'JazzCash' | 'Easypaisa' | 'Bank Transfer'> = {
+        cod: 'COD',
+        jazzcash: 'JazzCash',
+        easypaisa: 'Easypaisa',
+        bank_transfer: 'Bank Transfer',
+      };
+
+      const adminOrder: AdminOrder = {
+        id: newOrder.id,
+        orderNumber: newOrder.orderNumber,
+        date: new Date().toISOString().split('T')[0],
+        customerName: newOrder.customer.fullName,
+        customerEmail: newOrder.customer.email,
+        customerPhone: newOrder.customer.phone,
+        city: newOrder.shippingAddress.city,
+        address: newOrder.shippingAddress.address,
+        items: newOrder.items.map((it) => ({
+          productId: it.product.id,
+          productName: it.product.name,
+          image: it.product.image,
+          quantity: it.quantity,
+          price: it.product.price,
+          size: it.selectedSize,
+          finish: it.selectedFinish,
+        })),
+        totalAmount: newOrder.total,
+        paymentMethod: pmMap[orderPayload.paymentMethod.id] || 'COD',
+        paymentStatus: 'Pending',
+        orderStatus: 'Placed',
+        notes: newOrder.notes,
+      };
+
+      const existingOrders = adminStorage.getOrders();
+      adminStorage.saveOrders([
+        adminOrder,
+        ...existingOrders.filter((o) => o.orderNumber !== adminOrder.orderNumber),
+      ]);
+
+      // Add Admin Notification
+      const existingNotifs = adminStorage.getNotifications();
+      const newNotif: AdminNotification = {
+        id: `notif-${Date.now()}`,
+        type: 'order',
+        title: `New Order ${newOrder.orderNumber}`,
+        message: `${newOrder.customer.fullName} placed an order for Rs. ${newOrder.total.toLocaleString()} via ${orderPayload.paymentMethod.title}.`,
+        timestamp: 'Just now',
+        read: false,
+        linkTab: 'orders',
+      };
+      adminStorage.saveNotifications([newNotif, ...existingNotifs]);
+    } catch (storageErr) {
+      console.warn('Failed to save order to local adminStorage:', storageErr);
+    }
+
+    // 2. Opportunistically sync with backend if available
+    try {
+      const body = {
+        order_number: orderNumber,
+        payment_method: orderPayload.paymentMethod.id,
+        customer: {
+          name: orderPayload.customer.fullName,
+          email: orderPayload.customer.email,
+          phone: orderPayload.customer.phone,
+        },
+        shipping_address: {
+          full_name: orderPayload.customer.fullName,
+          phone: orderPayload.customer.phone,
+          address_line_1: orderPayload.shippingAddress.address,
+          address_line_2: '',
+          city: orderPayload.shippingAddress.city,
+          state: orderPayload.shippingAddress.province || 'Sindh',
+          postal_code: orderPayload.shippingAddress.postalCode,
+          country: orderPayload.shippingAddress.country || 'Pakistan',
+        },
+        delivery_method: orderPayload.deliveryMethod.id,
+        notes: orderPayload.notes || '',
+      };
+
+      const res = await fetch('/api/v1/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+
+      const json = await parseJsonSafely<any>(res);
+      if (res.ok && json?.success && json.data?.order) {
+        return mapBackendOrderToOrder(json.data.order, orderPayload);
+      }
+    } catch (apiErr) {
+      console.warn('Backend API sync unavailable, order preserved locally:', apiErr);
+    }
 
     return newOrder;
-  }
+  },
 };
+

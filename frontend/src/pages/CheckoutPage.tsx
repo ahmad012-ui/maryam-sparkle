@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CartItem, Order, UserProfile, UserAddress } from '../types';
 import { orderService } from '../services/orderService';
+import { cartService } from '../services/cartService';
 import { authService } from '../services/authService';
 import {
   sanitizePhoneNumber,
@@ -64,13 +65,37 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
     province: 'Sindh',
     country: 'Pakistan',
     deliveryMethod: 'standard' as 'standard' | 'express',
-    paymentMethod: 'cod' as 'cod' | 'easypaisa' | 'bank_transfer',
+    paymentMethod: 'cod' as 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer',
     notes: ''
   });
 
   const [couponCode, setCouponCode] = useState('SPARKLE10');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Backend Cart synchronization (Phase 7: Real Cart API)
+  const [liveCart, setLiveCart] = useState<CartItem[]>(cart);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBackendCart() {
+      try {
+        const res = await cartService.getCart();
+        if (isMounted && res.items && res.items.length > 0) {
+          setLiveCart(res.items);
+        }
+      } catch (e) {
+        console.warn('Backend cart fetch in CheckoutPage:', e);
+      }
+    }
+    loadBackendCart();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeCart = liveCart.length > 0 ? liveCart : cart;
 
   // When selected address changes for logged-in user
   const handleSelectSavedAddress = (addr: UserAddress) => {
@@ -126,7 +151,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
   };
 
   // Subtotal calculations
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const subtotal = activeCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const discount = couponCode === 'SPARKLE10' ? Math.round(subtotal * 0.1) : 0;
   const shippingFee =
     formData.deliveryMethod === 'express'
@@ -136,7 +161,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
       : 200;
   const total = subtotal - discount + shippingFee;
 
-  if (cart.length === 0) {
+  if (activeCart.length === 0) {
     return (
       <div className="min-h-[70vh] bg-[#efe8dc] flex flex-col items-center justify-center px-6 py-20 text-center">
         <h1 className="font-serif text-3xl text-[#333333] mb-3">No Items in Checkout</h1>
@@ -172,6 +197,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    setCheckoutError(null);
 
     try {
       const deliveryTitle =
@@ -179,9 +205,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
           ? 'Express Courier (1-2 Days)'
           : 'Standard Tracked Delivery (2-4 Days)';
 
-      const paymentTitles = {
+      const paymentTitles: Record<'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer', string> = {
         cod: 'Cash on Delivery (COD)',
         easypaisa: 'EasyPaisa Mobile Account',
+        jazzcash: 'JazzCash Mobile Account',
         bank_transfer: 'Direct Bank Transfer'
       };
 
@@ -208,7 +235,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
           id: formData.paymentMethod,
           title: paymentTitles[formData.paymentMethod]
         },
-        items: [...cart],
+        items: [...activeCart],
         subtotal,
         shippingCost: shippingFee,
         discount,
@@ -217,13 +244,15 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         notes: formData.notes
       });
 
-      // Clear the user's active cart
+      // Clear the user's active cart in backend and local state
+      await cartService.clearCart();
       onClearCart();
 
       // Navigate directly to Order Confirmation
       navigate(`/order-confirmation?orderId=${newOrder.orderNumber}`);
     } catch (err) {
       console.error('Order creation error:', err);
+      setCheckoutError(err instanceof Error ? err.message : 'Order creation failed. Please check your details and try again.');
       setIsSubmitting(false);
     }
   };
@@ -248,6 +277,14 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
             </div>
           </div>
         </div>
+
+        {/* Checkout Error Banner */}
+        {checkoutError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-800 text-xs">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+            <div className="flex-1 font-medium">{checkoutError}</div>
+          </div>
+        )}
 
         <form onSubmit={handlePlaceOrder}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
@@ -589,7 +626,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                     </div>
                   </label>
 
-                  {/* EasyPaisa / JazzCash */}
+                  {/* EasyPaisa */}
                   <label
                     className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
                       formData.paymentMethod === 'easypaisa'
@@ -608,11 +645,39 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-[#333333] flex items-center gap-2">
                           <Smartphone className="w-4 h-4 text-[#2d5a61]" />
-                          EasyPaisa / JazzCash Mobile Account
+                          EasyPaisa Mobile Account
                         </span>
                       </div>
                       <p className="text-[11px] text-[#666666] mt-1">
                         Transfer to <strong>0300-1234567</strong> (Title: Maryam Sparkle Studio) and share screenshot on WhatsApp.
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* JazzCash */}
+                  <label
+                    className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
+                      formData.paymentMethod === 'jazzcash'
+                        ? 'border-[#2d5a61] bg-[#efe8dc]/50 ring-2 ring-[#2d5a61]/20'
+                        : 'border-[#e0d8c8] bg-white/60 hover:bg-[#efe8dc]/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={formData.paymentMethod === 'jazzcash'}
+                      onChange={() => setFormData({ ...formData, paymentMethod: 'jazzcash' })}
+                      className="mt-0.5 text-[#2d5a61]"
+                    />
+                    <div className="flex-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-[#333333] flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-[#2d5a61]" />
+                          JazzCash Mobile Account
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#666666] mt-1">
+                        Transfer to <strong>0300-7654321</strong> (Title: Maryam Sparkle Studio) and share screenshot on WhatsApp.
                       </p>
                     </div>
                   </label>
@@ -664,12 +729,12 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
             <div className="lg:col-span-5">
               <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-sm sticky top-24">
                 <h2 className="font-serif text-xl text-[#333333] mb-4 pb-3 border-b border-[#e0d8c8]">
-                  Order Summary ({cart.length})
+                  Order Summary ({activeCart.length})
                 </h2>
 
                 {/* Items List */}
                 <div className="max-h-60 overflow-y-auto space-y-3 pr-1 mb-6 border-b border-[#e0d8c8] pb-6 scrollbar-thin">
-                  {cart.map((item) => {
+                  {activeCart.map((item) => {
                     const itemKey = `${item.product.id}-${item.selectedSize || 'default'}-${item.selectedFinish || 'default'}`;
                     return (
                       <div key={itemKey} className="flex items-center gap-3.5">

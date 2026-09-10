@@ -901,11 +901,21 @@ The Orders & Checkout module handles checkout execution, atomic order persistenc
 ### Core Architecture & Guarantees
 
 1. **Transaction Safety**: All checkout operations run inside a strict MySQL InnoDB transaction (`BEGIN TRANSACTION` -> `COMMIT` / `ROLLBACK`). If any step fails (insufficient stock, unavailable product, database issue), the transaction rolls back completely. No orphaned orders, partial inventory deductions, or broken carts are ever created.
-2. **Concurrency & Anti-Overselling**: Products and inventory rows are locked using `SELECT ... FOR UPDATE` before stock verification and line total calculations. If requested quantity exceeds available stock, `HTTP 409 Conflict` is returned and the cart remains intact.
-3. **Never Trust Client Prices**: All unit prices, line subtotals, shipping fees, discounts, and totals are computed strictly server-side using authoritative database prices. Client-submitted prices or totals are completely ignored.
-4. **Deterministic Shipping**: Server applies a deterministic shipping rule: standard flat-rate PKR `200.00`, with free shipping on orders PKR `5000.00` and above.
-5. **Cart Clearance**: Cart items are cleared if and only if all order rows, payment records, and inventory deductions succeed within the transaction immediately before commit.
-6. **Payment Status Lifecycle**: Supported methods are `COD`, `Card`, and `Easypaisa`. Every order creates an associated record in the `payments` table with status `pending`. No payment gateway is integrated in Phase 6; status is never prematurely marked `Paid`.
+2. **Pre-Commit Response Construction**: The order response payload is assembled before the transaction commits. Successful checkouts cannot return HTTP 500 errors due to post-commit hydration failures.
+3. **Collision-Resistant Order Numbers**: Random customer-facing order numbers are protected by an atomic retry loop on unique constraint (`uq_orders_order_number`) collisions, ensuring race-condition safety under concurrent checkouts without relying solely on pre-checks.
+4. **Concurrency & Anti-Overselling**: Products and inventory rows are locked using `SELECT ... FOR UPDATE` before stock verification and line total calculations. If requested quantity exceeds available stock, `HTTP 409 Conflict` is returned and the cart remains intact.
+5. **Never Trust Client Prices**: All unit prices, line subtotals, shipping fees, discounts, and totals are computed strictly server-side using authoritative database prices. Client-submitted prices or totals are completely ignored.
+6. **Deterministic Shipping**: Server applies a deterministic shipping rule: standard flat-rate PKR `200.00`, with free shipping on orders PKR `5000.00` and above.
+7. **Cart Clearance**: Cart items are cleared if and only if all order rows, payment records, and inventory deductions succeed within the transaction immediately before commit.
+8. **Payment Status Lifecycle**: Supported methods are `COD`, `Card`, and `Easypaisa`. Every order creates an associated record in the `payments` table with status `pending`. No payment gateway is integrated in Phase 6; status is never prematurely marked `Paid`.
+
+---
+
+### Developer Architecture Note: Dual Stock Source Architecture
+- `inventory.quantity` is the intended authoritative inventory value for real-time stock levels, warehouse counts, and threshold alerts.
+- `products.stock` currently remains for compatibility with the existing product catalog and query model.
+- Checkout validates stock against `inventory.quantity` when available (falling back to `products.stock`), and synchronizes both columns by decrementing both tables atomically during order creation.
+- A future cleanup phase may consolidate these into a single authoritative source of truth.
 
 ---
 
@@ -921,7 +931,7 @@ Supports both **authenticated customer checkout** and **guest checkout**.
 **Request Example (Saved Address):**
 ```json
 {
-  "payment_method": "COD",
+  "payment_method": "cod",
   "address_id": 3
 }
 ```
@@ -929,7 +939,7 @@ Supports both **authenticated customer checkout** and **guest checkout**.
 **Request Example (New Address):**
 ```json
 {
-  "payment_method": "Card",
+  "payment_method": "bank_transfer",
   "shipping_address": {
     "full_name": "Ahmad Rehman",
     "phone": "03001234567",
@@ -978,7 +988,7 @@ Supports both **authenticated customer checkout** and **guest checkout**.
       "order_number": "MS-20260909-A4C8B1",
       "status": "Placed",
       "payment_status": "Pending",
-      "payment_method": "COD",
+      "payment_method": "cod",
       "subtotal": 2400.00,
       "shipping_fee": 200.00,
       "discount": 0.00,
@@ -1012,7 +1022,7 @@ Supports both **authenticated customer checkout** and **guest checkout**.
   {
     "success": false,
     "message": "Validation failed",
-    "errors": { "payment_method": "Payment method is required and must be one of: COD, Card, Easypaisa" }
+    "errors": { "payment_method": "Payment method is required and must be one of: cod, easypaisa, jazzcash, bank_transfer" }
   }
   ```
 
@@ -1143,10 +1153,14 @@ Public tracking endpoint for guests and customers without logging in.
 - `email` (string, required): e.g. `zahra@example.com` (verified case-insensitively against customer order record)
 - `phone` (string, optional): e.g. `03119876543` (optional secondary verification)
 
-#### Security Rules:
+#### Security & Privacy Rules:
 - If `order_number` or `email` are missing, returns `HTTP 422 Unprocessable Entity` with specific validation error messages.
 - If `order_number` does not exist OR email does not match the order's customer record, returns `HTTP 404 Not Found` with `"Order not found with the provided details"` (prevents enumeration).
-- Sensitive administrative data (such as internal `user_id`, `shipping_address_id`, internal payment tokens, and gateway transaction references) is completely omitted from the guest tracking response.
+- **Privacy Hardening**: Guest order tracking returns strictly tracking-relevant details and omits sensitive personal and administrative data:
+  - No full customer email or customer phone numbers.
+  - No street address lines (address_line_1, address_line_2, postal_code) or recipient contact numbers; shipping information is strictly limited to city, state, and country.
+  - No internal database primary/foreign keys (`user_id`, `shipping_address_id`, order `id`, address `id`).
+  - No payment internals, transaction references, or administrative notes.
 
 #### Request Example:
 ```text
@@ -1160,32 +1174,18 @@ GET /api/v1/orders/track?order_number=MS-20260909-A4C8B1&email=zahra@example.com
   "message": "Order tracking details retrieved successfully",
   "data": {
     "order": {
-      "id": 14,
       "order_number": "MS-20260909-A4C8B1",
-      "customer_name": "Zahra Khan",
-      "customer_email": "zahra@example.com",
-      "customer_phone": "03119876543",
+      "status": "Placed",
+      "payment_status": "Pending",
+      "payment_method": "COD",
       "subtotal": 800.00,
       "shipping_fee": 200.00,
       "discount": 0.00,
       "total": 1000.00,
-      "status": "Placed",
-      "payment_status": "Pending",
-      "payment_method": "COD",
-      "shipping_address": {
-        "id": 4,
-        "full_name": "Zahra Khan",
-        "phone": "03119876543",
-        "address_line_1": "Flat 4B, Block 2, Clifton",
-        "city": "Karachi",
-        "country": "Pakistan"
-      },
       "item_count": 1,
       "total_quantity": 1,
       "items": [
         {
-          "id": 22,
-          "product_id": 2,
           "product_name": "Pearl Bracelet",
           "sku": "MS-JW-002",
           "quantity": 1,
@@ -1195,7 +1195,13 @@ GET /api/v1/orders/track?order_number=MS-20260909-A4C8B1&email=zahra@example.com
           "primary_image": "/uploads/products/pearl-bracelet-1.jpg"
         }
       ],
-      "created_at": "2026-09-09 13:00:00"
+      "shipping_address": {
+        "city": "Karachi",
+        "state": "Sindh",
+        "country": "Pakistan"
+      },
+      "created_at": "2026-09-09 13:00:00",
+      "updated_at": "2026-09-09 13:00:00"
     }
   }
 }

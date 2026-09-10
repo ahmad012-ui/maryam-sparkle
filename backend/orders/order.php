@@ -37,6 +37,24 @@ class Order {
     }
 
     /**
+     * Check if a PDOException represents a MySQL unique key constraint violation on order_number.
+     * MySQL error code 1062 is ER_DUP_ENTRY (SQLSTATE 23000).
+     */
+    private function isOrderNumberDuplicate(PDOException $e): bool {
+        $driverCode = isset($e->errorInfo[1]) ? (int) $e->errorInfo[1] : 0;
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+
+        if ($driverCode === 1062 || $sqlState === '23000') {
+            $message = $e->getMessage();
+            if (stripos($message, 'order_number') !== false || stripos($message, 'Duplicate entry') !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Generate a unique, human-readable order number.
      * Format: MS-YYYYMMDD-XXXXXX (e.g., MS-20260909-A4C8B1)
      */
@@ -138,7 +156,11 @@ class Order {
                     throw new RuntimeException("Product '{$product['name']}' is no longer active.", 400);
                 }
 
-                // Determine live authoritative stock level
+                // Developer Note: Dual Stock Source Architecture
+                // 'inventory.quantity' is the intended authoritative inventory tracking value.
+                // 'products.stock' currently remains for backward compatibility with the existing product catalog model.
+                // Checkout validates against 'inventory.quantity' when present (falling back to 'products.stock').
+                // A future cleanup phase will consolidate this into a single source of truth.
                 $availableStock = $product['inventory_quantity'] !== null
                     ? (int) $product['inventory_quantity']
                     : (int) $product['stock'];
@@ -211,10 +233,12 @@ class Order {
                 $shippingAddressId = (int) $this->pdo->lastInsertId();
             }
 
-            // Step 5: Generate unique order number
-            $orderNumber = $this->generateOrderNumber();
+            // Step 5 & 6: Insert into orders table with unique order-number collision handling
+            $maxOrderInsertAttempts = 5;
+            $orderInserted = false;
+            $orderId = 0;
+            $orderNumber = '';
 
-            // Step 6: Insert into orders table
             $orderInsert = $this->pdo->prepare(
                 'INSERT INTO orders (
                     user_id, order_number, customer_name, customer_email, customer_phone,
@@ -226,22 +250,42 @@ class Order {
                     :status, :payment_status, :payment_method, :shipping_address_id
                 )'
             );
-            $orderInsert->bindValue(':user_id', $userId, $userId !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
-            $orderInsert->bindValue(':order_number', $orderNumber, PDO::PARAM_STR);
-            $orderInsert->bindValue(':customer_name', $customerData['name'], PDO::PARAM_STR);
-            $orderInsert->bindValue(':customer_email', $customerData['email'], PDO::PARAM_STR);
-            $orderInsert->bindValue(':customer_phone', $customerData['phone'], PDO::PARAM_STR);
-            $orderInsert->bindValue(':subtotal', $subtotal, PDO::PARAM_STR);
-            $orderInsert->bindValue(':shipping_fee', $shippingFee, PDO::PARAM_STR);
-            $orderInsert->bindValue(':discount', $discount, PDO::PARAM_STR);
-            $orderInsert->bindValue(':total', $total, PDO::PARAM_STR);
-            $orderInsert->bindValue(':status', 'Placed', PDO::PARAM_STR);
-            $orderInsert->bindValue(':payment_status', 'Pending', PDO::PARAM_STR);
-            $orderInsert->bindValue(':payment_method', $paymentMethod, PDO::PARAM_STR);
-            $orderInsert->bindValue(':shipping_address_id', $shippingAddressId, $shippingAddressId !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
-            $orderInsert->execute();
 
-            $orderId = (int) $this->pdo->lastInsertId();
+            for ($attempt = 1; $attempt <= $maxOrderInsertAttempts; $attempt++) {
+                $orderNumber = $this->generateOrderNumber();
+
+                try {
+                    $orderInsert->bindValue(':user_id', $userId, $userId !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
+                    $orderInsert->bindValue(':order_number', $orderNumber, PDO::PARAM_STR);
+                    $orderInsert->bindValue(':customer_name', $customerData['name'], PDO::PARAM_STR);
+                    $orderInsert->bindValue(':customer_email', $customerData['email'], PDO::PARAM_STR);
+                    $orderInsert->bindValue(':customer_phone', $customerData['phone'], PDO::PARAM_STR);
+                    $orderInsert->bindValue(':subtotal', $subtotal, PDO::PARAM_STR);
+                    $orderInsert->bindValue(':shipping_fee', $shippingFee, PDO::PARAM_STR);
+                    $orderInsert->bindValue(':discount', $discount, PDO::PARAM_STR);
+                    $orderInsert->bindValue(':total', $total, PDO::PARAM_STR);
+                    $orderInsert->bindValue(':status', 'Placed', PDO::PARAM_STR);
+                    $orderInsert->bindValue(':payment_status', 'Pending', PDO::PARAM_STR);
+                    $orderInsert->bindValue(':payment_method', $paymentMethod, PDO::PARAM_STR);
+                    $orderInsert->bindValue(':shipping_address_id', $shippingAddressId, $shippingAddressId !== null ? PDO::PARAM_INT : PDO::PARAM_NULL);
+                    $orderInsert->execute();
+
+                    $orderId = (int) $this->pdo->lastInsertId();
+                    $orderInserted = true;
+                    break;
+                } catch (PDOException $pe) {
+                    if ($this->isOrderNumberDuplicate($pe)) {
+                        error_log("Order number collision on '{$orderNumber}' (attempt {$attempt} of {$maxOrderInsertAttempts}). Retrying with new order number...");
+                        continue;
+                    }
+                    // Unrelated database errors must NOT be caught as collisions; throw immediately
+                    throw $pe;
+                }
+            }
+
+            if (!$orderInserted || $orderId <= 0) {
+                throw new RuntimeException('Unable to allocate a unique order identifier. Please try again.', 500);
+            }
 
             // Step 7: Insert historical order items
             $itemInsert = $this->pdo->prepare(
@@ -276,8 +320,13 @@ class Order {
             $payInsert->bindValue(':method', $paymentMethod, PDO::PARAM_STR);
             $payInsert->bindValue(':status', 'pending', PDO::PARAM_STR);
             $payInsert->execute();
+            $paymentId = (int) $this->pdo->lastInsertId();
 
             // Step 9: Decrement inventory and product stock
+            // Developer Note: Dual Stock Synchronization
+            // Both 'inventory.quantity' (authoritative) and 'products.stock' (catalog compatibility)
+            // are decremented within this transaction to keep both columns synchronized until
+            // a future cleanup phase unifies stock storage.
             $decInvStmt = $this->pdo->prepare(
                 'UPDATE inventory 
                  SET quantity = GREATEST(0, quantity - :qty), updated_at = CURRENT_TIMESTAMP 
@@ -308,15 +357,44 @@ class Order {
             $touchCartStmt->bindValue(':cart_id', $cartId, PDO::PARAM_INT);
             $touchCartStmt->execute();
 
-            // Step 11: Commit atomic transaction
+            // Step 11: Construct the response payload from authoritative created order data
+            // (Constructed before commit so that a successfully committed order cannot fail on post-commit DB query)
+            $now = date('Y-m-d H:i:s');
+            $createdOrder = [
+                'id'                  => $orderId,
+                'user_id'             => $userId,
+                'order_number'        => $orderNumber,
+                'customer_name'       => $customerData['name'],
+                'customer_email'      => $customerData['email'],
+                'customer_phone'      => $customerData['phone'],
+                'subtotal'            => (float) $subtotal,
+                'shipping_fee'        => (float) $shippingFee,
+                'discount'            => (float) $discount,
+                'total'               => (float) $total,
+                'status'              => 'Placed',
+                'payment_status'      => 'Pending',
+                'payment_method'      => $paymentMethod,
+                'shipping_address_id' => $shippingAddressId,
+                'item_count'          => count($orderItems),
+                'total_quantity'      => (int) array_sum(array_column($orderItems, 'quantity')),
+                'items'               => $orderItems,
+                'payment'             => [
+                    'id'                    => $paymentId,
+                    'transaction_reference' => null,
+                    'amount'                => (float) $total,
+                    'method'                => $paymentMethod,
+                    'status'                => 'pending',
+                    'paid_at'               => null,
+                    'created_at'            => $now,
+                ],
+                'created_at'          => $now,
+                'updated_at'          => $now,
+            ];
+
+            // Step 12: Commit atomic transaction
             $this->pdo->commit();
 
-            // Step 12: Return populated order details
-            $createdOrder = $this->getOrderById($orderId, $userId, true);
-            if (!$createdOrder) {
-                throw new RuntimeException('Failed to retrieve newly created order.', 500);
-            }
-
+            // Return the already-constructed order response (no post-commit DB retrieval required)
             return $createdOrder;
         } catch (Throwable $e) {
             if ($this->pdo->inTransaction()) {
@@ -556,20 +634,54 @@ class Order {
             }
         }
 
-        // Return order details without sensitive administrative data
+        // Retrieve order details to populate tracking
         $fullOrder = $this->getOrderById((int)$order['id'], null, true);
         if (!$fullOrder) {
             return null;
         }
 
-        // Securely display order status to guests without exposing sensitive administrative data:
-        // - Strip internal user account linkage (user_id)
-        // - Strip internal database foreign keys (shipping_address_id)
-        // - Strip internal payment records & gateway transaction references
-        unset($fullOrder['user_id']);
-        unset($fullOrder['shipping_address_id']);
-        unset($fullOrder['payment']);
+        // Sanitize item details for public tracking display
+        $sanitizedItems = [];
+        foreach ($fullOrder['items'] ?? [] as $item) {
+            $sanitizedItems[] = [
+                'product_name'         => (string) ($item['product_name'] ?? ''),
+                'sku'                  => isset($item['sku']) && $item['sku'] !== null ? (string) $item['sku'] : null,
+                'quantity'             => (int) ($item['quantity'] ?? 1),
+                'unit_price'           => (float) ($item['unit_price'] ?? 0),
+                'subtotal'             => (float) ($item['subtotal'] ?? 0),
+                'current_product_slug' => $item['current_product_slug'] ?? null,
+                'primary_image'        => $item['primary_image'] ?? null,
+            ];
+        }
 
-        return $fullOrder;
+        // Limited shipping destination only (city, state, country)
+        // Full street address, recipient name, and phone are omitted for customer privacy
+        $limitedShipping = null;
+        if (!empty($fullOrder['shipping_address'])) {
+            $limitedShipping = [
+                'city'    => $fullOrder['shipping_address']['city'] ?? null,
+                'state'   => $fullOrder['shipping_address']['state'] ?? null,
+                'country' => $fullOrder['shipping_address']['country'] ?? null,
+            ];
+        }
+
+        // Return strictly tracking-relevant payload without exposing sensitive customer,
+        // address, internal database IDs, or payment internals:
+        return [
+            'order_number'     => (string) $fullOrder['order_number'],
+            'status'           => (string) $fullOrder['status'],
+            'payment_status'   => (string) $fullOrder['payment_status'],
+            'payment_method'   => (string) $fullOrder['payment_method'],
+            'subtotal'         => (float) $fullOrder['subtotal'],
+            'shipping_fee'     => (float) $fullOrder['shipping_fee'],
+            'discount'         => (float) $fullOrder['discount'],
+            'total'            => (float) $fullOrder['total'],
+            'item_count'       => (int) ($fullOrder['item_count'] ?? count($sanitizedItems)),
+            'total_quantity'   => (int) ($fullOrder['total_quantity'] ?? array_sum(array_column($sanitizedItems, 'quantity'))),
+            'items'            => $sanitizedItems,
+            'shipping_address' => $limitedShipping,
+            'created_at'       => (string) $fullOrder['created_at'],
+            'updated_at'       => (string) ($fullOrder['updated_at'] ?? $fullOrder['created_at']),
+        ];
     }
 }

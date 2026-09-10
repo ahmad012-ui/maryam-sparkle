@@ -44,8 +44,8 @@ if ($method === 'POST' && $subPath === '') {
     $input = getJsonInput();
 
     // 1. Validate payment method
-    $allowedPaymentMethods = ['COD', 'Card', 'Easypaisa'];
-    $paymentMethod = isset($input['payment_method']) ? trim((string)$input['payment_method']) : '';
+    $allowedPaymentMethods = ['cod', 'easypaisa', 'jazzcash', 'bank_transfer'];
+    $paymentMethod = isset($input['payment_method']) ? strtolower(trim((string)$input['payment_method'])) : '';
 
     if ($paymentMethod === '' || !in_array($paymentMethod, $allowedPaymentMethods, true)) {
         sendError('Validation failed', [
@@ -211,7 +211,8 @@ if ($method === 'POST' && $subPath === '') {
             ],
         ], 201);
     } catch (RuntimeException $e) {
-        $statusCode = $e->getCode() >= 400 && $e->getCode() <= 499 ? $e->getCode() : 400;
+        $code = (int) $e->getCode();
+        $statusCode = ($code >= 400 && $code <= 503) ? $code : 400;
         $errorKey = $statusCode === 409 ? 'stock' : ($statusCode === 403 ? 'address' : 'order');
         sendError($e->getMessage(), [$errorKey => $e->getMessage()], $statusCode);
     } catch (Throwable $e) {

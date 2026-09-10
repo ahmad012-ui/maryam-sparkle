@@ -109,7 +109,7 @@ export interface Order {
     estimatedDays: string;
   };
   paymentMethod: {
-    id: 'cod' | 'easypaisa' | 'bank_transfer';
+    id: 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer';
     title: string;
     instructions?: string;
   };
@@ -122,7 +122,7 @@ export interface Order {
   paymentStatus: 'pending' | 'paid';
   courierName?: string;
   trackingNumber?: string;
-  estimatedDelivery: string;
+  estimatedDelivery?: string;
   timeline: OrderTimelineStep[];
   notes?: string;
 }
