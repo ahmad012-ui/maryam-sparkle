@@ -155,7 +155,9 @@ export const CustomOrderPage: React.FC = () => {
           message: `${formData.name} requested a custom ${formData.jewelryType} (${formData.budgetRange}).`,
           timestamp: 'Just now',
           read: false,
+          isRead: false,
           linkTab: 'custom-orders',
+          targetId: newAdminCustomOrder.id,
         };
         adminStorage.saveNotifications([notif, ...existingNotifs]);
       } catch (localErr) {

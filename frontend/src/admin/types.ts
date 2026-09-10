@@ -101,9 +101,11 @@ export interface AdminNotification {
   title: string;
   message: string;
   timestamp: string;
-  read: boolean;
+  read?: boolean;
+  isRead?: boolean;
   linkTab?: AdminTab;
   badge?: string;
+  targetId?: string;
 }
 
 export interface StoreSettings {

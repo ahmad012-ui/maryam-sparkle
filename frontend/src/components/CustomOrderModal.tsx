@@ -155,7 +155,9 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
           message: `${formData.name} requested a bespoke ${formData.type}.`,
           timestamp: 'Just now',
           read: false,
+          isRead: false,
           linkTab: 'custom-orders',
+          targetId: newAdminCustomOrder.id,
         };
         adminStorage.saveNotifications([notif, ...existingNotifs]);
       } catch (localErr) {

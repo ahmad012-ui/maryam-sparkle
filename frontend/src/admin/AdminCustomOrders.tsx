@@ -25,6 +25,8 @@ interface AdminCustomOrdersProps {
   onSaveCustomOrders: (orders: AdminCustomOrder[]) => void;
   isAddModalOpen?: boolean;
   onCloseAddModal?: () => void;
+  selectedCustomOrder?: AdminCustomOrder | null;
+  onClearSelectedCustomOrder?: () => void;
 }
 
 const EMPTY_CUSTOM_ORDER_FORM: Partial<AdminCustomOrder> = {
@@ -47,11 +49,22 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
   onSaveCustomOrders,
   isAddModalOpen = false,
   onCloseAddModal,
+  selectedCustomOrder,
+  onClearSelectedCustomOrder,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [activeImagePreview, setActiveImagePreview] = useState<string | null>(null);
   const [selectedOrderForPhotos, setSelectedOrderForPhotos] = useState<AdminCustomOrder | null>(null);
+  const [activeDetailsModal, setActiveDetailsModal] = useState<AdminCustomOrder | null>(
+    selectedCustomOrder || null
+  );
+
+  React.useEffect(() => {
+    if (selectedCustomOrder) {
+      setActiveDetailsModal(selectedCustomOrder);
+    }
+  }, [selectedCustomOrder]);
 
   // Modal for new bespoke order
   const [showAddModal, setShowAddModal] = useState(isAddModalOpen);
@@ -318,8 +331,8 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
                   </div>
                 </div>
 
-                {/* Status Dropdown */}
-                <div className="shrink-0 self-start">
+                {/* Status Dropdown & Details Button */}
+                <div className="shrink-0 self-start flex items-center gap-1.5">
                   <div className="relative inline-flex items-center">
                     <select
                       value={req.status}
@@ -342,6 +355,14 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
                     </select>
                     <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-80" />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDetailsModal(req)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-[#2d5a61] dark:hover:text-teal-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                    title="View Request Details"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -728,6 +749,219 @@ export const AdminCustomOrders: React.FC<AdminCustomOrdersProps> = ({
               >
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bespoke Request Details Modal */}
+      {activeDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#1a1e24] rounded-2xl max-w-2xl w-full p-6 border border-gray-200 dark:border-gray-800 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-[#2d5a61] dark:text-teal-400">
+                    {activeDetailsModal.requestNumber}
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getStatusBadge(
+                      activeDetailsModal.status
+                    )}`}
+                  >
+                    {activeDetailsModal.status}
+                  </span>
+                </div>
+                <h3 className="font-serif text-lg font-bold text-gray-900 dark:text-white mt-0.5">
+                  Bespoke Inquiry: {activeDetailsModal.customerName}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setActiveDetailsModal(null);
+                  if (onClearSelectedCustomOrder) onClearSelectedCustomOrder();
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Customer & Design Spec Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50/70 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 text-xs">
+              <div className="space-y-1.5">
+                <h4 className="font-semibold text-gray-900 dark:text-white">Customer Contact</h4>
+                <p className="font-medium text-gray-800 dark:text-gray-200">
+                  {activeDetailsModal.customerName}
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" />
+                  {activeDetailsModal.phone}
+                </p>
+                {activeDetailsModal.email && (
+                  <p className="text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5" />
+                    {activeDetailsModal.email}
+                  </p>
+                )}
+                <p className="text-gray-400 text-[11px] pt-1">
+                  Received on {activeDetailsModal.date}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <h4 className="font-semibold text-gray-900 dark:text-white">Jewelry Specifications</h4>
+                <p>
+                  <span className="text-gray-400">Type:</span>{' '}
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">
+                    {activeDetailsModal.jewelryType}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-gray-400">Wrist/Neck Size:</span>{' '}
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {activeDetailsModal.wristSize || 'Standard'}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-gray-400">Metal Finish:</span>{' '}
+                  <span className="font-medium text-gray-800 dark:text-gray-200">
+                    {activeDetailsModal.metalFinish || '18K Gold Plated'}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-gray-400">Budget Range:</span>{' '}
+                  <span className="font-semibold text-[#2d5a61] dark:text-teal-400">
+                    {activeDetailsModal.budgetRange}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Preferred Stones & Materials */}
+            {activeDetailsModal.preferredStones && activeDetailsModal.preferredStones.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Requested Stones & Components
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeDetailsModal.preferredStones.map((st, i) => (
+                    <span
+                      key={i}
+                      className="text-xs px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-[#2d5a61] dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60 font-medium"
+                    >
+                      {st}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {activeDetailsModal.notes && (
+              <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
+                <h4 className="text-xs font-semibold text-amber-900 dark:text-amber-300 mb-1">
+                  Customer & Artisan Notes
+                </h4>
+                <p className="text-xs text-amber-800 dark:text-amber-200/90 leading-relaxed whitespace-pre-wrap">
+                  {activeDetailsModal.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Reference Photos */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  Reference & Attire Photos ({activeDetailsModal.referenceImages?.length || 0})
+                </h4>
+                <button
+                  onClick={() => {
+                    setSelectedOrderForPhotos(activeDetailsModal);
+                  }}
+                  className="text-xs text-[#2d5a61] dark:text-teal-400 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Images className="w-3.5 h-3.5" />
+                  <span>Manage Gallery</span>
+                </button>
+              </div>
+              {activeDetailsModal.referenceImages && activeDetailsModal.referenceImages.length > 0 ? (
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {activeDetailsModal.referenceImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setActiveImagePreview(img)}
+                      className="aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer group relative"
+                    >
+                      <img
+                        src={img}
+                        alt="Bespoke reference"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                        <Maximize2 className="w-4 h-4" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">No reference photos provided.</p>
+              )}
+            </div>
+
+            {/* Action Bar */}
+            <div className="pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-medium text-gray-500">Status:</span>
+                <select
+                  value={activeDetailsModal.status}
+                  onChange={(e) => {
+                    const newSt = e.target.value as AdminCustomOrder['status'];
+                    handleUpdateStatus(activeDetailsModal.id, newSt);
+                    setActiveDetailsModal({ ...activeDetailsModal, status: newSt });
+                  }}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-full border cursor-pointer ${getStatusBadge(
+                    activeDetailsModal.status
+                  )} bg-transparent`}
+                >
+                  {statuses.map((st) => (
+                    <option
+                      key={st}
+                      value={st}
+                      className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200"
+                    >
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <a
+                  href={`https://wa.me/${activeDetailsModal.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(
+                    activeDetailsModal.customerName
+                  )},%20this%20is%20Maryam%20Sparkle%20Jewelry.%20Regarding%20your%20custom%20order%20request%20(${
+                    activeDetailsModal.requestNumber
+                  }%20-%20${encodeURIComponent(activeDetailsModal.jewelryType)}),%20we%20have%20reviewed%20your%20specifications!%20Estimated%20quote:%20PKR%20${
+                    activeDetailsModal.quoteAmount ? activeDetailsModal.quoteAmount.toLocaleString() : '...'
+                  }.`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp Quote</span>
+                </a>
+                <button
+                  onClick={() => {
+                    setActiveDetailsModal(null);
+                    if (onClearSelectedCustomOrder) onClearSelectedCustomOrder();
+                  }}
+                  className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

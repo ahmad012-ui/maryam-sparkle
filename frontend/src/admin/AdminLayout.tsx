@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Gem,
@@ -14,8 +14,12 @@ import {
   Sun,
   ChevronRight,
   Package,
+  CheckCheck,
+  ArrowRight,
+  AlertTriangle,
+  Info,
 } from 'lucide-react';
-import { AdminTab, AdminThemeConfig } from './types';
+import { AdminTab, AdminThemeConfig, AdminNotification } from './types';
 
 interface AdminLayoutProps {
   activeTab: AdminTab;
@@ -24,6 +28,9 @@ interface AdminLayoutProps {
   onUpdateTheme: (config: AdminThemeConfig) => void;
   onBackToStore: () => void;
   unreadNotificationsCount?: number;
+  notifications?: AdminNotification[];
+  onNotificationClick?: (notif: AdminNotification) => void;
+  onMarkAllNotificationsAsRead?: () => void;
   children: React.ReactNode;
 }
 
@@ -34,9 +41,31 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   onUpdateTheme,
   onBackToStore,
   unreadNotificationsCount = 0,
+  notifications = [],
+  onNotificationClick,
+  onMarkAllNotificationsAsRead,
   children,
 }) => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notifDropdownRef.current &&
+        !notifDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    if (isNotificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationsOpen]);
 
   const navItems = [
     {
@@ -85,6 +114,19 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   const currentTabTitle =
     navItems.find((item) => item.id === activeTab)?.label || 'Dashboard';
+
+  const getNotifIcon = (type: AdminNotification['type']) => {
+    switch (type) {
+      case 'order':
+        return <ShoppingBag className="w-3.5 h-3.5 text-[#2d5a61] dark:text-teal-400" />;
+      case 'custom':
+        return <Sparkles className="w-3.5 h-3.5 text-[#c59d5f]" />;
+      case 'stock':
+        return <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />;
+      default:
+        return <Info className="w-3.5 h-3.5 text-sky-500" />;
+    }
+  };
 
   return (
     <div
@@ -221,7 +263,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   darkMode: !themeConfig.darkMode,
                 })
               }
-              className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
               title="Toggle Dark / Light Mode"
             >
               {themeConfig.darkMode ? (
@@ -231,22 +273,116 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               )}
             </button>
 
-            {/* Notifications Shortcut */}
-            <button
-              onClick={() => onSelectTab('notifications')}
-              className="relative p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              title="Studio Alerts"
-            >
-              <Bell className="w-4 h-4" />
-              {unreadNotificationsCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500" />
+            {/* Notifications Dropdown Container */}
+            <div className="relative" ref={notifDropdownRef}>
+              <button
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                title="Studio Alerts"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                    {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Popover Dropdown */}
+              {isNotificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-[#1a1e24] rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 z-50 overflow-hidden animate-fade-in">
+                  <div className="p-3.5 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-[#2d5a61] dark:text-teal-400" />
+                      <span className="font-semibold text-xs text-gray-900 dark:text-white">
+                        Studio Alerts
+                      </span>
+                      {unreadNotificationsCount > 0 && (
+                        <span className="text-[10px] font-bold bg-[#2d5a61] text-white px-2 py-0.2 rounded-full">
+                          {unreadNotificationsCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadNotificationsCount > 0 && onMarkAllNotificationsAsRead && (
+                      <button
+                        onClick={() => {
+                          onMarkAllNotificationsAsRead();
+                        }}
+                        className="text-[11px] text-[#2d5a61] dark:text-teal-400 hover:underline flex items-center gap-1 font-medium"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>Mark read</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-gray-400">
+                        No alerts at this moment.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 5).map((notif) => {
+                        const isRead = Boolean(notif.read || notif.isRead);
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => {
+                              setIsNotificationsOpen(false);
+                              if (onNotificationClick) {
+                                onNotificationClick(notif);
+                              } else {
+                                onSelectTab(notif.linkTab || 'orders');
+                              }
+                            }}
+                            className={`p-3.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer transition-colors flex items-start gap-3 ${
+                              !isRead
+                                ? 'bg-teal-50/50 dark:bg-teal-950/20'
+                                : ''
+                            }`}
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0 mt-0.5">
+                              {getNotifIcon(notif.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1">
+                                <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                                  {notif.title}
+                                </p>
+                                <span className="text-[10px] text-gray-400 shrink-0">
+                                  {notif.timestamp}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5 leading-tight">
+                                {notif.message}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 text-center">
+                    <button
+                      onClick={() => {
+                        setIsNotificationsOpen(false);
+                        onSelectTab('notifications');
+                      }}
+                      className="text-xs font-semibold text-[#2d5a61] dark:text-teal-400 hover:underline flex items-center justify-center gap-1 w-full"
+                    >
+                      <span>View All Studio Alerts ({notifications.length})</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
 
             {/* Back to Store Button */}
             <button
               onClick={onBackToStore}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#2d5a61] text-white hover:bg-[#1e3c41] transition-colors shadow-2xs"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#2d5a61] text-white hover:bg-[#1e3c41] transition-colors shadow-2xs cursor-pointer"
             >
               <Package className="w-3.5 h-3.5" />
               <span>Exit to Store</span>

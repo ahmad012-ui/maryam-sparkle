@@ -35,6 +35,12 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({
     initialSelected || null
   );
 
+  React.useEffect(() => {
+    if (initialSelected) {
+      setActiveModalOrder(initialSelected);
+    }
+  }, [initialSelected]);
+
   // Filter orders
   const filteredOrders = orders.filter((o) => {
     const matchesSearch =

@@ -414,7 +414,9 @@ export const orderService = {
         message: `${newOrder.customer.fullName} placed an order for Rs. ${newOrder.total.toLocaleString()} via ${orderPayload.paymentMethod.title}.`,
         timestamp: 'Just now',
         read: false,
+        isRead: false,
         linkTab: 'orders',
+        targetId: adminOrder.id,
       };
       adminStorage.saveNotifications([newNotif, ...existingNotifs]);
     } catch (storageErr) {

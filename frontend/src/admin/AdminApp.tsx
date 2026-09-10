@@ -39,6 +39,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isAddCustomOrderOpen, setIsAddCustomOrderOpen] = useState(false);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<AdminOrder | null>(null);
+  const [selectedCustomOrderForModal, setSelectedCustomOrderForModal] = useState<AdminCustomOrder | null>(null);
 
   // Sync dark mode class to html document or root
   useEffect(() => {
@@ -94,7 +95,101 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
     setSettings(adminStorage.getSettings());
   };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const handleNotificationClick = (notif: AdminNotification) => {
+    // 1. Mark notification as read
+    const updatedNotifs = notifications.map((n) =>
+      n.id === notif.id ? { ...n, read: true, isRead: true } : n
+    );
+    handleSaveNotifications(updatedNotifs);
+
+    // 2. Handle Order Notification -> Redirect to orders tab & open details modal
+    if (notif.type === 'order' || notif.linkTab === 'orders') {
+      let matchedOrder: AdminOrder | undefined;
+
+      // Match by targetId
+      if (notif.targetId) {
+        matchedOrder = orders.find(
+          (o) => o.id === notif.targetId || o.orderNumber === notif.targetId
+        );
+      }
+
+      // Match by orderNumber extraction from title/message
+      if (!matchedOrder) {
+        const matchRegex = (notif.title + ' ' + notif.message).match(/MS-?\d+/i);
+        if (matchRegex) {
+          const rawNum = matchRegex[0].replace('#', '').toUpperCase();
+          matchedOrder = orders.find((o) =>
+            o.orderNumber.toUpperCase().includes(rawNum)
+          );
+        }
+      }
+
+      // Match by customer name
+      if (!matchedOrder) {
+        matchedOrder = orders.find(
+          (o) =>
+            (notif.title && notif.title.includes(o.customerName)) ||
+            (notif.message && notif.message.includes(o.customerName))
+        );
+      }
+
+      if (matchedOrder) {
+        setSelectedOrderForModal(matchedOrder);
+      }
+      setActiveTab('orders');
+      return;
+    }
+
+    // 3. Handle Bespoke Request Notification -> Redirect to custom-orders tab & open details
+    if (notif.type === 'custom' || notif.linkTab === 'custom-orders') {
+      let matchedCustomOrder: AdminCustomOrder | undefined;
+
+      if (notif.targetId) {
+        matchedCustomOrder = customOrders.find(
+          (c) => c.id === notif.targetId || c.requestNumber === notif.targetId
+        );
+      }
+
+      if (!matchedCustomOrder) {
+        const matchRegex = (notif.title + ' ' + notif.message).match(/REQ-?\d+/i);
+        if (matchRegex) {
+          const rawReq = matchRegex[0].toUpperCase();
+          matchedCustomOrder = customOrders.find((c) =>
+            c.requestNumber.toUpperCase().includes(rawReq)
+          );
+        }
+      }
+
+      if (!matchedCustomOrder) {
+        matchedCustomOrder = customOrders.find(
+          (c) =>
+            (notif.title && notif.title.includes(c.customerName)) ||
+            (notif.message && notif.message.includes(c.customerName))
+        );
+      }
+
+      if (matchedCustomOrder) {
+        setSelectedCustomOrderForModal(matchedCustomOrder);
+      }
+      setActiveTab('custom-orders');
+      return;
+    }
+
+    // 4. Handle Stock Notification -> Redirect to products tab
+    if (notif.type === 'stock' || notif.linkTab === 'products') {
+      setActiveTab('products');
+      return;
+    }
+
+    // 5. General fallback
+    if (notif.linkTab) {
+      setActiveTab(notif.linkTab);
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read && !n.isRead).length;
 
   return (
     <AdminLayout
@@ -104,6 +199,13 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
       onUpdateTheme={handleUpdateTheme}
       onBackToStore={onBackToStore}
       unreadNotificationsCount={unreadCount}
+      notifications={notifications}
+      onNotificationClick={handleNotificationClick}
+      onMarkAllNotificationsAsRead={() =>
+        handleSaveNotifications(
+          notifications.map((n) => ({ ...n, read: true, isRead: true }))
+        )
+      }
     >
       {activeTab === 'dashboard' && (
         <AdminDashboard
@@ -150,6 +252,8 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           onSaveCustomOrders={handleSaveCustomOrders}
           isAddModalOpen={isAddCustomOrderOpen}
           onCloseAddModal={() => setIsAddCustomOrderOpen(false)}
+          selectedCustomOrder={selectedCustomOrderForModal}
+          onClearSelectedCustomOrder={() => setSelectedCustomOrderForModal(null)}
         />
       )}
 
@@ -165,6 +269,7 @@ export const AdminApp: React.FC<AdminAppProps> = ({ onBackToStore }) => {
           notifications={notifications}
           onSaveNotifications={handleSaveNotifications}
           onNavigateTab={setActiveTab}
+          onNotificationClick={handleNotificationClick}
         />
       )}
 
