@@ -87,7 +87,7 @@ export const authService = {
     return profile;
   },
 
-  async register(data: { name: string; email: string; password?: string; phone?: string }): Promise<{ profile: UserProfile | null; requiresEmailConfirmation: boolean }> {
+  async register(data: { name: string; email: string; password?: string; phone?: string }): Promise<UserProfile> {
     requireSupabase();
     if (!data.password) throw new Error('Password is required.');
     const { data: authData, error } = await supabase.auth.signUp({
@@ -98,16 +98,17 @@ export const authService = {
     if (error) throw new Error(error.message);
     if (!authData.user) throw new Error('Supabase did not create the account.');
 
-    // Confirm Email enabled => user exists but there is deliberately no session yet.
+    // Confirm Email enabled => Supabase returns a user without a session.
+    // Do not treat the new account as logged in until the email is confirmed.
     if (!authData.session) {
       currentUserCache = null;
-      return { profile: null, requiresEmailConfirmation: true };
+      throw new Error('Account created successfully. Please check your email and confirm your account before signing in.');
     }
 
     const profile = await syncSessionUser(authData.user);
     if (!profile) throw new Error('Unable to load your new Supabase profile.');
     window.dispatchEvent(new Event('auth-change'));
-    return { profile, requiresEmailConfirmation: false };
+    return profile;
   },
 
   async signInWithGoogle(): Promise<void> {
