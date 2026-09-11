@@ -37,7 +37,9 @@ export const authService = {
     void supabase.auth.getSession().then(({ data }) => syncSessionUser(data.session?.user || null));
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       void syncSessionUser(session?.user || null).then(() => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') window.dispatchEvent(new Event('auth-change'));
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+          window.dispatchEvent(new Event('auth-change'));
+        }
       });
     });
     return () => data.subscription.unsubscribe();
@@ -66,38 +68,63 @@ export const authService = {
     return currentUserCache !== null;
   },
 
-  async logout(): Promise<void> {
-    requireSupabase();
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    currentUserCache = null;
-    window.dispatchEvent(new Event('auth-change'));
-  },
-
   async login(credentials: { email: string; password?: string; name?: string; phone?: string }): Promise<UserProfile> {
     requireSupabase();
     if (!credentials.password) throw new Error('Password is required.');
-    const { data, error } = await supabase.auth.signInWithPassword({ email: credentials.email.trim(), password: credentials.password });
-    if (error) throw new Error(error.message);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: credentials.email.trim(),
+      password: credentials.password,
+    });
+    if (error) {
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        throw new Error('Please confirm your email address before signing in.');
+      }
+      throw new Error(error.message);
+    }
     const profile = await syncSessionUser(data.user);
     if (!profile) throw new Error('Unable to load your Supabase profile.');
     window.dispatchEvent(new Event('auth-change'));
     return profile;
   },
 
-  async register(data: { name: string; email: string; password?: string; phone?: string }): Promise<UserProfile> {
+  async register(data: { name: string; email: string; password?: string; phone?: string }): Promise<{ profile: UserProfile | null; requiresEmailConfirmation: boolean }> {
     requireSupabase();
     if (!data.password) throw new Error('Password is required.');
     const { data: authData, error } = await supabase.auth.signUp({
-      email: data.email.trim(), password: data.password,
+      email: data.email.trim(),
+      password: data.password,
       options: { data: { full_name: data.name.trim(), phone: data.phone?.trim() || '', role: 'customer' } },
     });
     if (error) throw new Error(error.message);
     if (!authData.user) throw new Error('Supabase did not create the account.');
+
+    // Confirm Email enabled => user exists but there is deliberately no session yet.
+    if (!authData.session) {
+      currentUserCache = null;
+      return { profile: null, requiresEmailConfirmation: true };
+    }
+
     const profile = await syncSessionUser(authData.user);
     if (!profile) throw new Error('Unable to load your new Supabase profile.');
     window.dispatchEvent(new Event('auth-change'));
-    return profile;
+    return { profile, requiresEmailConfirmation: false };
+  },
+
+  async signInWithGoogle(): Promise<void> {
+    requireSupabase();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async logout(): Promise<void> {
+    requireSupabase();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    currentUserCache = null;
+    window.dispatchEvent(new Event('auth-change'));
   },
 
   updateProfile(updates: Partial<UserProfile>): UserProfile | null {
