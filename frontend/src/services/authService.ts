@@ -7,6 +7,23 @@ function requireSupabase() {
   if (!isSupabaseConfigured()) throw new Error('Supabase is not configured. Authentication requires Supabase Auth.');
 }
 
+function mapAuthError(message: string): Error {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('email rate limit exceeded') || normalized.includes('rate limit exceeded')) {
+    return new Error('Supabase email sending is temporarily rate-limited. Please wait for the limit to reset, or disable Confirm Email while developing.');
+  }
+  if (normalized.includes('email not confirmed')) {
+    return new Error('Please confirm your email address before signing in.');
+  }
+  if (normalized.includes('email address') && normalized.includes('invalid')) {
+    return new Error('Supabase rejected this email address. Use a normal email such as Gmail, or configure a custom SMTP/domain for your own address.');
+  }
+  if (normalized.includes('user already registered')) {
+    return new Error('An account with this email already exists. Please sign in instead.');
+  }
+  return new Error(message);
+}
+
 async function syncSessionUser(user: any): Promise<UserProfile | null> {
   if (!user) {
     currentUserCache = null;
@@ -60,27 +77,14 @@ export const authService = {
     return user?.role === 'admin';
   },
 
-  getCurrentUser(): UserProfile | null {
-    return currentUserCache;
-  },
-
-  isLoggedIn(): boolean {
-    return currentUserCache !== null;
-  },
+  getCurrentUser(): UserProfile | null { return currentUserCache; },
+  isLoggedIn(): boolean { return currentUserCache !== null; },
 
   async login(credentials: { email: string; password?: string; name?: string; phone?: string }): Promise<UserProfile> {
     requireSupabase();
     if (!credentials.password) throw new Error('Password is required.');
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email.trim(),
-      password: credentials.password,
-    });
-    if (error) {
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        throw new Error('Please confirm your email address before signing in.');
-      }
-      throw new Error(error.message);
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email: credentials.email.trim(), password: credentials.password });
+    if (error) throw mapAuthError(error.message);
     const profile = await syncSessionUser(data.user);
     if (!profile) throw new Error('Unable to load your Supabase profile.');
     window.dispatchEvent(new Event('auth-change'));
@@ -93,13 +97,16 @@ export const authService = {
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email.trim(),
       password: data.password,
-      options: { data: { full_name: data.name.trim(), phone: data.phone?.trim() || '', role: 'customer' } },
+      options: {
+        data: { full_name: data.name.trim(), phone: data.phone?.trim() || '', role: 'customer' },
+        emailRedirectTo: window.location.origin,
+      },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw mapAuthError(error.message);
     if (!authData.user) throw new Error('Supabase did not create the account.');
 
-    // Confirm Email enabled => Supabase returns a user without a session.
-    // Do not treat the new account as logged in until the email is confirmed.
+    // When Confirm Email is disabled, Supabase returns both user and session.
+    // When it is enabled, session is null until the user confirms the email.
     if (!authData.session) {
       currentUserCache = null;
       throw new Error('Account created successfully. Please check your email and confirm your account before signing in.');
@@ -117,7 +124,7 @@ export const authService = {
       provider: 'google',
       options: { redirectTo: window.location.origin },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw mapAuthError(error.message);
   },
 
   async logout(): Promise<void> {
