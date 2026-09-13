@@ -1,5 +1,7 @@
 import { authService } from './authService';
+import { initAdminVisibility } from './adminVisibility';
 
-// Start the Supabase auth listener once for the lifetime of the SPA.
-// This restores persisted sessions on refresh and handles OAuth redirects.
+// Start Supabase auth once for the lifetime of the SPA.
+// This restores persisted sessions and handles OAuth redirect sessions.
 authService.initAuthListener();
+initAdminVisibility();
