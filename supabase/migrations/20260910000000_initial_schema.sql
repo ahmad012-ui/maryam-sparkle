@@ -84,6 +84,9 @@ AS $$
     );
 $$;
 
+-- Ensure calling users (authenticated and anonymous) can execute is_admin() in RLS policies
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated, service_role;
+
 -- ==============================================================================
 -- 2. CATEGORIES TABLE
 -- ==============================================================================
@@ -659,6 +662,8 @@ BEGIN
     );
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.place_order(JSONB) TO anon, authenticated, service_role;
 
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES

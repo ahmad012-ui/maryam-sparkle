@@ -88,6 +88,9 @@ AS $$
     );
 $$;
 
+-- Ensure calling users (authenticated and anonymous) can execute is_admin() in RLS policies
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon, authenticated, service_role;
+
 -- ==============================================================================
 -- 2. CATEGORIES TABLE
 -- ==============================================================================
@@ -423,6 +426,15 @@ CREATE TABLE IF NOT EXISTS public.contact_messages (
 CREATE INDEX IF NOT EXISTS idx_contact_messages_status ON public.contact_messages(status);
 
 -- ==============================================================================
+-- 18. STORE SETTINGS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.store_settings (
+    id TEXT PRIMARY KEY DEFAULT 'default',
+    settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ==============================================================================
 -- SECURE SERVER-SIDE ORDER CREATION FUNCTION (RPC)
 -- Prevents price manipulation, stock race conditions, and partial orders.
 -- ==============================================================================
@@ -677,6 +689,8 @@ BEGIN
     );
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.place_order(JSONB) TO anon, authenticated, service_role;
 
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -955,6 +969,19 @@ CREATE POLICY "Anyone can submit contact messages"
 DROP POLICY IF EXISTS "Admins can view and manage contact messages" ON public.contact_messages;
 CREATE POLICY "Admins can view and manage contact messages"
     ON public.contact_messages FOR ALL
+    USING (public.is_admin());
+
+-- 13. Store Settings Policies (Public readable, Admins manage)
+ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Store settings are readable by everyone" ON public.store_settings;
+CREATE POLICY "Store settings are readable by everyone"
+    ON public.store_settings FOR SELECT
+    USING (true);
+
+DROP POLICY IF EXISTS "Admins can update store settings" ON public.store_settings;
+CREATE POLICY "Admins can update store settings"
+    ON public.store_settings FOR ALL
     USING (public.is_admin());
 
 -- ==============================================================================
