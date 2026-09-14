@@ -138,24 +138,25 @@ function mapSupabaseOrderToOrder(so: Record<string, any>): Order {
 }
 
 function requireSupabase() {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase is not configured. Orders require the Supabase backend.');
-  }
+  if (!isSupabaseConfigured()) throw new Error('Supabase is not configured. Orders require the Supabase backend.');
+}
+
+async function fetchOwnOrder(orderId: string): Promise<Order> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*), payments(*)')
+    .eq('id', orderId)
+    .single();
+  if (error) throw error;
+  return mapSupabaseOrderToOrder(data);
 }
 
 export const orderService = {
   async getAllOrders(): Promise<Order[]> {
     requireSupabase();
     const currentUser = authService.getCurrentUser();
-    let query = supabase
-      .from('orders')
-      .select('*, order_items(*), payments(*)')
-      .order('created_at', { ascending: false });
-
-    if (currentUser?.id && !currentUser.id.startsWith('usr-') && currentUser.role !== 'admin') {
-      query = query.eq('user_id', currentUser.id);
-    }
-
+    let query = supabase.from('orders').select('*, order_items(*), payments(*)').order('created_at', { ascending: false });
+    if (currentUser?.id && !currentUser.id.startsWith('usr-') && currentUser.role !== 'admin') query = query.eq('user_id', currentUser.id);
     const { data, error } = await query;
     if (error) throw error;
     return (data || []).map(mapSupabaseOrderToOrder);
@@ -168,23 +169,18 @@ export const orderService = {
   async trackOrder(orderNumber: string, phoneOrEmail?: string): Promise<Order | null> {
     requireSupabase();
     const cleanNumber = orderNumber.trim();
-    if (!cleanNumber) return null;
+    const contact = phoneOrEmail?.trim() || '';
+    if (!cleanNumber || !contact) return null;
 
-    let query = supabase
-      .from('orders')
-      .select('*, order_items(*), payments(*)')
-      .ilike('order_number', cleanNumber);
-
-    if (phoneOrEmail?.trim()) {
-      const contact = phoneOrEmail.trim();
-      query = contact.includes('@')
-        ? query.ilike('customer_email', contact)
-        : query.ilike('customer_phone', `%${contact.replace(/\D/g, '')}%`);
-    }
-
-    const { data, error } = await query.maybeSingle();
+    const isEmail = contact.includes('@');
+    const { data, error } = await supabase.rpc('track_guest_order', {
+      p_order_number: cleanNumber,
+      p_email: isEmail ? contact : '',
+      p_phone: isEmail ? null : contact,
+    });
     if (error) throw error;
-    return data ? mapSupabaseOrderToOrder(data) : null;
+    if (!data) return null;
+    return mapSupabaseOrderToOrder(data.order || {});
   },
 
   async createOrder(orderPayload: CreateOrderPayload): Promise<Order> {
@@ -193,7 +189,6 @@ export const orderService = {
     const rpcPayload = {
       customer: {
         fullName: orderPayload.customer.fullName,
-        name: orderPayload.customer.fullName,
         email: orderPayload.customer.email,
         phone: orderPayload.customer.phone,
       },
@@ -217,33 +212,16 @@ export const orderService = {
         productId: item.product.id,
         productSlug: item.product.slug,
         productName: item.product.name,
-        price: item.product.price,
+        productImage: item.product.image,
         quantity: item.quantity,
         selectedSize: item.selectedSize || 'Medium (6.5")',
         selectedFinish: item.selectedFinish || '18K Gold Plated',
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          slug: item.product.slug,
-          price: item.product.price,
-          sku: item.product.sku,
-          image: item.product.image,
-        },
       })),
     };
 
     const { data, error } = await supabase.rpc('place_order', { payload: rpcPayload });
     if (error) throw error;
-    if (!data?.success || !data.order_id) {
-      throw new Error(data?.message || 'The order could not be created.');
-    }
-
-    const { data: savedOrder, error: fetchError } = await supabase
-      .from('orders')
-      .select('*, order_items(*), payments(*)')
-      .eq('id', data.order_id)
-      .single();
-    if (fetchError) throw fetchError;
-    return mapSupabaseOrderToOrder(savedOrder);
+    if (!data?.success || !data.order_id) throw new Error(data?.message || 'The order could not be created.');
+    return fetchOwnOrder(data.order_id);
   },
 };
