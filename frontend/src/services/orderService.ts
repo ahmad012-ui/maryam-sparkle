@@ -251,4 +251,13 @@ export const orderService = {
       };
     }
   },
+
+  async getOrderById(orderId: string): Promise<Order | null> {
+    requireSupabase();
+    try {
+      return await fetchOwnOrder(orderId);
+    } catch {
+      return null;
+    }
+  },
 };

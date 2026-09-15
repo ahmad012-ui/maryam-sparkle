@@ -26,6 +26,8 @@ import { CartItem, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { sanitizePhoneNumber, isValidPhoneNumber } from '../utils/validation';
 import { authService } from '../services/authService';
 import { orderService } from '../services/orderService';
+import { couponService } from '../services/couponService';
+import { analyticsService } from '../services/analyticsService';
 import {
   uploadImageFile,
   validateImageFile,
@@ -172,20 +174,35 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingFee);
   const progressToFreeShipping = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
-  const handleApplyPromo = (e: React.FormEvent) => {
+  const handleApplyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
     setPromoError('');
     setPromoSuccess('');
 
     const cleanCode = promoCode.trim().toUpperCase();
-    if (cleanCode === 'SPARKLE10' || cleanCode === 'LOVEHANDMADE') {
-      setAppliedDiscount(0.1);
-      setPromoSuccess('10% discount applied to your order!');
-    } else if (cleanCode === 'MARYAM15') {
-      setAppliedDiscount(0.15);
-      setPromoSuccess('15% special VIP discount applied!');
-    } else {
-      setPromoError('Invalid code. Try "SPARKLE10"');
+    if (!cleanCode) {
+      setPromoError('Please enter a coupon code.');
+      return;
+    }
+
+    try {
+      const result = await couponService.validateCoupon(cleanCode, subtotal);
+      if (result.valid) {
+        // Calculate discount percentage or store fixed amount
+        if (result.discountType === 'percentage') {
+          setAppliedDiscount((result.discountValue || 0) / 100);
+        } else {
+          setAppliedDiscount(subtotal > 0 ? (result.discountAmount / subtotal) : 0);
+        }
+        setPromoSuccess(result.message || `Coupon ${cleanCode} applied!`);
+        analyticsService.trackApplyCoupon(cleanCode, true, result.discountAmount);
+      } else {
+        setPromoError(result.message || 'Invalid coupon code.');
+        analyticsService.trackApplyCoupon(cleanCode, false);
+      }
+    } catch (err: any) {
+      setPromoError('Failed to validate coupon. Please check connection.');
+      analyticsService.trackApplyCoupon(cleanCode, false);
     }
   };
 
@@ -269,6 +286,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
       });
 
       setOrderId(newOrder.orderNumber);
+      analyticsService.trackPurchase(newOrder);
       setOrderComplete(true);
       onClearCart();
     } catch (err: any) {

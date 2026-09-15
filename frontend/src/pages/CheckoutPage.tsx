@@ -28,6 +28,7 @@ import { orderService } from '../services/orderService';
 import { cartService } from '../services/cartService';
 import { authService } from '../services/authService';
 import { couponService, CouponValidationResult } from '../services/couponService';
+import { analyticsService } from '../services/analyticsService';
 import {
   uploadImageFile,
   validateImageFile,
@@ -388,6 +389,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
       // Clear the user's active cart in backend and local state
       await cartService.clearCart();
       onClearCart();
+
+      // Track purchase event
+      analyticsService.trackPurchase(newOrder);
 
       // Navigate directly to Order Confirmation
       navigate(`/order-confirmation?orderId=${newOrder.orderNumber}`);

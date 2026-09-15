@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SEO } from '../components/SEO';
+import { RecentlyViewedSection } from '../components/RecentlyViewedSection';
 
 interface ShopPageProps {
   products: Product[];
@@ -648,6 +649,16 @@ export const ShopPage: React.FC<ShopPageProps> = ({
             )}
           </div>
         </div>
+      </div>
+
+      {/* Recently Viewed Drawer / Section */}
+      <div className="max-w-7xl mx-auto px-6 md:px-10 pb-16">
+        <RecentlyViewedSection
+          wishlistIds={wishlistIds}
+          onAddToCart={(p) => onAddToCart(p)}
+          onToggleWishlist={onToggleWishlist}
+          onQuickView={onQuickView}
+        />
       </div>
     </div>
   );

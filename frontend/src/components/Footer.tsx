@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, MessageCircle, Heart, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Instagram, MessageCircle, Heart, CheckCircle2, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { newsletterService } from '../services/newsletterService';
 
 interface FooterProps {
   onSelectCategory?: (category: string | null) => void;
@@ -10,15 +11,27 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = () => {
   const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setTimeout(() => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setFeedback(null);
+
+    try {
+      const res = await newsletterService.subscribe(email.trim(), 'footer_circle');
+      if (res.success) {
+        setFeedback({ type: 'success', message: res.message });
         setEmail('');
-      }, 4000);
+      } else {
+        setFeedback({ type: 'error', message: res.message });
+      }
+    } catch {
+      setFeedback({ type: 'error', message: 'Unable to subscribe right now. Please try again soon.' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,28 +51,44 @@ export const Footer: React.FC<FooterProps> = () => {
             </div>
 
             <div className="w-full md:w-auto md:min-w-[360px]">
-              {subscribed ? (
+              {feedback?.type === 'success' ? (
                 <div className="flex items-center gap-2 text-xs font-medium text-[#2d5a61] bg-[#efe8dc] px-4 py-3 rounded-full border border-[#2d5a61]/30">
                   <CheckCircle2 className="w-4 h-4 text-[#2d5a61] shrink-0" />
-                  <span>Welcome to the circle! Use code <strong className="font-bold">SPARKLE10</strong> for 10% off.</span>
+                  <span>{feedback.message} Use code <strong className="font-bold">SPARKLE10</strong> at checkout.</span>
                 </div>
               ) : (
-                <form onSubmit={handleSubscribe} className="flex gap-2">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                    className="flex-1 bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-full px-4 py-2.5 text-xs sm:text-sm text-[#333333] placeholder-[#888888] focus:outline-none focus:border-[#2d5a61]"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white px-5 py-2.5 rounded-full text-xs font-semibold transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span>Join</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                <form onSubmit={handleSubscribe} className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      required
+                      disabled={loading}
+                      className="flex-1 bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-full px-4 py-2.5 text-xs sm:text-sm text-[#333333] placeholder-[#888888] focus:outline-none focus:border-[#2d5a61] disabled:opacity-50"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white px-5 py-2.5 rounded-full text-xs font-semibold transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <span>Join</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {feedback?.type === 'error' && (
+                    <div className="flex items-center gap-1.5 text-xs text-red-600 px-2">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{feedback.message}</span>
+                    </div>
+                  )}
                 </form>
               )}
             </div>

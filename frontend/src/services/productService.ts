@@ -280,25 +280,179 @@ export const productService = {
   },
 
   /**
-   * Get related products based on category or shared tags
+   * Get related products based on multi-dimensional scoring (category, materials, color, price proximity, tags)
    */
   async getRelatedProducts(currentProductId: string, limit = 4): Promise<Product[]> {
     const allProducts = await this.getProducts();
-    const current = allProducts.find((p) => p.id === currentProductId);
+    const current = allProducts.find((p) => p.id === currentProductId || p.slug === currentProductId);
     if (!current) return allProducts.slice(0, limit);
 
-    const related = allProducts.filter(
-      (p) => p.id !== currentProductId && p.category === current.category
+    const scored = allProducts
+      .filter((p) => p.id !== current.id && p.slug !== current.slug)
+      .map((item) => {
+        let score = 0;
+
+        // Same category (+5 points)
+        if (item.category.toLowerCase() === current.category.toLowerCase()) {
+          score += 5;
+        }
+
+        // Shared materials (+3 points each)
+        const currentMats = current.materials.map((m) => m.toLowerCase());
+        item.materials.forEach((m) => {
+          if (currentMats.some((cm) => cm.includes(m.toLowerCase()) || m.toLowerCase().includes(cm))) {
+            score += 3;
+          }
+        });
+
+        // Matching finish / metals (+3 points)
+        if (current.finish && item.finish && current.finish.toLowerCase() === item.finish.toLowerCase()) {
+          score += 3;
+        }
+
+        // Shared colors (+2 points each)
+        const currentColors = (current.colors || []).map((c) => c.toLowerCase());
+        (item.colors || []).forEach((c) => {
+          if (currentColors.includes(c.toLowerCase())) {
+            score += 2;
+          }
+        });
+
+        // Price proximity within 25% (+2 points)
+        const priceDiffRatio = Math.abs(item.price - current.price) / (current.price || 1);
+        if (priceDiffRatio <= 0.25) {
+          score += 2;
+        }
+
+        // Shared tags (+2 points each)
+        const currentTags = (current.tags || []).map((t) => t.toLowerCase());
+        (item.tags || []).forEach((t) => {
+          if (currentTags.includes(t.toLowerCase())) {
+            score += 2;
+          }
+        });
+
+        return { product: item, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    return scored.slice(0, limit).map((s) => s.product);
+  },
+
+  /**
+   * Get complementary products in different categories to style or layer with (frequently paired)
+   */
+  async getFrequentlyPaired(product: Product, limit = 3): Promise<Product[]> {
+    const allProducts = await this.getProducts();
+    const otherCategories = allProducts.filter(
+      (p) => p.id !== product.id && p.slug !== product.slug && p.category.toLowerCase() !== product.category.toLowerCase()
     );
 
-    if (related.length < limit) {
-      const others = allProducts.filter(
-        (p) => p.id !== currentProductId && p.category !== current.category
-      );
-      return [...related, ...others].slice(0, limit);
-    }
+    const scored = otherCategories
+      .map((item) => {
+        let score = 0;
+        // Matching finish
+        if (product.finish && item.finish && product.finish.toLowerCase() === item.finish.toLowerCase()) {
+          score += 4;
+        }
+        // Matching gemstone/materials
+        const productMats = product.materials.map((m) => m.toLowerCase());
+        item.materials.forEach((m) => {
+          if (productMats.some((pm) => pm.includes(m.toLowerCase()) || m.toLowerCase().includes(pm))) {
+            score += 3;
+          }
+        });
+        // High rating bonus
+        if (item.rating && item.rating >= 4.8) {
+          score += 1;
+        }
+        return { product: item, score };
+      })
+      .sort((a, b) => b.score - a.score);
 
-    return related.slice(0, limit);
+    return scored.slice(0, limit).map((s) => s.product);
+  },
+
+  /**
+   * Get products by array of IDs (preserving sequence, e.g. for recently viewed)
+   */
+  async getProductsByIds(ids: string[]): Promise<Product[]> {
+    if (!ids || ids.length === 0) return [];
+    const all = await this.getProducts();
+    const idSet = new Set(ids);
+    const map = new Map<string, Product>();
+    all.forEach((p) => {
+      if (idSet.has(p.id) || idSet.has(p.slug)) {
+        map.set(p.id, p);
+        map.set(p.slug, p);
+      }
+    });
+
+    const ordered: Product[] = [];
+    ids.forEach((id) => {
+      const found = map.get(id);
+      if (found && !ordered.some((p) => p.id === found.id)) {
+        ordered.push(found);
+      }
+    });
+    return ordered;
+  },
+
+  /**
+   * Get search autocomplete suggestions (matching product names, categories, and gemstone materials)
+   */
+  async getSearchSuggestions(query: string, limit = 6): Promise<{ title: string; type: 'product' | 'category' | 'material'; slug?: string }[]> {
+    const q = (query || '').trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+
+    const all = await this.getProducts();
+    const categories = await this.getCategories();
+    const results: { title: string; type: 'product' | 'category' | 'material'; slug?: string }[] = [];
+    const seen = new Set<string>();
+
+    // 1. Matching categories
+    categories.forEach((cat) => {
+      if (cat.name.toLowerCase().includes(q) && !seen.has(cat.name.toLowerCase())) {
+        seen.add(cat.name.toLowerCase());
+        results.push({ title: cat.name, type: 'category', slug: cat.slug });
+      }
+    });
+
+    // 2. Matching product titles
+    all.forEach((p) => {
+      if (p.name.toLowerCase().includes(q) && !seen.has(p.name.toLowerCase())) {
+        seen.add(p.name.toLowerCase());
+        results.push({ title: p.name, type: 'product', slug: p.slug });
+      }
+    });
+
+    // 3. Matching gemstone materials
+    all.forEach((p) => {
+      p.materials.forEach((m) => {
+        if (m.toLowerCase().includes(q) && !seen.has(m.toLowerCase())) {
+          seen.add(m.toLowerCase());
+          results.push({ title: m, type: 'material' });
+        }
+      });
+    });
+
+    return results.slice(0, limit);
+  },
+
+  /**
+   * Get curated popular search keywords
+   */
+  getPopularSearchTerms(): string[] {
+    return [
+      'Ruby Star',
+      'Pearl Choker',
+      'Green Aventurine',
+      'Turquoise Anklet',
+      '18K Gold Plated',
+      'Custom Letter Bracelet',
+      'Rose Quartz',
+      'Stackable Set',
+    ];
   },
 
   /**

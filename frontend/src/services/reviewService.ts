@@ -11,6 +11,8 @@ export interface ProductReview {
   comment: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+  isVerifiedPurchase?: boolean;
+  helpfulCount?: number;
 }
 
 export interface SubmitReviewPayload {
@@ -25,6 +27,34 @@ const isUuid = (val: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
 
 export const reviewService = {
+  async checkVerifiedPurchase(productId: string, userId?: string): Promise<boolean> {
+    if (!isSupabaseConfigured() || !userId || !isUuid(userId) || !isUuid(productId)) {
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('check_verified_purchase', {
+        p_user_id: userId,
+        p_product_id: productId,
+      });
+
+      if (!error && typeof data === 'boolean') {
+        return data;
+      }
+
+      // Fallback query on orders table
+      const { count } = await supabase
+        .from('order_items')
+        .select('id, orders!inner(user_id, status)', { count: 'exact', head: true })
+        .eq('product_id', productId)
+        .eq('orders.user_id', userId);
+
+      return (count || 0) > 0;
+    } catch {
+      return false;
+    }
+  },
+
   async getProductReviews(productId: string): Promise<ProductReview[]> {
     if (!isSupabaseConfigured() || !isUuid(productId)) {
       return [];
@@ -57,6 +87,8 @@ export const reviewService = {
           comment: r.comment || '',
           status: r.status,
           createdAt: r.created_at,
+          isVerifiedPurchase: Boolean(r.is_verified_purchase),
+          helpfulCount: Number(r.helpful_count) || 0,
         };
       });
     } catch (err) {
@@ -85,6 +117,12 @@ export const reviewService = {
     const currentUser = authService.getCurrentUser();
     const userId = currentUser && isUuid(currentUser.id) ? currentUser.id : null;
 
+    // Check verified buyer status securely
+    let isVerified = false;
+    if (userId) {
+      isVerified = await this.checkVerifiedPurchase(payload.productId, userId);
+    }
+
     const row = {
       product_id: payload.productId,
       user_id: userId,
@@ -92,6 +130,7 @@ export const reviewService = {
       title: payload.title?.trim() || null,
       comment: payload.comment.trim(),
       status: 'approved', // Live approved with trigger updating product rating
+      is_verified_purchase: isVerified,
     };
 
     const { data, error } = await supabase.from('reviews').insert(row).select().single();
@@ -107,11 +146,14 @@ export const reviewService = {
       comment: payload.comment.trim(),
       status: 'approved',
       createdAt: data?.created_at || new Date().toISOString(),
+      isVerifiedPurchase: isVerified,
     };
 
     return {
       success: true,
-      message: 'Thank you! Your verified studio review has been published.',
+      message: isVerified
+        ? 'Thank you! Your verified purchase review has been published.'
+        : 'Thank you! Your studio review has been published.',
       review: createdReview,
     };
   },

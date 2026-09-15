@@ -1,6 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { X, Search, Heart, ShoppingBag, Sparkles, Filter } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Search, Heart, ShoppingBag, Sparkles, Filter, History, Trash2, ArrowUpRight } from 'lucide-react';
 import { Product } from '../types';
+import { recentActivityService } from '../services/recentActivityService';
+import { productService } from '../services/productService';
+import { analyticsService } from '../services/analyticsService';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -24,14 +27,34 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>('All');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<{ title: string; type: string; slug?: string }[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRecentSearches(recentActivityService.getRecentSearches());
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (query.trim().length >= 2) {
+      productService.getSearchSuggestions(query).then(setSuggestions).catch(() => setSuggestions([]));
+    } else {
+      setSuggestions([]);
+    }
+  }, [query]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    const res = products.filter((p) => {
+      const q = query.toLowerCase().trim();
       const matchesQuery =
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.description.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.materials.some((m) => m.toLowerCase().includes(query.toLowerCase()));
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        p.materials.some((m) => m.toLowerCase().includes(q)) ||
+        (p.tags?.some((t) => t.toLowerCase().includes(q)) ?? false) ||
+        (p.colors?.some((c) => c.toLowerCase().includes(q)) ?? false);
 
       const matchesCat =
         selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
@@ -47,7 +70,32 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
       return matchesQuery && matchesCat && matchesPrice;
     });
+
+    if (query.trim().length >= 2) {
+      analyticsService.trackSearch(query, res.length);
+    }
+
+    return res;
   }, [products, query, selectedCategory, selectedPriceRange]);
+
+  const handleSelectQuery = (term: string) => {
+    setQuery(term);
+    recentActivityService.addRecentSearch(term);
+    setRecentSearches(recentActivityService.getRecentSearches());
+  };
+
+  const handleClearHistory = () => {
+    recentActivityService.clearRecentSearches();
+    setRecentSearches([]);
+  };
+
+  const handleRemoveHistoryItem = (term: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    recentActivityService.removeRecentSearch(term);
+    setRecentSearches(recentActivityService.getRecentSearches());
+  };
+
+  const popularTerms = productService.getPopularSearchTerms();
 
   if (!isOpen) return null;
 
@@ -63,7 +111,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-[#efe8dc] text-[#666666] transition-colors"
+              className="p-1.5 rounded-full hover:bg-[#efe8dc] text-[#666666] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -76,11 +124,98 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && query.trim()) {
+                  recentActivityService.addRecentSearch(query);
+                  setRecentSearches(recentActivityService.getRecentSearches());
+                }
+              }}
               placeholder="Search ruby, amethyst, pearl, gold, bracelets..."
               autoFocus
               className="w-full bg-white border border-[#e0d8c8] rounded-full pl-12 pr-4 py-3 text-sm text-[#333333] placeholder-[#888888] focus:outline-none focus:ring-2 focus:ring-[#2d5a61]/30 focus:border-[#2d5a61] shadow-2xs"
             />
           </div>
+
+          {/* Autocomplete suggestions dropdown when typing */}
+          {suggestions.length > 0 && query.trim() && (
+            <div className="mt-2.5 bg-white rounded-2xl border border-[#e0d8c8] p-2 shadow-sm">
+              <span className="text-[10px] uppercase font-semibold text-[#888888] px-2.5 py-1 block">
+                Suggestions
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.map((s, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectQuery(s.title)}
+                    className="px-3 py-1 rounded-xl bg-[#efe8dc]/40 hover:bg-[#2d5a61] hover:text-white text-xs text-[#333333] transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{s.title}</span>
+                    <span className="text-[10px] opacity-60 uppercase font-mono">({s.type})</span>
+                    <ArrowUpRight className="w-3 h-3 opacity-60" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Searches */}
+          {recentSearches.length > 0 && !query && (
+            <div className="mt-3.5 pt-3 border-t border-[#e0d8c8]/60">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-[#666666] flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-[#2d5a61]" />
+                  <span>Recent Searches</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  className="text-[11px] text-[#888888] hover:text-red-600 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear</span>
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {recentSearches.map((term, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSelectQuery(term)}
+                    className="group px-3 py-1 rounded-full bg-white border border-[#e0d8c8] text-xs text-[#444444] hover:border-[#2d5a61] hover:text-[#2d5a61] transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{term}</span>
+                    <span
+                      onClick={(e) => handleRemoveHistoryItem(term, e)}
+                      className="text-[#888888] group-hover:text-red-500 hover:scale-110"
+                    >
+                      &times;
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Popular Search Suggestions */}
+          {!query && (
+            <div className="mt-3">
+              <span className="text-[11px] font-semibold text-[#888888] uppercase tracking-wider block mb-1.5">
+                Popular Searches
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {popularTerms.map((term, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSelectQuery(term)}
+                    className="px-2.5 py-1 rounded-full bg-white/70 hover:bg-[#2d5a61] hover:text-white border border-[#e0d8c8] text-[11px] text-[#555555] transition-colors cursor-pointer"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Category & Filter Pills */}
           <div className="flex flex-wrap items-center gap-2 mt-4 text-xs">
@@ -163,6 +298,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                           src={product.image}
                           alt={product.name}
                           onClick={() => {
+                            if (query.trim()) {
+                              recentActivityService.addRecentSearch(query);
+                            }
                             onSelectProduct(product);
                             onClose();
                           }}
@@ -185,6 +323,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
                       <h4
                         onClick={() => {
+                          if (query.trim()) {
+                            recentActivityService.addRecentSearch(query);
+                          }
                           onSelectProduct(product);
                           onClose();
                         }}
@@ -199,7 +340,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
                     <button
                       onClick={() => onAddToCart(product)}
-                      className="mt-3 w-full bg-[#efe8dc] hover:bg-[#2d5a61] hover:text-white text-[#333333] py-1.5 rounded-full text-[11px] font-medium transition-colors flex items-center justify-center gap-1.5"
+                      className="mt-3 w-full bg-[#efe8dc] hover:bg-[#2d5a61] hover:text-white text-[#333333] py-1.5 rounded-full text-[11px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ShoppingBag className="w-3 h-3" />
                       <span>Add to Bag</span>

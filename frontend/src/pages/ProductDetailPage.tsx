@@ -13,13 +13,19 @@ import {
   Star,
   Info,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  Plus,
+  ZoomIn,
+  X
 } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
 import { reviewService, ProductReview } from '../services/reviewService';
 import { authService } from '../services/authService';
+import { recentActivityService } from '../services/recentActivityService';
+import { analyticsService } from '../services/analyticsService';
 import { SEO } from '../components/SEO';
+import { RecentlyViewedSection } from '../components/RecentlyViewedSection';
 
 interface ProductDetailPageProps {
   wishlistIds: string[];
@@ -39,8 +45,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [frequentlyPaired, setFrequentlyPaired] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>('Medium (6.5")');
   const [selectedFinish, setSelectedFinish] = useState<string>('Gold-Tone');
@@ -68,8 +76,24 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         setSelectedImage(found.images?.[0] || found.image);
         const initialFinish = found.finish || found.availableFinishes?.[0] || 'Gold-Tone';
         setSelectedFinish(initialFinish);
-        const related = await productService.getRelatedProducts(found.id, 4);
+
+        // Record recently viewed & analytics tracking
+        recentActivityService.recordProductView(found.id);
+        analyticsService.trackProductView({
+          id: found.id,
+          name: found.name,
+          category: found.category,
+          price: found.price,
+          sku: found.sku,
+        });
+
+        // Load related & frequently paired
+        const [related, paired] = await Promise.all([
+          productService.getRelatedProducts(found.id, 4),
+          productService.getFrequentlyPaired(found, 2),
+        ]);
         setRelatedProducts(related);
+        setFrequentlyPaired(paired);
 
         // Pre-fill user name if logged in
         const currentUser = authService.getCurrentUser();
@@ -255,7 +279,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <img
                 src={selectedImage || product.image}
                 alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 cursor-zoom-in"
+                onClick={() => setIsZoomOpen(true)}
               />
 
               {/* Floating badges */}
@@ -272,6 +297,16 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 )}
               </div>
 
+              {/* Zoom trigger */}
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(true)}
+                className="absolute bottom-4 left-4 p-2 rounded-full bg-white/80 text-[#333333] hover:bg-white hover:text-[#2d5a61] shadow-xs transition-opacity opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[11px] font-medium"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+                <span>Inspect Detail</span>
+              </button>
+
               {/* Wishlist button */}
               <button
                 onClick={() => onToggleWishlist(product)}
@@ -287,6 +322,32 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Zoom Lightbox Modal */}
+        {isZoomOpen && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="relative max-w-4xl max-h-[90vh] bg-[#fdfaf5] rounded-3xl overflow-hidden shadow-2xl border border-white/20 flex flex-col items-center">
+              <button
+                onClick={() => setIsZoomOpen(false)}
+                className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-black/60 text-white hover:bg-black transition-colors"
+                aria-label="Close zoomed preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="overflow-auto max-h-[80vh] p-2 flex items-center justify-center">
+                <img
+                  src={selectedImage || product.image}
+                  alt={product.name}
+                  className="max-h-[78vh] w-auto object-contain rounded-2xl"
+                />
+              </div>
+              <div className="py-3 px-6 text-center border-t border-[#e0d8c8] w-full bg-[#efe8dc]/40">
+                <p className="font-serif text-sm text-[#333333] font-medium">{product.name}</p>
+                <p className="text-xs text-[#666666]">Handcrafted with {product.materials.join(', ')}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Right Column: Product Info & Actions (5 cols on lg) */}
         <div className="lg:col-span-5 flex flex-col">
@@ -484,6 +545,60 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Frequently Paired / Style It With Box */}
+          {frequentlyPaired.length > 0 && (
+            <div className="bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-2xl p-4 mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D4B982]" />
+                  <span className="text-xs uppercase tracking-wider font-semibold text-[#2d5a61]">
+                    Style It With
+                  </span>
+                </div>
+                <span className="text-[11px] text-[#888888]">Artisan Pairing</span>
+              </div>
+              <div className="space-y-2.5">
+                {frequentlyPaired.map((pairItem) => (
+                  <div
+                    key={pairItem.id}
+                    className="flex items-center justify-between gap-3 bg-[#fdfaf5] p-2.5 rounded-xl border border-[#e0d8c8]"
+                  >
+                    <div
+                      className="flex items-center gap-3 cursor-pointer group flex-1 min-w-0"
+                      onClick={() => navigate(`/product/${pairItem.slug}`)}
+                    >
+                      <img
+                        src={pairItem.image}
+                        alt={pairItem.name}
+                        className="w-11 h-11 rounded-lg object-cover bg-[#efe8dc] shrink-0 group-hover:scale-105 transition-transform"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-[#333333] truncate group-hover:text-[#2d5a61] transition-colors">
+                          {pairItem.name}
+                        </p>
+                        <p className="text-[11px] font-semibold text-[#2d5a61]">
+                          Rs. {pairItem.price.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onAddToCart(pairItem, 1);
+                        setAddedToast(true);
+                        setTimeout(() => setAddedToast(false), 3000);
+                      }}
+                      className="px-3 py-1.5 bg-[#2d5a61] hover:bg-[#1e3c41] text-white rounded-lg text-xs font-medium shrink-0 transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -751,9 +866,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-xs text-[#333333]">{rev.authorName}</span>
-                              <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
-                                Verified Studio Order
-                              </span>
+                              {rev.isVerifiedPurchase ? (
+                                <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200 font-medium">
+                                  Verified Buyer
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-[#efe8dc] text-[#666666] px-2 py-0.5 rounded-full border border-[#e0d8c8]">
+                                  Studio Review
+                                </span>
+                              )}
                             </div>
                             <span className="text-[11px] text-[#888888]">
                               {new Date(rev.createdAt).toLocaleDateString('en-US', {
@@ -847,6 +968,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Recently Viewed Section */}
+      <div className="mt-16">
+        <RecentlyViewedSection
+          currentProductId={product.id}
+          wishlistIds={wishlistIds}
+          onAddToCart={(p) => onAddToCart(p, 1)}
+          onToggleWishlist={onToggleWishlist}
+          onQuickView={onQuickView}
+        />
+      </div>
     </div>
   );
 };
