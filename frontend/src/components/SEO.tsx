@@ -12,6 +12,10 @@ export interface SEOProps {
   productPrice?: number;
   productCurrency?: string;
   productAvailability?: 'in stock' | 'out of stock';
+  productSku?: string;
+  ratingValue?: number;
+  reviewCount?: number;
+  structuredData?: Record<string, any>;
 }
 
 const DEFAULT_TITLE = 'Maryam Sparkle | Handmade Jewellery';
@@ -32,6 +36,10 @@ export const SEO: React.FC<SEOProps> = ({
   productPrice,
   productCurrency = 'PKR',
   productAvailability = 'in stock',
+  productSku,
+  ratingValue,
+  reviewCount,
+  structuredData,
 }) => {
   const formattedTitle = title
     ? title.includes(SITE_NAME)
@@ -45,6 +53,70 @@ export const SEO: React.FC<SEOProps> = ({
         ? `${window.location.origin}${canonical.startsWith('/') ? canonical : `/${canonical}`}`
         : window.location.href
       : '';
+
+  // Generate structured data
+  const jsonLd: Record<string, any>[] = [];
+
+  if (structuredData) {
+    jsonLd.push(structuredData);
+  } else if (ogType === 'product' && productPrice !== undefined) {
+    const productSchema: Record<string, any> = {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: title || DEFAULT_TITLE,
+      description,
+      image: [ogImage],
+      brand: {
+        '@type': 'Brand',
+        name: SITE_NAME,
+      },
+      offers: {
+        '@type': 'Offer',
+        price: productPrice,
+        priceCurrency: productCurrency,
+        availability:
+          productAvailability === 'in stock'
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+        url: currentUrl,
+        seller: {
+          '@type': 'Organization',
+          name: SITE_NAME,
+        },
+      },
+    };
+
+    if (productSku) {
+      productSchema.sku = productSku;
+    }
+
+    if (ratingValue && reviewCount && reviewCount > 0) {
+      productSchema.aggregateRating = {
+        '@type': 'AggregateRating',
+        ratingValue: ratingValue.toFixed(1),
+        reviewCount,
+        bestRating: '5',
+        worstRating: '1',
+      };
+    }
+
+    jsonLd.push(productSchema);
+  } else if (ogType === 'website') {
+    jsonLd.push({
+      '@context': 'https://schema.org',
+      '@type': 'Store',
+      name: SITE_NAME,
+      description: DEFAULT_DESCRIPTION,
+      image: DEFAULT_IMAGE,
+      currenciesAccepted: 'PKR',
+      paymentAccepted: 'Cash, Bank Transfer, JazzCash, EasyPaisa',
+      priceRange: '₨₨',
+      address: {
+        '@type': 'PostalAddress',
+        addressCountry: 'PK',
+      },
+    });
+  }
 
   return (
     <Helmet>
@@ -83,6 +155,13 @@ export const SEO: React.FC<SEOProps> = ({
       {ogType === 'product' && (
         <meta property="product:availability" content={productAvailability} />
       )}
+
+      {/* Schema.org Structured Data */}
+      {jsonLd.map((schema, index) => (
+        <script key={index} type="application/ld+json">
+          {JSON.stringify(schema)}
+        </script>
+      ))}
     </Helmet>
   );
 };

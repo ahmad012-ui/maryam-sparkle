@@ -28,6 +28,7 @@ import { CustomerCarePage } from './pages/CustomerCarePage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { CartDrawer } from './components/CartDrawer';
 import { WishlistDrawer } from './components/WishlistDrawer';
 import { ProductModal } from './components/ProductModal';
@@ -526,22 +527,10 @@ function MainApp() {
             path="/track-order"
             element={<TrackOrderPage />}
           />
-          {/* Fallback route */}
+          {/* Fallback 404 route */}
           <Route
             path="*"
-            element={
-              <ShopPage
-                products={products}
-                categories={categories}
-                wishlistIds={wishlistIds}
-                selectedCategory={selectedCategory}
-                onSelectCategory={setSelectedCategory}
-                onAddToCart={handleAddToCart}
-                onToggleWishlist={handleToggleWishlist}
-                onQuickView={(p) => setQuickViewProduct(p)}
-                onOpenCustomOrder={() => setIsCustomOrderOpen(true)}
-              />
-            }
+            element={<NotFoundPage />}
           />
         </Routes>
       </main>

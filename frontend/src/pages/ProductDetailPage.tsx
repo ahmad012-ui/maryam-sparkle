@@ -194,6 +194,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         productPrice={product.price}
         productCurrency="PKR"
         productAvailability={product.inStock ? 'in stock' : 'out of stock'}
+        productSku={product.sku || product.id}
+        ratingValue={product.rating || (reviews.length > 0 ? reviews.reduce((a, b) => a + b.rating, 0) / reviews.length : undefined)}
+        reviewCount={product.reviewsCount || reviews.length}
         keywords={`${product.name}, ${product.category}, Maryam Sparkle, handmade jewelry Pakistan, ${product.materials.join(', ')}`}
       />
 

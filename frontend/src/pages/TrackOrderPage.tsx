@@ -318,6 +318,7 @@ export const TrackOrderPage: React.FC = () => {
   const [activeOrder, setActiveOrder] = useState<TrackingOrder | null>(SAMPLE_ORDERS[0]);
   const [copied, setCopied] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Initial load check from URL query parameter (e.g., /track?order=MS-8291 or /track?id=MS-8291)
@@ -335,9 +336,10 @@ export const TrackOrderPage: React.FC = () => {
 
     setHasSearched(true);
     setErrorMessage('');
+    setIsSearching(true);
 
-    // 1. Check real saved orders in orderService (for both guest and logged in orders)
     try {
+      // 1. Check real saved orders in orderService (for both guest and logged in orders)
       const realOrder = await orderService.getOrder(cleanQuery);
       if (realOrder) {
         setActiveOrder(convertOrderToTrackingOrder(realOrder));
@@ -345,6 +347,8 @@ export const TrackOrderPage: React.FC = () => {
       }
     } catch (err) {
       console.error('Error fetching order from storage:', err);
+    } finally {
+      setIsSearching(false);
     }
 
     // 2. Check predefined sample orders
@@ -435,10 +439,20 @@ export const TrackOrderPage: React.FC = () => {
               <button
                 type="submit"
                 id="track-order-submit-btn"
-                className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white px-8 py-3.5 rounded-full text-sm font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                disabled={isSearching}
+                className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white px-8 py-3.5 rounded-full text-sm font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-75"
               >
-                <Package className="w-4 h-4" />
-                <span>Track Parcel</span>
+                {isSearching ? (
+                  <>
+                    <Sparkles className="w-4 h-4 animate-spin" />
+                    <span>Searching...</span>
+                  </>
+                ) : (
+                  <>
+                    <Package className="w-4 h-4" />
+                    <span>Track Parcel</span>
+                  </>
+                )}
               </button>
             </div>
 

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Lock, Mail, User, Phone, Sparkles, Chrome, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { authService } from '../services/authService';
 import { sanitizePhoneNumber, isValidPhoneNumber, isValidEmail, isValidFullName, isValidPassword } from '../utils/validation';
+import { SEO } from '../components/SEO';
 
 interface AuthPageProps { initialMode?: 'login' | 'register'; }
 
@@ -86,6 +87,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ initialMode = 'login' }) => 
 
   return (
     <div className="min-h-screen bg-[#efe8dc] py-12 md:py-20 flex items-center justify-center px-4 sm:px-6">
+      <SEO
+        title={isLogin ? 'Sign In to Your Studio Account' : 'Create Studio Account'}
+        description="Sign in or register for an account at Maryam Sparkle to view orders, saved favorites, and track custom bespoke requests."
+        canonical={isLogin ? '/login' : '/register'}
+        noindex={true}
+      />
       <div className="bg-[#fdfaf5] rounded-3xl p-6 sm:p-10 border border-[#e0d8c8] shadow-xs max-w-md w-full">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-semibold text-[#2d5a61] mb-2"><Sparkles className="w-3.5 h-3.5 text-[#D4B982]" /><span>Studio Member Access</span></div>

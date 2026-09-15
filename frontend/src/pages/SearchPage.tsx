@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Search, Heart, ShoppingBag, Eye, Sparkles, Filter, X } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
+import { SEO } from '../components/SEO';
 
 interface SearchPageProps {
   wishlistIds: string[];
@@ -48,6 +49,12 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#efe8dc] py-10 md:py-16">
+      <SEO
+        title={query ? `Search: "${query}"` : 'Search Handcrafted Jewelry'}
+        description={`Discover handmade jewelry, beaded bracelets, delicate necklaces, and crystal pieces matching "${query || 'our collections'}" at Maryam Sparkle.`}
+        canonical={query ? `/search?q=${encodeURIComponent(query)}` : '/search'}
+        noindex={true}
+      />
       <div className="max-w-7xl mx-auto px-6 md:px-10">
         {/* Search Input Banner */}
         <div className="max-w-2xl mx-auto text-center mb-12">
