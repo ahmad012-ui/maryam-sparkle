@@ -467,12 +467,11 @@ DECLARE
     v_item_qty INT;
     v_item_price NUMERIC(10, 2);
     v_item_subtotal NUMERIC(10, 2);
-    v_created_order RECORD;
 BEGIN
     -- 1. Extract and sanitize inputs
-    v_customer_name := TRIM(COALESCE(payload->'customer'->>'fullName', payload->'customer'->>'name', 'Valued Customer'));
-    v_customer_email := TRIM(COALESCE(payload->'customer'->>'email', ''));
-    v_customer_phone := TRIM(COALESCE(payload->'customer'->>'phone', ''));
+    v_customer_name := TRIM(COALESCE(payload->'customer'->>'fullName', payload->'customer'->>'name', 'Valued Patron'));
+    v_customer_email := LOWER(TRIM(COALESCE(payload->'customer'->>'email', '')));
+    v_customer_phone := REGEXP_REPLACE(COALESCE(payload->'customer'->>'phone', ''), '\\s+', '', 'g');
     v_delivery_method := COALESCE(payload->>'deliveryMethod', payload->'deliveryMethod'->>'id', 'standard');
     v_payment_method := COALESCE(payload->>'paymentMethod', payload->'paymentMethod'->>'id', 'cod');
     v_txn_ref := NULLIF(TRIM(COALESCE(payload->>'transactionReference', '')), '');
@@ -480,26 +479,33 @@ BEGIN
     v_notes := NULLIF(TRIM(COALESCE(payload->>'notes', '')), '');
     v_coupon_code := NULLIF(UPPER(TRIM(COALESCE(payload->>'couponCode', ''))), '');
 
-    -- Check user id: use authenticated user if present
+    -- Enforce authentic user ID from auth context (cannot be spoofed by client payload)
     v_user_id := auth.uid();
 
     -- Validate items array
     IF payload->'items' IS NULL OR jsonb_array_length(payload->'items') = 0 THEN
-        RAISE EXCEPTION 'Order must contain at least one item.';
+        RAISE EXCEPTION 'Your order must contain at least one item.';
     END IF;
 
-    -- Generate unique order number
+    -- Validate non-COD payments require transaction reference & proof
+    IF v_payment_method IN ('easypaisa', 'jazzcash', 'bank_transfer') THEN
+        IF v_txn_ref IS NULL THEN
+            RAISE EXCEPTION 'Transaction reference is required for digital payments.';
+        END IF;
+    END IF;
+
+    -- Generate unique order number (MS-XXXX)
     v_order_number := 'MS-' || FLOOR(1000 + RANDOM() * 9000)::INT::TEXT;
 
-    -- 2. Validate products, prices, and stock from actual database records
+    -- 2. Validate products, prices, and stock from authoritative database records
     FOR v_item IN SELECT * FROM jsonb_array_elements(payload->'items')
     LOOP
         v_item_qty := COALESCE((v_item->>'quantity')::INT, 1);
         IF v_item_qty <= 0 THEN
-            v_item_qty := 1;
+            RAISE EXCEPTION 'Item quantity must be greater than zero.';
         END IF;
 
-        -- Look up product by id or slug
+        -- Look up product strictly in public.products table
         SELECT * INTO v_product FROM public.products
         WHERE id::TEXT = (v_item->'product'->>'id')
            OR id::TEXT = (v_item->>'productId')
@@ -508,25 +514,29 @@ BEGIN
         LIMIT 1;
 
         IF NOT FOUND THEN
-            -- If product not in DB yet, fallback to payload price with baseline sanity check
-            v_item_price := COALESCE((v_item->'product'->>'price')::NUMERIC, (v_item->>'price')::NUMERIC, 0);
-        ELSE
-            -- Use authoritative database price & check stock
-            v_item_price := v_product.price;
-            IF v_product.stock < v_item_qty THEN
-                RAISE NOTICE 'Low stock warning for product %', v_product.name;
-            ELSE
-                -- Decrement stock
-                UPDATE public.products
-                SET stock = GREATEST(0, stock - v_item_qty),
-                    in_stock = (stock - v_item_qty > 0)
-                WHERE id = v_product.id;
-
-                UPDATE public.inventory
-                SET quantity = GREATEST(0, quantity - v_item_qty)
-                WHERE product_id = v_product.id;
-            END IF;
+            RAISE EXCEPTION 'Product % is not available in our catalog.', COALESCE(v_item->'product'->>'name', v_item->>'productName', v_item->>'productSlug', 'Item');
         END IF;
+
+        IF NOT v_product.is_active THEN
+            RAISE EXCEPTION 'Product "%" is currently unavailable.', v_product.name;
+        END IF;
+
+        IF v_product.stock < v_item_qty THEN
+            RAISE EXCEPTION 'Insufficient stock for "%". Requested: %, in stock: %.', v_product.name, v_item_qty, v_product.stock;
+        END IF;
+
+        -- Authoritative price strictly from database record
+        v_item_price := v_product.price;
+
+        -- Decrement stock and update inventory atomically
+        UPDATE public.products
+        SET stock = GREATEST(0, stock - v_item_qty),
+            in_stock = (stock - v_item_qty > 0)
+        WHERE id = v_product.id;
+
+        UPDATE public.inventory
+        SET quantity = GREATEST(0, quantity - v_item_qty)
+        WHERE product_id = v_product.id;
 
         v_item_subtotal := v_item_price * v_item_qty;
         v_subtotal := v_subtotal + v_item_subtotal;
@@ -547,26 +557,42 @@ BEGIN
         WHERE UPPER(code) = v_coupon_code AND status = 'active'
         LIMIT 1;
 
-        IF FOUND THEN
-            IF v_coupon.minimum_order_amount IS NULL OR v_subtotal >= v_coupon.minimum_order_amount THEN
-                IF v_coupon.discount_type = 'percentage' THEN
-                    v_discount := (v_subtotal * (v_coupon.discount_value / 100.0));
-                    IF v_coupon.maximum_discount IS NOT NULL AND v_discount > v_coupon.maximum_discount THEN
-                        v_discount := v_coupon.maximum_discount;
-                    END IF;
-                ELSE
-                    v_discount := v_coupon.discount_value;
-                END IF;
-
-                -- Increment coupon usage
-                UPDATE public.coupons
-                SET used_count = used_count + 1
-                WHERE id = v_coupon.id;
-            END IF;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Invalid or inactive coupon code: %', v_coupon_code;
         END IF;
+
+        IF v_coupon.starts_at IS NOT NULL AND v_coupon.starts_at > now() THEN
+            RAISE EXCEPTION 'Coupon code % is not active yet.', v_coupon_code;
+        END IF;
+
+        IF v_coupon.expires_at IS NOT NULL AND v_coupon.expires_at < now() THEN
+            RAISE EXCEPTION 'Coupon code % has expired.', v_coupon_code;
+        END IF;
+
+        IF v_coupon.usage_limit IS NOT NULL AND v_coupon.used_count >= v_coupon.usage_limit THEN
+            RAISE EXCEPTION 'Coupon code % has reached its maximum usage limit.', v_coupon_code;
+        END IF;
+
+        IF v_coupon.minimum_order_amount IS NOT NULL AND v_subtotal < v_coupon.minimum_order_amount THEN
+            RAISE EXCEPTION 'Coupon code % requires a minimum order amount of Rs. %.', v_coupon_code, v_coupon.minimum_order_amount;
+        END IF;
+
+        IF v_coupon.discount_type = 'percentage' THEN
+            v_discount := ROUND((v_subtotal * (v_coupon.discount_value / 100.0)), 2);
+            IF v_coupon.maximum_discount IS NOT NULL AND v_discount > v_coupon.maximum_discount THEN
+                v_discount := v_coupon.maximum_discount;
+            END IF;
+        ELSE
+            v_discount := LEAST(v_subtotal, v_coupon.discount_value);
+        END IF;
+
+        -- Atomically increment coupon usage
+        UPDATE public.coupons
+        SET used_count = used_count + 1
+        WHERE id = v_coupon.id;
     END IF;
 
-    -- 5. Calculate verified total
+    -- 5. Authoritatively calculate verified total
     v_total := GREATEST(0, (v_subtotal - v_discount) + v_shipping_fee);
 
     -- 6. Insert Order record
@@ -608,7 +634,7 @@ BEGIN
     )
     RETURNING id INTO v_order_id;
 
-    -- 7. Insert Order Items records
+    -- 7. Insert Order Items records with authoritative values
     FOR v_item IN SELECT * FROM jsonb_array_elements(payload->'items')
     LOOP
         v_item_qty := COALESCE((v_item->>'quantity')::INT, 1);
@@ -621,11 +647,7 @@ BEGIN
            OR slug = (v_item->>'productSlug')
         LIMIT 1;
 
-        IF FOUND THEN
-            v_item_price := v_product.price;
-        ELSE
-            v_item_price := COALESCE((v_item->'product'->>'price')::NUMERIC, (v_item->>'price')::NUMERIC, 0);
-        END IF;
+        v_item_price := v_product.price;
 
         INSERT INTO public.order_items (
             order_id,
@@ -642,11 +664,11 @@ BEGIN
         )
         VALUES (
             v_order_id,
-            CASE WHEN FOUND THEN v_product.id ELSE NULL END,
-            COALESCE(v_product.name, v_item->'product'->>'name', v_item->>'productName', 'Artisanal Piece'),
-            COALESCE(v_product.slug, v_item->'product'->>'slug', v_item->>'productSlug', 'handmade-piece'),
+            v_product.id,
+            v_product.name,
+            v_product.slug,
             COALESCE(v_item->'product'->>'image', v_item->>'image', ''),
-            COALESCE(v_product.sku, v_item->'product'->>'sku', 'MS-ARTISAN'),
+            COALESCE(v_product.sku, 'MS-ARTISAN'),
             v_item_qty,
             v_item_price,
             v_item_price * v_item_qty,
@@ -675,7 +697,7 @@ BEGIN
         'pending'
     );
 
-    -- 9. Return synthesized result
+    -- 9. Return synthesized result with complete authoritative order details
     RETURN jsonb_build_object(
         'success', true,
         'order_id', v_order_id,
@@ -685,11 +707,32 @@ BEGIN
         'discount', v_discount,
         'total', v_total,
         'status', 'placed',
-        'payment_status', 'pending'
+        'payment_status', 'pending',
+        'created_at', timezone('utc'::text, now()),
+        'order', jsonb_build_object(
+            'id', v_order_id,
+            'order_number', v_order_number,
+            'customer_name', v_customer_name,
+            'customer_email', v_customer_email,
+            'customer_phone', v_customer_phone,
+            'subtotal', v_subtotal,
+            'shipping_fee', v_shipping_fee,
+            'discount', v_discount,
+            'coupon_code', v_coupon_code,
+            'total', v_total,
+            'status', 'placed',
+            'payment_status', 'pending',
+            'payment_method', v_payment_method,
+            'shipping_address', COALESCE(payload->'shippingAddress', '{}'::jsonb),
+            'delivery_method', v_delivery_method,
+            'notes', v_notes,
+            'created_at', timezone('utc'::text, now())
+        )
     );
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.place_order(JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order(JSONB) TO anon, authenticated, service_role;
 
 -- ==============================================================================
@@ -830,63 +873,90 @@ CREATE POLICY "Cart items manage"
     ON public.cart_items FOR ALL
     USING (true);
 
--- 6. Orders & Order Items Policies (Customers see own, Admins see all, Guests can track by order_number)
+-- 6. Orders & Order Items Policies (Customers see own, Admins see all; Guest tracking via track_guest_order RPC; Creation via place_order RPC)
 DROP POLICY IF EXISTS "Users can view their own orders or track order" ON public.orders;
-CREATE POLICY "Users can view their own orders or track order"
+DROP POLICY IF EXISTS "orders_own_read" ON public.orders;
+CREATE POLICY "orders_own_read"
     ON public.orders FOR SELECT
     USING (
-        auth.uid() = user_id 
+        (user_id IS NOT NULL AND auth.uid() = user_id)
         OR public.is_admin()
-        OR user_id IS NULL -- Guest order tracking supported
     );
 
 DROP POLICY IF EXISTS "Anyone can place an order" ON public.orders;
-CREATE POLICY "Anyone can place an order"
+DROP POLICY IF EXISTS "orders_admin_insert" ON public.orders;
+CREATE POLICY "orders_admin_insert"
     ON public.orders FOR INSERT
-    WITH CHECK (true);
+    WITH CHECK (public.is_admin());
 
 DROP POLICY IF EXISTS "Admins can update orders" ON public.orders;
-CREATE POLICY "Admins can update orders"
+DROP POLICY IF EXISTS "orders_admin_update" ON public.orders;
+CREATE POLICY "orders_admin_update"
     ON public.orders FOR UPDATE
     USING (public.is_admin());
 
+DROP POLICY IF EXISTS "orders_admin_delete" ON public.orders;
+CREATE POLICY "orders_admin_delete"
+    ON public.orders FOR DELETE
+    USING (public.is_admin());
+
 DROP POLICY IF EXISTS "Order items readable" ON public.order_items;
-CREATE POLICY "Order items readable"
+DROP POLICY IF EXISTS "order_items_own_read" ON public.order_items;
+CREATE POLICY "order_items_own_read"
     ON public.order_items FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.orders o
             WHERE o.id = order_items.order_id
-            AND (o.user_id = auth.uid() OR o.user_id IS NULL OR public.is_admin())
+            AND ((o.user_id IS NOT NULL AND o.user_id = auth.uid()) OR public.is_admin())
         )
     );
 
 DROP POLICY IF EXISTS "Order items insertable" ON public.order_items;
-CREATE POLICY "Order items insertable"
+DROP POLICY IF EXISTS "order_items_admin_insert" ON public.order_items;
+CREATE POLICY "order_items_admin_insert"
     ON public.order_items FOR INSERT
-    WITH CHECK (true);
+    WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "order_items_admin_update" ON public.order_items;
+CREATE POLICY "order_items_admin_update"
+    ON public.order_items FOR UPDATE
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS "order_items_admin_delete" ON public.order_items;
+CREATE POLICY "order_items_admin_delete"
+    ON public.order_items FOR DELETE
+    USING (public.is_admin());
 
 -- 7. Payments Policies (Secure, Non-public)
 DROP POLICY IF EXISTS "Payments readable by order owner or admin" ON public.payments;
-CREATE POLICY "Payments readable by order owner or admin"
+DROP POLICY IF EXISTS "payments_own_read" ON public.payments;
+CREATE POLICY "payments_own_read"
     ON public.payments FOR SELECT
     USING (
         public.is_admin()
         OR EXISTS (
             SELECT 1 FROM public.orders o
             WHERE o.id = payments.order_id
-            AND (o.user_id = auth.uid() OR o.user_id IS NULL)
+            AND (o.user_id IS NOT NULL AND o.user_id = auth.uid())
         )
     );
 
 DROP POLICY IF EXISTS "Anyone can create payment record on checkout" ON public.payments;
-CREATE POLICY "Anyone can create payment record on checkout"
+DROP POLICY IF EXISTS "payments_admin_insert" ON public.payments;
+CREATE POLICY "payments_admin_insert"
     ON public.payments FOR INSERT
-    WITH CHECK (true);
+    WITH CHECK (public.is_admin());
 
 DROP POLICY IF EXISTS "Admins can update payment status" ON public.payments;
-CREATE POLICY "Admins can update payment status"
+DROP POLICY IF EXISTS "payments_admin_update" ON public.payments;
+CREATE POLICY "payments_admin_update"
     ON public.payments FOR UPDATE
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS "payments_admin_delete" ON public.payments;
+CREATE POLICY "payments_admin_delete"
+    ON public.payments FOR DELETE
     USING (public.is_admin());
 
 -- 8. Wishlists Policies
@@ -1062,8 +1132,439 @@ ON CONFLICT (slug) DO UPDATE
 SET name = EXCLUDED.name, description = EXCLUDED.description, image = EXCLUDED.image;
 
 -- Coupons Seed
-INSERT INTO public.coupons (code, description, discount_type, discount_value, minimum_order_amount, status)
+INSERT INTO public.coupons (code, description, discount_type, discount_value, minimum_order_amount, maximum_discount, status, usage_limit, used_count)
 VALUES
-    ('SPARKLE10', '10% off on your handcrafted jewelry order', 'percentage', 10.00, 1500.00, 'active'),
-    ('MARYAM500', 'Rs. 500 flat discount on orders over Rs. 4,000', 'fixed', 500.00, 4000.00, 'active')
-ON CONFLICT (code) DO NOTHING;
+    ('SPARKLE10', '10% off on your handcrafted jewelry order (minimum Rs. 1,500)', 'percentage', 10.00, 1500.00, 1000.00, 'active', 500, 0),
+    ('MARYAM500', 'Rs. 500 flat discount on orders over Rs. 4,000', 'fixed', 500.00, 4000.00, NULL, 'active', 500, 0)
+ON CONFLICT (code) DO UPDATE
+SET description = EXCLUDED.description,
+    discount_type = EXCLUDED.discount_type,
+    discount_value = EXCLUDED.discount_value,
+    minimum_order_amount = EXCLUDED.minimum_order_amount,
+    maximum_discount = EXCLUDED.maximum_discount,
+    status = EXCLUDED.status;
+
+-- Grant SELECT on coupons to anon & authenticated
+GRANT SELECT ON public.coupons TO anon, authenticated;
+
+-- Function to seed/migrate the product catalog idempotently
+CREATE OR REPLACE FUNCTION public.seed_product_catalog()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_bracelets_id UUID;
+    v_anklets_id UUID;
+    v_necklaces_id UUID;
+    v_earrings_id UUID;
+    v_rings_id UUID;
+    v_custom_id UUID;
+    v_prod_id UUID;
+BEGIN
+    SELECT id INTO v_bracelets_id FROM public.categories WHERE slug = 'bracelets' LIMIT 1;
+    SELECT id INTO v_anklets_id FROM public.categories WHERE slug = 'anklets' LIMIT 1;
+    SELECT id INTO v_necklaces_id FROM public.categories WHERE slug = 'necklaces' LIMIT 1;
+    SELECT id INTO v_earrings_id FROM public.categories WHERE slug = 'earrings' LIMIT 1;
+    SELECT id INTO v_rings_id FROM public.categories WHERE slug = 'rings' LIMIT 1;
+    SELECT id INTO v_custom_id FROM public.categories WHERE slug = 'custom-pieces' LIMIT 1;
+
+    -- 1. Celestial Pearl Charm Bracelet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'celestial-pearl-charm-bracelet', v_bracelets_id, 'bracelets',
+        'Celestial Pearl Charm Bracelet', 'MS-BR-001',
+        'A dreamy handcrafted bracelet featuring luminous imitation freshwater pearls, iridescent glass seed beads, and dainty gold-tone star and moon charms. Fitted with a secure lobster clasp and extension chain for a comfortable fit.',
+        'Imitation freshwater pearls with gold-tone celestial star charms and adjustable chain.',
+        1850.00, 2200.00, 12,
+        ARRAY['Beads', 'Charms', 'Gold-Tone Hardware', 'Chain'],
+        ARRAY['Pearl White', 'Gold'],
+        'Gold-Tone', ARRAY['Gold-Tone', 'Silver-Tone'],
+        true, true, false, true, 4.9, 38,
+        ARRAY['Bestseller', 'Pearl', 'Celestial', 'Bracelet', 'Handmade', 'Beaded Bracelet'],
+        'Avoid direct contact with perfumes, lotions, and water. Store in the provided pouch.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, compare_at_price = EXCLUDED.compare_at_price,
+        stock = EXCLUDED.stock, in_stock = EXCLUDED.in_stock, description = EXCLUDED.description,
+        short_description = EXCLUDED.short_description, category_id = EXCLUDED.category_id,
+        category_slug = EXCLUDED.category_slug
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe', true, 0),
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ', false, 1);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-BR-001', 12, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 2. Sunset Amber Beaded Bracelet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'sunset-amber-beaded-bracelet', v_bracelets_id, 'bracelets',
+        'Sunset Amber Beaded Bracelet', 'MS-BR-002',
+        'Rich warm tones inspired by golden hour skies. Features faceted amber glass crystals, terracotta beads, and brushed gold-tone accents strung on durable stretch cord for effortless everyday wear.',
+        'Faceted amber crystals and warm terracotta beads on durable stretch cord.',
+        1650.00, 1950.00, 8,
+        ARRAY['Beads', 'Gold-Tone Hardware', 'Stretch Cord'],
+        ARRAY['Warm Amber', 'Terracotta', 'Gold'],
+        'Brushed Gold', ARRAY['Brushed Gold'],
+        true, false, false, true, 4.8, 24,
+        ARRAY['Warm Tones', 'Amber', 'Stretch Bracelet', 'Daily Wear', 'Beads', 'Beaded Bracelet'],
+        'Roll gently over the wrist rather than stretching wide to prolong cord elasticity.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-BR-002', 8, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 3. Blush Bloom Beaded Bracelet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'blush-bloom-bracelet', v_bracelets_id, 'bracelets',
+        'Blush Bloom Beaded Bracelet', 'MS-BR-003',
+        'Soft pastel blush and rose quartz-colored glass beads woven in a delicate daisy pattern. Accented with tiny metallic gold bead centres and finished with an adjustable sliding knot.',
+        'Delicate daisy-patterned blush glass beads with adjustable sliding knot closure.',
+        1450.00, 1750.00, 15,
+        ARRAY['Beads', 'Waterproof Cord'],
+        ARRAY['Blush Pink', 'Cream', 'Gold Accent'],
+        'Adjustable Cord', ARRAY['Adjustable Cord'],
+        false, false, true, true, 4.7, 19,
+        ARRAY['Floral', 'Daisy', 'Pastel', 'Blush', 'Trending', 'Beaded Bracelet'],
+        'Safe for light water exposure. Wipe clean with a soft dry cloth.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuB1Cf_7jKCngt0y5eaF-HMI6jEb-oIpozN3LUQiTO-_vhR_gYJfHn1t8C8nCfy-kYiRKPkVa5797yt-t3ZKrfmSkGyvK5dhoV1eBvzBOERD1_bf0uuYWnAS1TzGSNgLy4_mFCfVfHuiIoYA7pc3xzsTAIKeUfOu5rjPD1oIBsu3Z6z_UGhHF-Vzw3IQ6U3Fo7kGPc7FNkKoTyCtBHYZszvPhtRqRXcSZGapUgWYhwSml00a2p1-_WAZ', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-BR-003', 15, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 4. Ocean Breeze Beaded Anklet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'ocean-breeze-anklet', v_anklets_id, 'anklets',
+        'Ocean Breeze Beaded Anklet', 'MS-AK-001',
+        'Turquoise seed beads, white heishi beads, and a delicate cowrie shell charm bring coastal charm to your ankles. Built on waterproof wax-coated cord with a sliding knot closure for an adjustable fit.',
+        'Turquoise seed beads, white heishi accents, and a dainty shell charm.',
+        1550.00, 1850.00, 10,
+        ARRAY['Beads', 'Charms', 'Waterproof Cord'],
+        ARRAY['Turquoise', 'White', 'Sandy Beige'],
+        'Waterproof Cord', ARRAY['Waterproof Cord'],
+        true, true, false, true, 4.9, 31,
+        ARRAY['Anklet', 'Summer', 'Beach', 'Turquoise', 'Waterproof', 'Beaded Anklet'],
+        'Waterproof. Safe to wear in the shower or at the beach. Rinse with tap water after salt water.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-AK-001', 10, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 5. Golden Hour Layered Necklace
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'golden-hour-necklace', v_necklaces_id, 'necklaces',
+        'Golden Hour Layered Necklace', 'MS-NK-001',
+        'A stunning two-in-one layered piece. The upper strand features dainty iridescent gold seed beads while the lower strand drops a hammered sunburst pendant on an elegant gold-plated chain.',
+        'Two-strand layered necklace with gold seed beads and hammered sunburst pendant.',
+        2850.00, 3200.00, 6,
+        ARRAY['Beads', 'Gold-Tone Hardware', 'Chain', 'Charms'],
+        ARRAY['Gold', 'Champagne'],
+        '18K Gold-Plated', ARRAY['18K Gold-Plated'],
+        true, true, false, true, 5.0, 42,
+        ARRAY['Necklace', 'Layered', 'Sunburst', 'Statement', 'Gold Plated', 'Beaded Necklace'],
+        'Store flat or hanging to prevent tangles. Polish gently with a microfibre cloth.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-NK-001', 6, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 6. Starlight Dainty Choker
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'starlight-choker', v_necklaces_id, 'necklaces',
+        'Starlight Dainty Choker', 'MS-NK-002',
+        'Shimmering midnight blue and silver glass micro-beads strung with delicate star-shaped metallic charms. Sits gracefully along the collarbone with a 2-inch extender for versatile lengths.',
+        'Midnight blue and silver micro-beads with dainty star charms and extension chain.',
+        2450.00, 2800.00, 9,
+        ARRAY['Beads', 'Gold-Tone Hardware', 'Chain', 'Charms'],
+        ARRAY['Midnight Blue', 'Silver', 'Gold'],
+        'Silver-Tone', ARRAY['Silver-Tone', 'Gold-Tone'],
+        false, false, true, true, 4.8, 16,
+        ARRAY['Choker', 'Stars', 'Midnight', 'Micro Beads', 'Necklace', 'Beaded Choker'],
+        'Fasten clasp before storing to prevent delicate chain from knotting.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuB1Cf_7jKCngt0y5eaF-HMI6jEb-oIpozN3LUQiTO-_vhR_gYJfHn1t8C8nCfy-kYiRKPkVa5797yt-t3ZKrfmSkGyvK5dhoV1eBvzBOERD1_bf0uuYWnAS1TzGSNgLy4_mFCfVfHuiIoYA7pc3xzsTAIKeUfOu5rjPD1oIBsu3Z6z_UGhHF-Vzw3IQ6U3Fo7kGPc7FNkKoTyCtBHYZszvPhtRqRXcSZGapUgWYhwSml00a2p1-_WAZ', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-NK-002', 9, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 7. Sunlit Golden Charm Anklet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'sunlit-golden-charm-anklet', v_anklets_id, 'anklets',
+        'Sunlit Golden Charm Anklet', 'MS-AK-003',
+        'Warm amber-toned glass beads intertwined with dainty gold-tone sun charms and tiny bells that softly chime with each gentle step.',
+        'Amber glass beads with gold-tone sun charms, chain extender, and chime bells.',
+        1450.00, 1700.00, 10,
+        ARRAY['Beads', 'Gold-Tone Hardware', 'Chain', 'Charms'],
+        ARRAY['Golden Amber', 'Gold'],
+        'Gold-Tone', ARRAY['Gold-Tone'],
+        true, false, true, true, 4.9, 19,
+        ARRAY['Anklet', 'Summer', 'Sun Charm', 'Amber Hues', 'Bohemian', 'Beaded Anklet'],
+        'Water-safe cord and chain. Rinse with fresh water after seaside walks.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-AK-003', 10, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 8. Ocean Wave Beaded Anklet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'ocean-wave-beaded-anklet', v_anklets_id, 'anklets',
+        'Ocean Wave Beaded Anklet', 'MS-AK-002',
+        'Vibrant teal-colored glass beads combined with acrylic mini shell beads and waterproof cord for sunny beach days and summer escapes.',
+        'Teal-colored glass beads with miniature shell beads on waterproof cord.',
+        1550.00, 1850.00, 7,
+        ARRAY['Beads', 'Waterproof Cord'],
+        ARRAY['Ocean Teal', 'Sand'],
+        'Waterproof Cord', ARRAY['Waterproof Cord'],
+        false, false, false, true, 4.8, 22,
+        ARRAY['Beach', 'Teal', 'Bohemian', 'Anklet', 'Beaded Anklet'],
+        'Designed for daily wear and beach trips.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-AK-002', 7, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 9. Celestial Rose Choker
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'celestial-rose-choker', v_necklaces_id, 'necklaces',
+        'Celestial Rose Choker', 'MS-NK-003',
+        'A romantic choker featuring blush pink faceted glass beads, star charms, and a delicate gold-tone linked chain. Perfect for layered styles.',
+        'Blush pink glass beads with star charms and gold-tone linked chain.',
+        2450.00, 2800.00, 8,
+        ARRAY['Beads', 'Gold-Tone Hardware', 'Chain', 'Charms'],
+        ARRAY['Soft Pink', 'Gold'],
+        'Gold-Tone', ARRAY['Gold-Tone'],
+        true, false, true, true, 5.0, 31,
+        ARRAY['Romantic', 'Pink Beads', 'Statement', 'Choker', 'Necklace'],
+        'Store hung or in a pouch to prevent chain tangles.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe', true, 0),
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuB1Cf_7jKCngt0y5eaF-HMI6jEb-oIpozN3LUQiTO-_vhR_gYJfHn1t8C8nCfy-kYiRKPkVa5797yt-t3ZKrfmSkGyvK5dhoV1eBvzBOERD1_bf0uuYWnAS1TzGSNgLy4_mFCfVfHuiIoYA7pc3xzsTAIKeUfOu5rjPD1oIBsu3Z6z_UGhHF-Vzw3IQ6U3Fo7kGPc7FNkKoTyCtBHYZszvPhtRqRXcSZGapUgWYhwSml00a2p1-_WAZ', false, 1);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-NK-003', 8, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 10. Emerald Flora Beaded Drops
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'emerald-flora-beaded-drops', v_earrings_id, 'earrings',
+        'Emerald Flora Beaded Drops', 'MS-ER-001',
+        'Hand-woven cascading beaded earrings with rich emerald-green glass crystals, tiny seed beads, and gold-tone ear hooks. Remarkably lightweight for all-day wear.',
+        'Hand-woven green glass beads with gold-tone ear hooks.',
+        1350.00, 1600.00, 15,
+        ARRAY['Beads', 'Gold-Tone Hardware'],
+        ARRAY['Emerald Green', 'Gold'],
+        'Gold-Tone', ARRAY['Gold-Tone'],
+        false, false, true, true, 4.9, 17,
+        ARRAY['Earrings', 'Floral', 'Handwoven', 'Green', 'Dangle', 'Beaded Earrings'],
+        'Lightweight and comfortable for all-day wear.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-ER-001', 15, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 11. Solstice Stacking Rings (Set of 3)
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'solstice-stacking-rings-set-of-3', v_rings_id, 'rings',
+        'Solstice Stacking Rings (Set of 3)', 'MS-RG-001',
+        'A curated trio of stretch micro-bead rings with miniature glass seed beads, acrylic pearl accents, and gold-tone spacer beads. Wear together or stack across fingers.',
+        'Trio of stretch micro-bead rings with colorful glass seed beads and gold-tone accents.',
+        1150.00, 1400.00, 20,
+        ARRAY['Beads', 'Gold-Tone Hardware'],
+        ARRAY['Multi-color', 'Gold'],
+        'Gold-Tone', ARRAY['Gold-Tone'],
+        true, false, true, true, 4.9, 28,
+        ARRAY['Ring Set', 'Stackable', 'Micro Beads', 'Glass Beads', 'Rings'],
+        'Roll gently onto fingers rather than pulling.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ', true, 0);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-RG-001', 20, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    -- 12. Bespoke Custom Initial & Beaded Bracelet
+    INSERT INTO public.products (
+        slug, category_id, category_slug, name, sku, description, short_description,
+        price, compare_at_price, stock, materials, colors, finish, available_finishes,
+        is_featured, is_best_seller, is_new, in_stock, rating, reviews_count, tags,
+        care_instructions, status
+    ) VALUES (
+        'bespoke-initial-charm-bracelet', v_custom_id, 'custom-pieces',
+        'Bespoke Custom Initial & Beaded Bracelet', 'MS-CUST-001',
+        'Create your personalized keepsake piece! Customized with your chosen colorful glass beads, metallic letter initial charm, and exact wrist measurements.',
+        'Handcrafted personalized bracelet with colorful glass beads and initial charm.',
+        2150.00, 2500.00, 50,
+        ARRAY['Beads', 'Gold-Tone Hardware', 'Charms'],
+        ARRAY['Custom Hues', 'Gold/Silver'],
+        'Gold-Tone', ARRAY['Gold-Tone', 'Silver-Tone'],
+        true, true, true, true, 5.0, 84,
+        ARRAY['Custom', 'Personalized', 'Initial Charm', 'Gift', 'Beads'],
+        'Individually crafted with love in 48 hours.',
+        'active'
+    )
+    ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name, price = EXCLUDED.price, stock = EXCLUDED.stock
+    RETURNING id INTO v_prod_id;
+
+    DELETE FROM public.product_images WHERE product_id = v_prod_id;
+    INSERT INTO public.product_images (product_id, image_url, is_primary, sort_order) VALUES
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe', true, 0),
+        (v_prod_id, 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ', false, 1);
+
+    INSERT INTO public.inventory (product_id, sku, quantity, reserved_quantity, low_stock_threshold)
+    VALUES (v_prod_id, 'MS-CUST-001', 50, 0, 3)
+    ON CONFLICT (product_id) DO UPDATE SET quantity = EXCLUDED.quantity;
+
+    RETURN 'Catalog migration completed: 12 products, images, and inventory seeded successfully.';
+END;
+$$;
+
+SELECT public.seed_product_catalog();
+
+GRANT EXECUTE ON FUNCTION public.seed_product_catalog() TO anon, authenticated;
+

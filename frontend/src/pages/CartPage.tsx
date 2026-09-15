@@ -1,41 +1,59 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Truck, Sparkles, Tag, ArrowLeft } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, ShieldCheck, Truck, Sparkles, Tag, ArrowLeft, Loader2 } from 'lucide-react';
 import { CartItem } from '../types';
 import { SEO } from '../components/SEO';
+import { couponService, CouponValidationResult } from '../services/couponService';
 
 interface CartPageProps {
   cart: CartItem[];
   onUpdateQuantity: (productId: string, delta: number, size?: string, finish?: string) => void;
   onRemoveItem: (productId: string, size?: string, finish?: string) => void;
+  onClearCart?: () => void;
 }
 
 export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRemoveItem }) => {
   const navigate = useNavigate();
   const [couponInput, setCouponInput] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const freeShippingThreshold = 3000;
   const progressToFreeShipping = Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
   const amountNeededForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
 
-  const discount = appliedCoupon === 'SPARKLE10' ? Math.round(subtotal * 0.1) : 0;
-  const shipping = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 200;
-  const total = subtotal - discount + shipping;
+  const discount = appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
+  const shipping = couponService.calculateShipping('standard', subtotal);
+  const total = Math.max(0, subtotal - discount + shipping);
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     setCouponError(null);
-    if (!couponInput.trim()) return;
+    const code = couponInput.trim();
+    if (!code) return;
 
-    if (couponInput.trim().toUpperCase() === 'SPARKLE10') {
-      setAppliedCoupon('SPARKLE10');
-      setCouponInput('');
-    } else {
-      setCouponError('Invalid coupon code. Try code SPARKLE10 for 10% off!');
+    setIsValidatingCoupon(true);
+    try {
+      const result = await couponService.validateCoupon(code, subtotal);
+      if (result.valid) {
+        setAppliedCoupon(result);
+        setCouponInput('');
+      } else {
+        setCouponError(result.message || 'Invalid coupon code.');
+        setAppliedCoupon(null);
+      }
+    } catch (err: any) {
+      setCouponError(err.message || 'Failed to validate coupon code.');
+    } finally {
+      setIsValidatingCoupon(false);
     }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
   };
 
   if (cart.length === 0) {
@@ -219,7 +237,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
                     <Tag className="w-4 h-4 text-[#888888] absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Promo Code (SPARKLE10)"
+                      placeholder="Promo Code (e.g. SPARKLE10, MARYAM500)"
                       value={couponInput}
                       onChange={(e) => setCouponInput(e.target.value)}
                       className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl pl-9 pr-3 py-2 text-xs text-[#333333] placeholder-[#888888] focus:outline-none focus:border-[#2d5a61]"
@@ -227,17 +245,27 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
                   </div>
                   <button
                     type="submit"
-                    className="bg-[#2d5a61] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors cursor-pointer"
+                    disabled={isValidatingCoupon || !couponInput.trim()}
+                    className="bg-[#2d5a61] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    Apply
+                    {isValidatingCoupon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Apply'}
                   </button>
                 </form>
 
                 {appliedCoupon && (
-                  <p className="text-xs text-emerald-700 font-semibold mt-2 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Code {appliedCoupon} applied (10% discount)!
-                  </p>
+                  <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      {appliedCoupon.message || `Code ${appliedCoupon.code} applied!`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-emerald-700 hover:text-emerald-900 font-semibold underline text-[11px] cursor-pointer ml-2"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 )}
 
                 {couponError && (
@@ -252,9 +280,9 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
                   <span className="font-semibold text-[#333333]">Rs. {subtotal.toLocaleString()}</span>
                 </div>
 
-                {discount > 0 && (
+                {discount > 0 && appliedCoupon && (
                   <div className="flex justify-between text-emerald-700 font-semibold">
-                    <span>Discount (SPARKLE10)</span>
+                    <span>Discount ({appliedCoupon.code})</span>
                     <span>-Rs. {discount.toLocaleString()}</span>
                   </div>
                 )}
@@ -281,7 +309,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
 
               {/* Checkout Button */}
               <button
-                onClick={() => navigate('/checkout')}
+                onClick={() => navigate('/checkout', { state: { coupon: appliedCoupon?.code } })}
                 className="w-full bg-[#2d5a61] text-white py-4 rounded-2xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-[#1e3c41] transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer mb-4"
               >
                 <span>Proceed to Checkout</span>

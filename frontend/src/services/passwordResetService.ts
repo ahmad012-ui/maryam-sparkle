@@ -1,17 +1,13 @@
 import { isValidEmail, isValidOtpCode, validatePasswordRequirements } from '../utils/validation';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { authService } from './authService';
 
 /**
  * Supabase-Integrated Password Reset Service
  *
- * Provides complete password recovery via Supabase Auth:
+ * Provides native password recovery via Supabase Auth:
  * - supabase.auth.resetPasswordForEmail(email)
+ * - supabase.auth.verifyOtp({ email, token, type: 'recovery' })
  * - supabase.auth.updateUser({ password: newPassword })
- *
- * SECURITY DIRECTIVES:
- * - Passwords and OTPs are NEVER written to localStorage.
- * - Sensitive reset tokens are strictly handled transiently in-memory.
  */
 
 export interface RequestResetResponse {
@@ -43,18 +39,14 @@ interface TransientResetSession {
   tokenExpiresAt?: number;
 }
 
-// In-memory transient store (never persisted to localStorage or sessionStorage)
+// In-memory transient store for tracking email and cooldowns
 let memorySession: TransientResetSession | null = null;
-
-const simulateNetworkDelay = (ms: number = 400) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class PasswordResetService {
   /**
-   * Request password reset for a registered email.
+   * Request password reset for a registered email using native Supabase Auth.
    */
   async requestPasswordReset(email: string): Promise<RequestResetResponse> {
-    await simulateNetworkDelay(350);
-
     const trimmedEmail = (email || '').trim().toLowerCase();
 
     if (!trimmedEmail) {
@@ -105,7 +97,7 @@ class PasswordResetService {
 
     return {
       success: true,
-      message: `A 6-digit verification code and reset link has been dispatched to ${trimmedEmail}.`,
+      message: `A password reset link and verification code have been dispatched to ${trimmedEmail}.`,
       email: trimmedEmail,
       expiresInSeconds: 600,
       isBackendConnected: isSupabaseConfigured(),
@@ -113,11 +105,9 @@ class PasswordResetService {
   }
 
   /**
-   * Resend the password reset OTP / email.
+   * Resend the password reset email / OTP.
    */
   async resendResetOtp(email: string): Promise<RequestResetResponse> {
-    await simulateNetworkDelay(350);
-
     const trimmedEmail = (email || '').trim().toLowerCase();
 
     if (!trimmedEmail || !isValidEmail(trimmedEmail)) {
@@ -134,16 +124,29 @@ class PasswordResetService {
       const remainingSecs = Math.ceil((memorySession.resendAvailableAt - now) / 1000);
       return {
         success: false,
-        message: `Please wait ${remainingSecs}s before requesting another verification code.`,
+        message: `Please wait ${remainingSecs}s before requesting another verification email.`,
         email: trimmedEmail,
       };
     }
 
     if (isSupabaseConfigured()) {
       try {
-        await supabase.auth.resetPasswordForEmail(trimmedEmail);
-      } catch {
-        // Continue with refreshed transient session
+        const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
+        });
+        if (error) {
+          return {
+            success: false,
+            message: error.message,
+            email: trimmedEmail,
+          };
+        }
+      } catch (err: any) {
+        return {
+          success: false,
+          message: err.message || 'Failed to resend reset email',
+          email: trimmedEmail,
+        };
       }
     }
 
@@ -155,7 +158,7 @@ class PasswordResetService {
 
     return {
       success: true,
-      message: `A new 6-digit verification code was generated for ${trimmedEmail}.`,
+      message: `A new reset link and verification code has been dispatched to ${trimmedEmail}.`,
       email: trimmedEmail,
       expiresInSeconds: 600,
       isBackendConnected: isSupabaseConfigured(),
@@ -163,11 +166,9 @@ class PasswordResetService {
   }
 
   /**
-   * Verify OTP code.
+   * Verify recovery OTP code with native Supabase Auth.
    */
   async verifyResetOtp(email: string, otp: string): Promise<VerifyOtpResponse> {
-    await simulateNetworkDelay(400);
-
     const trimmedEmail = (email || '').trim().toLowerCase();
     const cleanOtp = (otp || '').trim();
 
@@ -192,66 +193,51 @@ class PasswordResetService {
       };
     }
 
-    const now = Date.now();
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: trimmedEmail,
+          token: cleanOtp,
+          type: 'recovery'
+        });
 
-    if (memorySession && memorySession.email === trimmedEmail && now > memorySession.expiresAt) {
-      return {
-        success: false,
-        message: 'The verification code has expired. Please request a new code.',
-      };
-    }
+        if (error) {
+          return {
+            success: false,
+            message: error.message || 'Invalid or expired verification code.',
+          };
+        }
 
-    const secureToken = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? `rst_${crypto.randomUUID()}`
-      : `rst_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        const token = data.session?.access_token || 'supabase_recovery_active';
+        if (memorySession) {
+          memorySession.resetToken = token;
+          memorySession.tokenExpiresAt = Date.now() + 30 * 60 * 1000;
+        }
 
-    if (memorySession) {
-      memorySession.resetToken = secureToken;
-      memorySession.tokenExpiresAt = now + 15 * 60 * 1000;
-    } else {
-      memorySession = {
-        email: trimmedEmail,
-        expiresAt: now,
-        resendAvailableAt: now,
-        resetToken: secureToken,
-        tokenExpiresAt: now + 15 * 60 * 1000,
-      };
+        return {
+          success: true,
+          message: 'Code verified successfully. You may now create your new password.',
+          resetToken: token,
+          isBackendConnected: true,
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          message: err.message || 'Verification failed. Please check your code.',
+        };
+      }
     }
 
     return {
-      success: true,
-      message: 'Verification code confirmed successfully.',
-      resetToken: secureToken,
-      isBackendConnected: isSupabaseConfigured(),
+      success: false,
+      message: 'Supabase authentication is not configured.',
     };
   }
 
   /**
-   * Reset the user's password using the verified reset token.
+   * Reset the user's password using the authenticated Supabase session.
    */
   async resetPassword(resetToken: string, newPassword: string): Promise<ResetPasswordResponse> {
-    await simulateNetworkDelay(400);
-
-    if (!resetToken || typeof resetToken !== 'string') {
-      return {
-        success: false,
-        message: 'Invalid or missing password reset token. Please verify your email again.',
-      };
-    }
-
-    const now = Date.now();
-    if (
-      !memorySession ||
-      memorySession.resetToken !== resetToken ||
-      !memorySession.tokenExpiresAt ||
-      now > memorySession.tokenExpiresAt
-    ) {
-      return {
-        success: false,
-        message: 'Your reset token has expired or is invalid. Please request a new code.',
-      };
-    }
-
     const validation = validatePasswordRequirements(newPassword, 8);
     if (!validation.isValid) {
       return {
@@ -265,12 +251,21 @@ class PasswordResetService {
         const { error } = await supabase.auth.updateUser({
           password: newPassword,
         });
+
         if (error) {
           return {
             success: false,
-            message: error.message,
+            message: error.message || 'Failed to update password.',
           };
         }
+
+        this.clearResetSession();
+
+        return {
+          success: true,
+          message: 'Your password has been successfully updated.',
+          isBackendConnected: true,
+        };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Password update failed';
         return {
@@ -280,12 +275,9 @@ class PasswordResetService {
       }
     }
 
-    this.clearResetSession();
-
     return {
-      success: true,
-      message: 'Your password has been successfully updated.',
-      isBackendConnected: isSupabaseConfigured(),
+      success: false,
+      message: 'Supabase authentication is not configured.',
     };
   }
 
@@ -307,11 +299,12 @@ class PasswordResetService {
   }
 
   hasValidResetToken(token: string | null): boolean {
-    if (!token || !memorySession || memorySession.resetToken !== token) {
-      return false;
+    if (!token) return false;
+    if (memorySession && memorySession.resetToken === token) {
+      const now = Date.now();
+      return Boolean(memorySession.tokenExpiresAt && now <= memorySession.tokenExpiresAt);
     }
-    const now = Date.now();
-    return Boolean(memorySession.tokenExpiresAt && now <= memorySession.tokenExpiresAt);
+    return false;
   }
 
   clearResetSession(): void {

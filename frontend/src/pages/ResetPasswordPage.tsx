@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Lock, Eye, EyeOff, Sparkles, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Lock, Eye, EyeOff, Sparkles, CheckCircle2, XCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { usePasswordReset } from '../context/PasswordResetContext';
 import { validatePasswordRequirements } from '../utils/validation';
 import { SEO } from '../components/SEO';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,13 +16,72 @@ export const ResetPasswordPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(Boolean(resetToken));
 
-  // Guard: Only allow access after successful OTP verification
+  // Check for active Supabase recovery session or recovery URL tokens
   useEffect(() => {
-    if (!resetToken) {
-      navigate('/login', { replace: true });
+    let isMounted = true;
+
+    async function verifyRecoveryState() {
+      if (resetToken) {
+        setIsAuthorized(true);
+        setIsCheckingSession(false);
+        return;
+      }
+
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      const isRecoveryUrl = hash.includes('access_token') || hash.includes('type=recovery') || search.includes('code=');
+
+      if (isSupabaseConfigured()) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          if (isMounted) {
+            setIsAuthorized(true);
+            setIsCheckingSession(false);
+          }
+          return;
+        }
+
+        if (isRecoveryUrl) {
+          // Allow Supabase time to extract and exchange URL hash / code
+          const timer = setTimeout(async () => {
+            if (!isMounted) return;
+            const { data: { session: postSession } } = await supabase.auth.getSession();
+            if (postSession) {
+              setIsAuthorized(true);
+            } else {
+              setIsAuthorized(false);
+            }
+            setIsCheckingSession(false);
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+      }
+
+      if (isMounted) {
+        setIsAuthorized(false);
+        setIsCheckingSession(false);
+      }
     }
-  }, [resetToken, navigate]);
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        if (isMounted) {
+          setIsAuthorized(true);
+          setIsCheckingSession(false);
+        }
+      }
+    });
+
+    void verifyRecoveryState();
+
+    return () => {
+      isMounted = false;
+      listener?.subscription.unsubscribe();
+    };
+  }, [resetToken]);
 
   // Live password validation
   const validation = validatePasswordRequirements(newPassword, 8);
@@ -65,6 +125,38 @@ export const ResetPasswordPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-[#efe8dc] py-12 flex items-center justify-center px-4">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#2d5a61] mx-auto mb-3" />
+          <p className="text-xs text-[#666666]">Verifying password recovery session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-[#efe8dc] py-12 md:py-20 flex items-center justify-center px-4 sm:px-6">
+        <div className="bg-[#fdfaf5] rounded-3xl p-6 sm:p-10 border border-[#e0d8c8] shadow-xs max-w-md w-full text-center">
+          <AlertCircle className="w-10 h-10 text-[#d4af37] mx-auto mb-4" />
+          <h1 className="font-serif text-2xl text-[#333333] mb-2">Session Expired or Invalid</h1>
+          <p className="text-xs text-[#666666] leading-relaxed mb-6">
+            The password reset link or verification session has expired or is invalid. Please request a new verification code or reset link.
+          </p>
+          <Link
+            to="/forgot-password"
+            className="inline-flex items-center justify-center gap-2 w-full bg-[#2d5a61] text-white py-3 rounded-xl font-semibold text-xs hover:bg-[#1e3c41] transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Request New Reset Link</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#efe8dc] py-12 md:py-20 flex items-center justify-center px-4 sm:px-6">

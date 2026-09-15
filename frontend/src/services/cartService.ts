@@ -66,18 +66,48 @@ async function fetchRemoteCart(userId: string): Promise<CartItem[]> {
   });
 }
 
-async function remoteAdd(userId: string, product: Product, quantity: number): Promise<CartItem[]> {
+async function remoteAdd(
+  userId: string,
+  product: Product,
+  quantity: number,
+  size = 'Medium (6.5")',
+  finish = 'Gold-Tone',
+  customNote?: string
+): Promise<CartItem[]> {
   const cartId = await getUserCartId(userId, true);
   if (!cartId) throw new Error('Unable to create the customer cart.');
-  const size = 'Medium (6.5")';
-  const finish = product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
-  const { data: existing, error: findError } = await supabase.from('cart_items').select('id,quantity').eq('cart_id', cartId).eq('product_id', product.id).eq('size', size).eq('finish', finish).maybeSingle();
+
+  const { data: existing, error: findError } = await supabase
+    .from('cart_items')
+    .select('id,quantity')
+    .eq('cart_id', cartId)
+    .eq('product_id', product.id)
+    .eq('size', size)
+    .eq('finish', finish)
+    .maybeSingle();
+
   if (findError) throw findError;
+
+  const maxStock = product.stock > 0 ? product.stock : 99;
   if (existing) {
-    const { error } = await supabase.from('cart_items').update({ quantity: existing.quantity + quantity, updated_at: new Date().toISOString() }).eq('id', existing.id);
+    const targetQty = Math.min(maxStock, existing.quantity + quantity);
+    const { error } = await supabase
+      .from('cart_items')
+      .update({ quantity: targetQty, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('cart_items').insert({ cart_id: cartId, product_id: product.id, quantity, size, finish });
+    const targetQty = Math.min(maxStock, Math.max(1, quantity));
+    const { error } = await supabase
+      .from('cart_items')
+      .insert({
+        cart_id: cartId,
+        product_id: product.id,
+        quantity: targetQty,
+        size,
+        finish,
+        custom_note: customNote || null,
+      });
     if (error) throw error;
   }
   return fetchRemoteCart(userId);
@@ -86,44 +116,122 @@ async function remoteAdd(userId: string, product: Product, quantity: number): Pr
 export const cartService = {
   async getCart(): Promise<{ items: CartItem[]; itemCount: number; total: number }> {
     const user = guestOrUser();
-    if (user?.id && !user.id.startsWith('usr-')) return totals(await fetchRemoteCart(user.id));
+    if (user?.id && !user.id.startsWith('usr-')) {
+      try {
+        const remoteItems = await fetchRemoteCart(user.id);
+        return totals(remoteItems);
+      } catch (err) {
+        console.warn('Failed to load remote cart, falling back to guest cart:', err);
+      }
+    }
     return totals(getGuestCart());
   },
 
-  async addItem(product: Product | string, quantity = 1): Promise<CartItem[]> {
-    const resolved = typeof product === 'object' ? product : PRODUCTS.find((p) => p.id === String(product) || p.slug === String(product));
+  async addItem(
+    product: Product | string,
+    quantity = 1,
+    size?: string,
+    finish?: string,
+    customNote?: string
+  ): Promise<CartItem[]> {
+    const resolved =
+      typeof product === 'object'
+        ? product
+        : PRODUCTS.find((p) => p.id === String(product) || p.slug === String(product));
     if (!resolved) throw new Error('Product not found.');
+
+    const chosenSize = size || 'Medium (6.5")';
+    const chosenFinish = finish || resolved.finish || resolved.availableFinishes?.[0] || '18K Gold Plated';
+    const addQty = Math.max(1, quantity);
+
     const user = guestOrUser();
-    if (user?.id && !user.id.startsWith('usr-')) return remoteAdd(user.id, resolved, quantity);
+    if (user?.id && !user.id.startsWith('usr-')) {
+      return remoteAdd(user.id, resolved, addQty, chosenSize, chosenFinish, customNote);
+    }
 
     const current = getGuestCart();
-    const index = current.findIndex((item) => item.product.id === resolved.id);
+    const index = current.findIndex(
+      (item) =>
+        item.product.id === resolved.id &&
+        item.selectedSize === chosenSize &&
+        item.selectedFinish === chosenFinish
+    );
     const updated = [...current];
-    if (index >= 0) updated[index] = { ...updated[index], quantity: updated[index].quantity + quantity };
-    else updated.push({ product: resolved, quantity, selectedSize: 'Medium (6.5")', selectedFinish: resolved.finish || 'Gold-Tone' });
+    const maxStock = resolved.stock > 0 ? resolved.stock : 99;
+
+    if (index >= 0) {
+      const newQty = Math.min(maxStock, updated[index].quantity + addQty);
+      updated[index] = { ...updated[index], quantity: newQty };
+    } else {
+      updated.push({
+        product: resolved,
+        quantity: Math.min(maxStock, addQty),
+        selectedSize: chosenSize,
+        selectedFinish: chosenFinish,
+        customNote,
+      });
+    }
     saveGuestCart(updated);
     return updated;
   },
 
-  async updateQuantity(product: Product | string, quantity: number): Promise<CartItem[]> {
+  async updateQuantity(
+    product: Product | string,
+    quantity: number,
+    size?: string,
+    finish?: string
+  ): Promise<CartItem[]> {
     const id = typeof product === 'object' ? product.id : String(product);
     const user = guestOrUser();
     if (user?.id && !user.id.startsWith('usr-')) {
       const cartId = await getUserCartId(user.id, false);
       if (!cartId) return [];
-      const { error } = quantity <= 0
-        ? await supabase.from('cart_items').delete().eq('cart_id', cartId).eq('product_id', id)
-        : await supabase.from('cart_items').update({ quantity, updated_at: new Date().toISOString() }).eq('cart_id', cartId).eq('product_id', id);
-      if (error) throw error;
+      let query = supabase.from('cart_items').delete().eq('cart_id', cartId).eq('product_id', id);
+      if (size) query = query.eq('size', size);
+      if (finish) query = query.eq('finish', finish);
+
+      if (quantity <= 0) {
+        const { error } = await query;
+        if (error) throw error;
+      } else {
+        let updateQuery = supabase
+          .from('cart_items')
+          .update({ quantity, updated_at: new Date().toISOString() })
+          .eq('cart_id', cartId)
+          .eq('product_id', id);
+        if (size) updateQuery = updateQuery.eq('size', size);
+        if (finish) updateQuery = updateQuery.eq('finish', finish);
+        const { error } = await updateQuery;
+        if (error) throw error;
+      }
       return fetchRemoteCart(user.id);
     }
-    const updated = quantity <= 0 ? getGuestCart().filter((item) => item.product.id !== id) : getGuestCart().map((item) => item.product.id === id ? { ...item, quantity } : item);
+
+    let updated: CartItem[];
+    if (quantity <= 0) {
+      updated = getGuestCart().filter((item) => {
+        if (item.product.id !== id) return true;
+        if (size && item.selectedSize !== size) return true;
+        if (finish && item.selectedFinish !== finish) return true;
+        return false;
+      });
+    } else {
+      updated = getGuestCart().map((item) => {
+        const match =
+          item.product.id === id &&
+          (!size || item.selectedSize === size) &&
+          (!finish || item.selectedFinish === finish);
+        if (!match) return item;
+        const maxStock = item.product.stock > 0 ? item.product.stock : 99;
+        return { ...item, quantity: Math.min(maxStock, quantity) };
+      });
+    }
     saveGuestCart(updated);
     return updated;
   },
 
-  async removeItem(product: Product | string): Promise<CartItem[]> {
-    return this.updateQuantity(product, 0);
+  async removeItem(product: Product | string, size?: string, finish?: string): Promise<CartItem[]> {
+    return this.updateQuantity(product, 0, size, finish);
   },
 
   async clearCart(): Promise<void> {

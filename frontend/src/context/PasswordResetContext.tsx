@@ -68,13 +68,7 @@ export const PasswordResetProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const submitNewPassword = async (newPassword: string): Promise<ResetPasswordResponse> => {
-    if (!resetToken) {
-      return {
-        success: false,
-        message: 'Missing verification token. Please verify your OTP code first.'
-      };
-    }
-    const res = await passwordResetService.resetPassword(resetToken, newPassword);
+    const res = await passwordResetService.resetPassword(resetToken || 'supabase_recovery_session', newPassword);
     if (res.success) {
       setResetTokenState(null);
     }

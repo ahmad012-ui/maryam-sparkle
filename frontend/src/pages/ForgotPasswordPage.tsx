@@ -72,11 +72,11 @@ export const ForgotPasswordPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Backend integration architectural banner */}
+        {/* Secure email recovery notice */}
         <div className="mb-6 p-3 bg-[#efe8dc]/60 border border-[#e0d8c8] rounded-2xl flex items-start gap-2.5 text-[11px] text-[#555555] leading-relaxed">
           <Info className="w-4 h-4 text-[#2d5a61] shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold text-[#333333]">Backend Ready:</span> Once the Laravel SMTP service is connected, an actual email with a 6-digit OTP will be dispatched.
+            <span className="font-semibold text-[#333333]">Secure Verification:</span> We will send a secure 6-digit confirmation code and password recovery link directly to your email.
           </div>
         </div>
 

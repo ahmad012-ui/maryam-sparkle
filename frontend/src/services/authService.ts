@@ -54,7 +54,7 @@ export const authService = {
     void supabase.auth.getSession().then(({ data }) => syncSessionUser(data.session?.user || null));
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       void syncSessionUser(session?.user || null).then(() => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
           window.dispatchEvent(new Event('auth-change'));
         }
       });

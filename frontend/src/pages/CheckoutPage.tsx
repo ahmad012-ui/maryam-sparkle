@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   ShieldCheck,
   Truck,
@@ -20,12 +20,14 @@ import {
   Copy,
   Check,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  Tag
 } from 'lucide-react';
 import { CartItem, Order, UserProfile, UserAddress, PaymentMethodId, PAYMENT_METHODS } from '../types';
 import { orderService } from '../services/orderService';
 import { cartService } from '../services/cartService';
 import { authService } from '../services/authService';
+import { couponService, CouponValidationResult } from '../services/couponService';
 import {
   uploadImageFile,
   validateImageFile,
@@ -55,6 +57,7 @@ interface CheckoutPageProps {
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
 
   // Listen to auth changes (login/logout/demo)
@@ -97,7 +100,13 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const [couponCode, setCouponCode] = useState('SPARKLE10');
+  // Database-backed Coupon State
+  const initialCouponParam = (location.state as any)?.coupon || new URLSearchParams(location.search).get('coupon') || '';
+  const [couponInput, setCouponInput] = useState(initialCouponParam);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
+  const [couponMessage, setCouponMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -238,14 +247,51 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
 
   // Subtotal calculations
   const subtotal = activeCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const discount = couponCode === 'SPARKLE10' ? Math.round(subtotal * 0.1) : 0;
-  const shippingFee =
-    formData.deliveryMethod === 'express'
-      ? 350
-      : subtotal >= 3000 || subtotal === 0
-      ? 0
-      : 200;
-  const total = subtotal - discount + shippingFee;
+  const discount = appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
+  const shippingFee = couponService.calculateShipping(formData.deliveryMethod, subtotal);
+  const total = Math.max(0, subtotal - discount + shippingFee);
+
+  // Auto-validate initial coupon if passed from cart or URL
+  useEffect(() => {
+    if (initialCouponParam && subtotal > 0 && !appliedCoupon) {
+      couponService.validateCoupon(initialCouponParam, subtotal).then((res) => {
+        if (res.valid) {
+          setAppliedCoupon(res);
+          setCouponMessage({ text: res.message, isError: false });
+        }
+      });
+    }
+  }, [initialCouponParam, subtotal]);
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponMessage(null);
+    const code = couponInput.trim();
+    if (!code) return;
+
+    setIsValidatingCoupon(true);
+    try {
+      const result = await couponService.validateCoupon(code, subtotal);
+      if (result.valid) {
+        setAppliedCoupon(result);
+        setCouponMessage({ text: result.message, isError: false });
+      } else {
+        setAppliedCoupon(null);
+        setCouponMessage({ text: result.message, isError: true });
+      }
+    } catch (err: any) {
+      setAppliedCoupon(null);
+      setCouponMessage({ text: err.message || 'Failed to validate coupon', isError: true });
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponMessage(null);
+  };
 
   if (activeCart.length === 0) {
     return (
@@ -334,7 +380,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         subtotal,
         shippingCost: shippingFee,
         discount,
-        couponCode: couponCode || undefined,
+        couponCode: appliedCoupon?.valid ? appliedCoupon.code : undefined,
         total,
         notes: formData.notes
       });
@@ -1126,7 +1172,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                             {item.product.name}
                           </h4>
                           <p className="text-[11px] text-[#666666]">
-                            Qty: {item.quantity} {item.selectedSize ? `· ${item.selectedSize}` : ''}
+                            Qty: {item.quantity} {item.selectedSize ? `· ${item.selectedSize}` : ''} {item.selectedFinish ? `· ${item.selectedFinish}` : ''}
                           </p>
                         </div>
                         <span className="text-xs font-semibold text-[#333333] shrink-0">
@@ -1137,6 +1183,52 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                   })}
                 </div>
 
+                {/* Coupon Input in Checkout */}
+                <div className="mb-6 pb-6 border-b border-[#e0d8c8]">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="w-3.5 h-3.5 text-[#888888] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Promo Code (SPARKLE10)"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value)}
+                        className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl pl-8 pr-3 py-2 text-xs text-[#333333] placeholder-[#888888] focus:outline-none focus:border-[#2d5a61]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleApplyCoupon(e as any)}
+                      disabled={isValidatingCoupon || !couponInput.trim()}
+                      className="bg-[#2d5a61] text-white px-3.5 py-2 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {isValidatingCoupon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Apply'}
+                    </button>
+                  </div>
+
+                  {couponMessage && (
+                    <div className={`mt-2 p-2 rounded-xl text-xs flex items-center justify-between ${
+                      couponMessage.isError
+                        ? 'bg-red-50 text-red-700 border border-red-200'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      <span className="flex items-center gap-1">
+                        {!couponMessage.isError && <Sparkles className="w-3.5 h-3.5 text-emerald-600" />}
+                        {couponMessage.text}
+                      </span>
+                      {appliedCoupon && !couponMessage.isError && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-emerald-700 hover:text-emerald-900 font-semibold underline text-[11px] cursor-pointer ml-2"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Subtotal Calculation */}
                 <div className="space-y-3 text-xs text-[#555555] mb-6 pb-6 border-b border-[#e0d8c8]">
                   <div className="flex justify-between">
@@ -1144,9 +1236,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                     <span className="font-semibold text-[#333333]">Rs. {subtotal.toLocaleString()}</span>
                   </div>
 
-                  {discount > 0 && (
+                  {discount > 0 && appliedCoupon && (
                     <div className="flex justify-between text-emerald-700 font-semibold">
-                      <span>Promo Discount ({couponCode})</span>
+                      <span>Promo Discount ({appliedCoupon.code})</span>
                       <span>-Rs. {discount.toLocaleString()}</span>
                     </div>
                   )}

@@ -201,9 +201,9 @@ export const VerifyOtpPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Informative Preview Banner */}
+        {/* Instructions Banner */}
         <div className="mb-6 p-3 bg-teal-50/70 border border-teal-200/80 rounded-2xl text-[11px] text-teal-900 leading-relaxed">
-          <span className="font-semibold">Backend Integration Notice:</span> While Laravel SMTP is connecting, you can enter any 6-digit code (e.g. <span className="font-mono font-semibold bg-white/80 px-1 py-0.5 rounded">123456</span>) to verify the flow and create a new password.
+          <span className="font-semibold">Security Check:</span> Enter the 6-digit confirmation code sent to your inbox. You can also click the password reset link directly in the email.
         </div>
 
         {/* Error Alert */}

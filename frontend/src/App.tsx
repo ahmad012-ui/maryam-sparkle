@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { PRODUCTS, CATEGORIES } from './data/products';
-import { Product, CartItem } from './types';
+import { Product, Category, CartItem } from './types';
 import { cartService } from './services/cartService';
+import { productService } from './services/productService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
@@ -51,6 +52,36 @@ function MainApp() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Authoritative catalog products & categories from Supabase (with static seed fallback)
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCatalog() {
+      try {
+        const [fetchedProducts, fetchedCategories] = await Promise.all([
+          productService.getProducts(),
+          productService.getCategories(),
+        ]);
+        if (isMounted) {
+          if (fetchedProducts && fetchedProducts.length > 0) {
+            setProducts(fetchedProducts);
+          }
+          if (fetchedCategories && fetchedCategories.length > 0) {
+            setCategories(fetchedCategories);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load authoritative catalog from Supabase:', err);
+      }
+    }
+    loadCatalog();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Cart items synced with real backend Cart API (Phase 5 & 7)
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
@@ -73,7 +104,7 @@ function MainApp() {
     };
   }, []);
 
-  const [wishlistIds, setWishlistIds] = useState<string[]>([PRODUCTS[0].id]);
+  const [wishlistIds, setWishlistIds] = useState<string[]>(() => [products[0]?.id || PRODUCTS[0].id]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -104,22 +135,40 @@ function MainApp() {
     );
   }
 
-  // Cart operations with backend synchronization
+  // Cart operations with backend synchronization and variant persistence
   const handleAddToCart = async (
     product: Product,
-    size?: string,
-    finish?: string,
-    customNote?: string
+    arg2?: number | string,
+    arg3?: string,
+    arg4?: string,
+    arg5?: string
   ) => {
+    let quantity = 1;
+    let size: string | undefined;
+    let finish: string | undefined;
+    let customNote: string | undefined;
+
+    if (typeof arg2 === 'number') {
+      quantity = Math.max(1, arg2);
+      size = arg3;
+      finish = arg4;
+      customNote = arg5;
+    } else if (typeof arg2 === 'string') {
+      size = arg2;
+      finish = arg3;
+      customNote = arg4;
+    }
+
+    const itemSize = size || 'Medium (6.5")';
+    const itemFinish = finish || product.finish || product.availableFinishes?.[0] || '18K Gold Plated';
+
     try {
-      const updated = await cartService.addItem(product, 1);
+      const updated = await cartService.addItem(product, quantity, itemSize, itemFinish, customNote);
       if (updated && updated.length > 0) {
         setCartItems(updated);
       }
     } catch (err) {
       console.warn('Backend addItem error, falling back locally:', err);
-      const itemSize = size || 'Medium (6.5")';
-      const itemFinish = finish || product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
       setCartItems((prev) => {
         const existingIndex = prev.findIndex(
           (item) =>
@@ -129,14 +178,14 @@ function MainApp() {
         );
         if (existingIndex > -1) {
           const updated = [...prev];
-          updated[existingIndex].quantity += 1;
+          updated[existingIndex].quantity += quantity;
           return updated;
         }
         return [
           ...prev,
           {
             product,
-            quantity: 1,
+            quantity,
             selectedSize: itemSize,
             selectedFinish: itemFinish,
             customNote,
@@ -159,10 +208,10 @@ function MainApp() {
     const newQty = item.quantity + delta;
     try {
       if (newQty <= 0) {
-        const updated = await cartService.removeItem(productId);
+        const updated = await cartService.removeItem(productId, size, finish);
         setCartItems(updated);
       } else {
-        const updated = await cartService.updateQuantity(productId, newQty);
+        const updated = await cartService.updateQuantity(productId, newQty, size, finish);
         setCartItems(updated);
       }
     } catch (err) {
@@ -186,7 +235,7 @@ function MainApp() {
 
   const handleRemoveFromCart = async (productId: string, size?: string, finish?: string) => {
     try {
-      const updated = await cartService.removeItem(productId);
+      const updated = await cartService.removeItem(productId, size, finish);
       setCartItems(updated);
     } catch (err) {
       console.warn('Backend removeItem error, updating locally:', err);
@@ -224,7 +273,7 @@ function MainApp() {
   };
 
   const handleMoveAllWishlistToBag = () => {
-    const itemsToAdd = PRODUCTS.filter((p) => wishlistIds.includes(p.id));
+    const itemsToAdd = products.filter((p) => wishlistIds.includes(p.id));
     itemsToAdd.forEach((p) => handleAddToCart(p));
     setWishlistIds([]);
     navigate('/cart');
@@ -232,7 +281,7 @@ function MainApp() {
 
   const totalCartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalCartAmount = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
-  const wishlistProducts = PRODUCTS.filter((p) => wishlistIds.includes(p.id));
+  const wishlistProducts = products.filter((p) => wishlistIds.includes(p.id));
 
   const handleCategorySelect = (slug: string | null) => {
     setSelectedCategory(slug);
@@ -254,7 +303,7 @@ function MainApp() {
         cartCount={totalCartCount}
         cartTotal={totalCartAmount}
         wishlistCount={wishlistIds.length}
-        categories={CATEGORIES}
+        categories={categories}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenWishlist={() => setIsWishlistOpen(true)}
         onOpenSearch={() => setIsSearchOpen(true)}
@@ -271,8 +320,8 @@ function MainApp() {
             path="/"
             element={
               <HomePage
-                products={PRODUCTS}
-                categories={CATEGORIES}
+                products={products}
+                categories={categories}
                 wishlistIds={wishlistIds}
                 onAddToCart={handleAddToCart}
                 onToggleWishlist={handleToggleWishlist}
@@ -287,8 +336,8 @@ function MainApp() {
             path="/shop"
             element={
               <ShopPage
-                products={PRODUCTS}
-                categories={CATEGORIES}
+                products={products}
+                categories={categories}
                 wishlistIds={wishlistIds}
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
@@ -433,8 +482,8 @@ function MainApp() {
             path="*"
             element={
               <ShopPage
-                products={PRODUCTS}
-                categories={CATEGORIES}
+                products={products}
+                categories={categories}
                 wishlistIds={wishlistIds}
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
@@ -463,7 +512,7 @@ function MainApp() {
 
       {/* Floating Stylist Assistant */}
       <AskMaryamWidget
-        products={PRODUCTS}
+        products={products}
         onAddToCart={handleAddToCart}
         onQuickView={(product) => setQuickViewProduct(product)}
       />
@@ -504,7 +553,7 @@ function MainApp() {
       <SearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        products={PRODUCTS}
+        products={products}
         onSelectProduct={(product) => setQuickViewProduct(product)}
         onAddToCart={handleAddToCart}
         wishlistIds={wishlistIds}

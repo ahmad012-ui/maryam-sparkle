@@ -222,6 +222,33 @@ export const orderService = {
     const { data, error } = await supabase.rpc('place_order', { payload: rpcPayload });
     if (error) throw error;
     if (!data?.success || !data.order_id) throw new Error(data?.message || 'The order could not be created.');
-    return fetchOwnOrder(data.order_id);
+
+    try {
+      return await fetchOwnOrder(data.order_id);
+    } catch (fetchErr) {
+      // Guest order or fresh session where RLS prevents direct select:
+      // Construct authoritative order response from place_order return values
+      return {
+        id: data.order_id,
+        orderNumber: data.order_number,
+        createdAt: new Date().toISOString(),
+        status: 'placed',
+        customer: orderPayload.customer,
+        shippingAddress: orderPayload.shippingAddress,
+        deliveryMethod: orderPayload.deliveryMethod,
+        paymentMethod: orderPayload.paymentMethod,
+        items: orderPayload.items,
+        subtotal: Number(data.subtotal) || orderPayload.subtotal,
+        shippingCost: Number(data.shipping_fee) ?? orderPayload.shippingCost,
+        discount: Number(data.discount) ?? orderPayload.discount,
+        couponCode: orderPayload.couponCode,
+        total: Number(data.total) || orderPayload.total,
+        paymentStatus: 'pending',
+        transactionReference: orderPayload.transactionReference,
+        proofOfPaymentUrl: orderPayload.proofOfPaymentUrl,
+        timeline: buildTimeline('placed', new Date().toISOString()),
+        notes: orderPayload.notes,
+      };
+    }
   },
 };

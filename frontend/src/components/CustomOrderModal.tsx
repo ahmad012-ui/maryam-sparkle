@@ -28,6 +28,7 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
 
   const [referenceImages, setReferenceImages] = useState<ReferenceImageFile[]>([]);
   const [phoneError, setPhoneError] = useState('');
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -63,6 +64,7 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
     }
 
     setIsSubmitting(true);
+    setSubmissionError(null);
     const customOrderId = `cst_${Date.now()}`;
     const reqNumber = `REQ-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -74,54 +76,53 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
         for (const img of referenceImages) {
           if (img.file) {
             const uploadRes = await imageUploadService.uploadCustomOrderImage(img.file, customOrderId);
-            if (uploadRes.success && uploadRes.url) {
+            if (uploadRes && uploadRes.success && uploadRes.url) {
               uploadedImageUrls.push(uploadRes.url);
-            } else if (img.previewUrl) {
-              uploadedImageUrls.push(img.previewUrl);
+            } else {
+              throw new Error(`Failed to upload reference image "${img.name}". Please check the file and try again.`);
             }
-          } else if (img.previewUrl) {
-            uploadedImageUrls.push(img.previewUrl);
           }
         }
       }
 
       // 2. Persist to Supabase Database
       if (isSupabaseConfigured()) {
-        try {
-          const currentUser = authService.getCurrentUser();
-          const validUserId = currentUser?.id && !currentUser.id.startsWith('usr-') ? currentUser.id : null;
+        const currentUser = authService.getCurrentUser();
+        const validUserId = currentUser?.id && !currentUser.id.startsWith('usr-') ? currentUser.id : null;
 
-          const { data: insertedRecord, error: dbError } = await supabase
-            .from('custom_orders')
-            .insert({
-              user_id: validUserId,
-              customer_name: formData.name,
-              customer_email: formData.email || null,
-              customer_phone: sanitizePhoneNumber(formData.phone),
-              jewelry_type: formData.type,
-              wrist_size: formData.size,
-              metal_finish: formData.finish,
-              preferred_stones: formData.stones,
-              initials_or_word: null,
-              budget_range: 'Rs. 2,000 - Rs. 4,000',
-              special_notes: `${formData.palette ? `[Palette: ${formData.palette}] ` : ''}${formData.specialNotes || ''}`.trim() || null,
-              status: 'pending',
-            })
-            .select()
-            .single();
+        const { data: insertedRecord, error: dbError } = await supabase
+          .from('custom_orders')
+          .insert({
+            user_id: validUserId,
+            customer_name: formData.name,
+            customer_email: formData.email || null,
+            customer_phone: sanitizePhoneNumber(formData.phone),
+            jewelry_type: formData.type,
+            wrist_size: formData.size,
+            metal_finish: formData.finish,
+            preferred_stones: formData.stones,
+            initials_or_word: null,
+            budget_range: 'Rs. 2,000 - Rs. 4,000',
+            special_notes: `${formData.palette ? `[Palette: ${formData.palette}] ` : ''}${formData.specialNotes || ''}`.trim() || null,
+            status: 'pending',
+          })
+          .select()
+          .single();
 
-          if (dbError) {
-            console.warn('Supabase custom order modal insertion error:', dbError);
-          } else if (insertedRecord?.id && uploadedImageUrls.length > 0) {
-            const imageRows = uploadedImageUrls.map((url, idx) => ({
-              custom_order_id: insertedRecord.id,
-              image_url: url,
-              sort_order: idx,
-            }));
-            await supabase.from('custom_order_images').insert(imageRows);
+        if (dbError) {
+          throw new Error(`Failed to save bespoke request: ${dbError.message}`);
+        }
+
+        if (insertedRecord?.id && uploadedImageUrls.length > 0) {
+          const imageRows = uploadedImageUrls.map((url, idx) => ({
+            custom_order_id: insertedRecord.id,
+            image_url: url,
+            sort_order: idx,
+          }));
+          const { error: imgError } = await supabase.from('custom_order_images').insert(imageRows);
+          if (imgError) {
+            console.error('Failed to link custom order images:', imgError);
           }
-        } catch (supabaseErr) {
-          console.warn('Supabase custom order modal error:', supabaseErr);
         }
       }
 
@@ -165,9 +166,11 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
       }
 
       setSubmitted(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to submit custom order from modal:', err);
-      setSubmitted(true);
+      const msg = err instanceof Error ? err.message : 'Unable to submit your bespoke request. Please try again.';
+      setSubmissionError(msg);
+      setSubmitted(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -175,6 +178,7 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
 
   const handleClose = () => {
     setSubmitted(false);
+    setSubmissionError(null);
     setReferenceImages([]);
     onClose();
   };
@@ -380,6 +384,16 @@ export const CustomOrderModal: React.FC<CustomOrderModalProps> = ({ isOpen, onCl
                 maxFileSizeMB={5}
               />
             </div>
+
+            {submissionError && (
+              <div
+                role="alert"
+                className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700"
+              >
+                <span className="font-semibold">Submission Failed: </span>
+                {submissionError}
+              </div>
+            )}
 
             <div className="pt-2">
               <button
