@@ -15,7 +15,9 @@ import {
   Trash2,
   CheckCircle2,
   Clock,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import { UserProfile, Order } from '../types';
 import { authService } from '../services/authService';
@@ -34,8 +36,17 @@ export const AccountPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'orders' | 'addresses' | 'profile'>('orders');
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
 
-  // Address modal state
+  // Profile Edit State
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
+  const [profileErrorMsg, setProfileErrorMsg] = useState<string | null>(null);
+
+  // Address modal & loading state
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [isAddressSaving, setIsAddressSaving] = useState(false);
+  const [addressActionError, setAddressActionError] = useState<string | null>(null);
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
   const [newAddress, setNewAddress] = useState({
     label: 'Home',
@@ -48,18 +59,30 @@ export const AccountPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-
-    async function loadUserOrders() {
-      const allOrders = await orderService.getAllOrders();
-      setOrders(allOrders);
+    async function loadFreshUserAndOrders() {
+      try {
+        const freshUser = await authService.getCurrentUserAsync();
+        setUser(freshUser);
+        if (freshUser) {
+          setEditName(freshUser.name);
+          setEditPhone(freshUser.phone || '');
+          const allOrders = await orderService.getAllOrders();
+          setOrders(allOrders);
+        }
+      } catch (err) {
+        console.error('Error loading account data from Supabase:', err);
+      }
     }
-    loadUserOrders();
+    loadFreshUserAndOrders();
 
     const handleAuthChange = () => {
-      setUser(authService.getCurrentUser());
-      loadUserOrders();
+      const active = authService.getCurrentUser();
+      setUser(active);
+      if (active) {
+        setEditName(active.name);
+        setEditPhone(active.phone || '');
+        orderService.getAllOrders().then(setOrders).catch(console.error);
+      }
     };
     window.addEventListener('auth-change', handleAuthChange);
     window.addEventListener('storage', handleAuthChange);
@@ -74,9 +97,41 @@ export const AccountPage: React.FC = () => {
     navigate('/');
   };
 
-  const handleAddAddress = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileErrorMsg(null);
+    setProfileSuccessMsg(null);
+
+    if (!editName.trim()) {
+      setProfileErrorMsg('Full name cannot be empty.');
+      return;
+    }
+
+    if (editPhone.trim() && !isValidPhoneNumber(editPhone)) {
+      setProfileErrorMsg('Please enter a valid Pakistani phone number (e.g., 0300 1234567).');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const updated = await authService.updateProfileAsync({
+        name: editName.trim(),
+        phone: editPhone.trim(),
+      });
+      setUser(updated);
+      setProfileSuccessMsg('Your profile details have been saved.');
+      setTimeout(() => setProfileSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setProfileErrorMsg(err.message || 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
+    setAddressActionError(null);
 
     if (!newAddress.fullName.trim()) {
       errors.fullName = 'Full name is required';
@@ -96,24 +151,47 @@ export const AccountPage: React.FC = () => {
       return;
     }
 
-    const added = authService.addAddress(newAddress);
-    setUser(authService.getCurrentUser());
-    setShowAddressModal(false);
-    setAddressErrors({});
-    setNewAddress({
-      label: 'Home',
-      fullName: '',
-      phone: '',
-      address: '',
-      city: 'Karachi',
-      postalCode: '75500',
-      isDefault: false
-    });
+    setIsAddressSaving(true);
+    try {
+      await authService.addAddressAsync(newAddress);
+      setUser(authService.getCurrentUser());
+      setShowAddressModal(false);
+      setAddressErrors({});
+      setNewAddress({
+        label: 'Home',
+        fullName: '',
+        phone: '',
+        address: '',
+        city: 'Karachi',
+        postalCode: '75500',
+        isDefault: false
+      });
+    } catch (err: any) {
+      setAddressActionError(err.message || 'Failed to add address. Please try again.');
+    } finally {
+      setIsAddressSaving(false);
+    }
   };
 
-  const handleDeleteAddress = (id: string) => {
-    authService.deleteAddress(id);
-    setUser(authService.getCurrentUser());
+  const handleSetDefaultAddress = async (id: string) => {
+    setAddressActionError(null);
+    try {
+      await authService.setDefaultAddressAsync(id);
+      setUser(authService.getCurrentUser());
+    } catch (err: any) {
+      setAddressActionError(err.message || 'Failed to set default address.');
+    }
+  };
+
+  const handleDeleteAddress = async (id: string) => {
+    if (!window.confirm('Are you sure you want to remove this address?')) return;
+    setAddressActionError(null);
+    try {
+      await authService.deleteAddressAsync(id);
+      setUser(authService.getCurrentUser());
+    } catch (err: any) {
+      setAddressActionError(err.message || 'Failed to remove address.');
+    }
   };
 
   if (!user) {
@@ -296,9 +374,15 @@ export const AccountPage: React.FC = () => {
         {activeTab === 'addresses' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-serif text-lg text-[#333333]">Shipping Address Book</h3>
+              <div>
+                <h3 className="font-serif text-lg text-[#333333]">Shipping Address Book</h3>
+                <p className="text-xs text-[#666666]">Manage delivery addresses for swift 1-click checkout.</p>
+              </div>
               <button
-                onClick={() => setShowAddressModal(true)}
+                onClick={() => {
+                  setAddressActionError(null);
+                  setShowAddressModal(true);
+                }}
                 className="bg-[#2d5a61] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -306,63 +390,123 @@ export const AccountPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {user.addresses.map((addr) => (
-                <div
-                  key={addr.id}
-                  className="bg-[#fdfaf5] rounded-3xl p-6 border border-[#e0d8c8] shadow-xs flex flex-col justify-between"
+            {addressActionError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{addressActionError}</span>
+              </div>
+            )}
+
+            {user.addresses.length === 0 ? (
+              <div className="bg-[#fdfaf5] rounded-3xl p-8 text-center border border-[#e0d8c8]">
+                <MapPin className="w-8 h-8 text-[#888888] mx-auto mb-2" />
+                <h4 className="font-serif text-base text-[#333333] mb-1">No Saved Addresses</h4>
+                <p className="text-xs text-[#666666] mb-4">Add your home or studio address for faster checkout.</p>
+                <button
+                  onClick={() => setShowAddressModal(true)}
+                  className="bg-[#2d5a61] text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-[#1e3c41]"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-serif text-sm font-bold text-[#333333] flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#2d5a61]" />
-                        {addr.label}
-                      </span>
-                      {addr.isDefault && (
-                        <span className="text-[10px] font-bold bg-[#2d5a61]/10 text-[#2d5a61] px-2 py-0.5 rounded-full">
-                          Default Address
+                  Add Address Now
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {user.addresses.map((addr) => (
+                  <div
+                    key={addr.id}
+                    className={`bg-[#fdfaf5] rounded-3xl p-6 border shadow-xs flex flex-col justify-between transition-all ${
+                      addr.isDefault ? 'border-[#2d5a61] ring-1 ring-[#2d5a61]/20' : 'border-[#e0d8c8]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-serif text-sm font-bold text-[#333333] flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-[#2d5a61]" />
+                          {addr.label}
                         </span>
+                        {addr.isDefault ? (
+                          <span className="text-[10px] font-bold bg-[#2d5a61]/10 text-[#2d5a61] px-2.5 py-0.5 rounded-full border border-[#2d5a61]/20">
+                            Default Address
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSetDefaultAddress(addr.id)}
+                            className="text-[11px] font-semibold text-[#2d5a61] hover:underline cursor-pointer"
+                          >
+                            Set as Default
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="text-xs text-[#555555] space-y-1">
+                        <p className="font-semibold text-[#333333]">{addr.fullName}</p>
+                        <p>{addr.address}</p>
+                        <p>{addr.city}, {addr.postalCode}</p>
+                        <p>Phone: {addr.phone}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 mt-4 border-t border-[#e0d8c8] flex items-center justify-between">
+                      {!addr.isDefault ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSetDefaultAddress(addr.id)}
+                          className="text-xs text-[#2d5a61] hover:text-[#1e3c41] font-medium cursor-pointer"
+                        >
+                          Make Default
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-[#888888]">Primary Shipping Address</span>
                       )}
-                    </div>
-
-                    <div className="text-xs text-[#555555] space-y-1">
-                      <p className="font-semibold text-[#333333]">{addr.fullName}</p>
-                      <p>{addr.address}</p>
-                      <p>{addr.city}, {addr.postalCode}</p>
-                      <p>Phone: {addr.phone}</p>
+                      <button
+                        onClick={() => handleDeleteAddress(addr.id)}
+                        className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="pt-4 mt-4 border-t border-[#e0d8c8] flex justify-end">
-                    <button
-                      onClick={() => handleDeleteAddress(addr.id)}
-                      className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Tab 3: Profile Details */}
         {activeTab === 'profile' && (
           <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-xs max-w-2xl">
-            <h3 className="font-serif text-xl text-[#333333] mb-6 pb-3 border-b border-[#e0d8c8]">
+            <h3 className="font-serif text-xl text-[#333333] mb-2 pb-2 border-b border-[#e0d8c8]">
               Personal Information
             </h3>
+            <p className="text-xs text-[#666666] mb-6">
+              Keep your contact details up to date for bespoke order communications and receipts.
+            </p>
 
-            <div className="space-y-4 text-xs">
+            {profileSuccessMsg && (
+              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{profileSuccessMsg}</span>
+              </div>
+            )}
+
+            {profileErrorMsg && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>{profileErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
               <div>
                 <label className="block text-[#666666] mb-1 font-medium">Full Name</label>
                 <input
                   type="text"
-                  disabled
-                  value={user.name}
-                  className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-[#333333]"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-[#fdfaf5] border border-[#e0d8c8] focus:border-[#2d5a61] rounded-xl px-4 py-2.5 text-[#333333] outline-none"
                 />
               </div>
 
@@ -372,21 +516,35 @@ export const AccountPage: React.FC = () => {
                   type="email"
                   disabled
                   value={user.email}
-                  className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-[#333333]"
+                  className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-[#666666] cursor-not-allowed"
                 />
+                <p className="text-[11px] text-[#888888] mt-1">
+                  Email is linked to your Supabase credentials. Contact support to change your login email.
+                </p>
               </div>
 
               <div>
                 <label className="block text-[#666666] mb-1 font-medium">Phone Number</label>
                 <input
                   type="tel"
-                  disabled
-                  value={user.phone}
-                  className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-xl px-4 py-2.5 text-[#333333]"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="0300 1234567"
+                  className="w-full bg-[#fdfaf5] border border-[#e0d8c8] focus:border-[#2d5a61] rounded-xl px-4 py-2.5 text-[#333333] outline-none"
                 />
               </div>
 
-              <div className="pt-4 mt-6 border-t border-[#e0d8c8] flex items-center justify-between">
+              <div className="pt-2 flex justify-start">
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="px-6 py-2.5 bg-[#2d5a61] text-white rounded-xl font-semibold text-xs hover:bg-[#1e3c41] transition-all disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
+                </button>
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-[#e0d8c8] flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-[#333333]">Account Session</p>
                   <p className="text-[11px] text-[#666666]">End your active session on this browser device.</p>
@@ -400,7 +558,7 @@ export const AccountPage: React.FC = () => {
                   <span>Log Out</span>
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         )}
       </div>
@@ -518,19 +676,27 @@ export const AccountPage: React.FC = () => {
                 <label htmlFor="isDefault" className="text-xs text-[#555555]">Set as default shipping address</label>
               </div>
 
+              {addressActionError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
+                  {addressActionError}
+                </div>
+              )}
+
               <div className="flex justify-end gap-3 pt-4 border-t border-[#e0d8c8]">
                 <button
                   type="button"
+                  disabled={isAddressSaving}
                   onClick={() => setShowAddressModal(false)}
-                  className="px-4 py-2 border border-[#e0d8c8] rounded-xl text-xs font-semibold text-[#666666]"
+                  className="px-4 py-2 border border-[#e0d8c8] rounded-xl text-xs font-semibold text-[#666666] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#2d5a61] text-white rounded-xl text-xs font-semibold hover:bg-[#1e3c41]"
+                  disabled={isAddressSaving}
+                  className="px-5 py-2 bg-[#2d5a61] text-white rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  Save Address
+                  {isAddressSaving ? 'Saving Address...' : 'Save Address'}
                 </button>
               </div>
             </form>

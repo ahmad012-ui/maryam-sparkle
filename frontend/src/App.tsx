@@ -4,6 +4,8 @@ import { PRODUCTS, CATEGORIES } from './data/products';
 import { Product, Category, CartItem } from './types';
 import { cartService } from './services/cartService';
 import { productService } from './services/productService';
+import { wishlistService } from './services/wishlistService';
+import { settingsService } from './services/settingsService';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { HomePage } from './pages/HomePage';
@@ -104,7 +106,36 @@ function MainApp() {
     };
   }, []);
 
-  const [wishlistIds, setWishlistIds] = useState<string[]>(() => [products[0]?.id || PRODUCTS[0].id]);
+  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+
+  // Load wishlist from wishlistService & sync on auth change
+  useEffect(() => {
+    let isMounted = true;
+    async function loadWishlist() {
+      try {
+        const ids = await wishlistService.getWishlist();
+        if (isMounted) setWishlistIds(ids);
+      } catch (err) {
+        console.warn('Error loading wishlist:', err);
+      }
+    }
+    loadWishlist();
+
+    const handleAuthChange = () => {
+      loadWishlist();
+    };
+    window.addEventListener('auth-change', handleAuthChange);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('auth-change', handleAuthChange);
+    };
+  }, []);
+
+  // Pre-load store settings
+  useEffect(() => {
+    settingsService.getSettings().catch((err) => console.warn('Failed to load store settings:', err));
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
@@ -261,21 +292,39 @@ function MainApp() {
   };
 
   // Wishlist operations
-  const handleToggleWishlist = (product: Product) => {
+  const handleToggleWishlist = async (product: Product) => {
+    // Optimistic UI update
     setWishlistIds((prev) =>
       prev.includes(product.id) ? prev.filter((id) => id !== product.id) : [...prev, product.id]
     );
+    try {
+      const updated = await wishlistService.toggleWishlist(product.id);
+      setWishlistIds(updated);
+    } catch (err) {
+      console.warn('Failed to sync wishlist toggle:', err);
+    }
   };
 
-  const handleMoveToBag = (product: Product) => {
+  const handleMoveToBag = async (product: Product) => {
     handleAddToCart(product);
     setWishlistIds((prev) => prev.filter((id) => id !== product.id));
+    try {
+      const updated = await wishlistService.removeFromWishlist(product.id);
+      setWishlistIds(updated);
+    } catch (err) {
+      console.warn('Failed to sync wishlist remove:', err);
+    }
   };
 
-  const handleMoveAllWishlistToBag = () => {
+  const handleMoveAllWishlistToBag = async () => {
     const itemsToAdd = products.filter((p) => wishlistIds.includes(p.id));
     itemsToAdd.forEach((p) => handleAddToCart(p));
     setWishlistIds([]);
+    try {
+      await wishlistService.clearWishlist();
+    } catch (err) {
+      console.warn('Failed to clear wishlist:', err);
+    }
     navigate('/cart');
   };
 

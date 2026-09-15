@@ -9,6 +9,15 @@ function requireSupabase() {
 
 function mapAuthError(message: string): Error {
   const normalized = message.toLowerCase();
+  if (
+    normalized.includes('pwned') ||
+    normalized.includes('leaked') ||
+    normalized.includes('compromised') ||
+    normalized.includes('haveibeenpwned') ||
+    normalized.includes('known data breach')
+  ) {
+    return new Error('This password has appeared in a known data breach. For your security, please choose a stronger, unique password.');
+  }
   if (normalized.includes('email rate limit exceeded') || normalized.includes('rate limit exceeded')) {
     return new Error('Supabase email sending is temporarily rate-limited. Please wait for the limit to reset, or disable Confirm Email while developing.');
   }
@@ -135,11 +144,108 @@ export const authService = {
     window.dispatchEvent(new Event('auth-change'));
   },
 
+  async updateProfileAsync(updates: { name?: string; phone?: string }): Promise<UserProfile> {
+    requireSupabase();
+    if (!currentUserCache) throw new Error('You must be logged in to update your profile.');
+
+    const dbUpdates: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.name !== undefined) dbUpdates.full_name = updates.name.trim();
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone.trim();
+
+    const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', currentUserCache.id);
+    if (error) throw error;
+
+    const refreshed = await this.getCurrentUserAsync();
+    if (!refreshed) throw new Error('Failed to refresh your profile details.');
+    window.dispatchEvent(new Event('auth-change'));
+    return refreshed;
+  },
+
+  async addAddressAsync(address: Omit<UserAddress, 'id'>): Promise<UserAddress> {
+    requireSupabase();
+    if (!currentUserCache) throw new Error('You must be logged in to save an address.');
+
+    // If marked as default, unset other defaults at the database level
+    if (address.isDefault) {
+      await supabase
+        .from('addresses')
+        .update({ is_default: false })
+        .eq('user_id', currentUserCache.id);
+    }
+
+    const row = {
+      user_id: currentUserCache.id,
+      label: address.label || 'Home',
+      full_name: address.fullName.trim(),
+      phone: address.phone.trim(),
+      address_line_1: address.address.trim(),
+      city: address.city.trim(),
+      postal_code: address.postalCode?.trim() || null,
+      country: 'Pakistan',
+      is_default: !!address.isDefault,
+    };
+
+    const { data, error } = await supabase.from('addresses').insert(row).select().single();
+    if (error) throw error;
+
+    await this.getCurrentUserAsync();
+    window.dispatchEvent(new Event('auth-change'));
+
+    return {
+      id: data.id,
+      label: data.label,
+      fullName: data.full_name,
+      phone: data.phone,
+      address: data.address_line_1,
+      city: data.city,
+      postalCode: data.postal_code || '',
+      isDefault: !!data.is_default,
+    };
+  },
+
+  async setDefaultAddressAsync(addressId: string): Promise<void> {
+    requireSupabase();
+    if (!currentUserCache) throw new Error('You must be logged in.');
+
+    // 1. Try dedicated set_default_address RPC
+    const { error: rpcError } = await supabase.rpc('set_default_address', { p_address_id: addressId });
+    if (rpcError) {
+      // 2. Fallback: reset all then set target to true
+      await supabase.from('addresses').update({ is_default: false }).eq('user_id', currentUserCache.id);
+      const { error: updateError } = await supabase
+        .from('addresses')
+        .update({ is_default: true, updated_at: new Date().toISOString() })
+        .eq('id', addressId)
+        .eq('user_id', currentUserCache.id);
+      if (updateError) throw updateError;
+    }
+
+    await this.getCurrentUserAsync();
+    window.dispatchEvent(new Event('auth-change'));
+  },
+
+  async deleteAddressAsync(addressId: string): Promise<void> {
+    requireSupabase();
+    if (!currentUserCache) throw new Error('You must be logged in.');
+
+    const { error } = await supabase
+      .from('addresses')
+      .delete()
+      .eq('id', addressId)
+      .eq('user_id', currentUserCache.id);
+    if (error) throw error;
+
+    await this.getCurrentUserAsync();
+    window.dispatchEvent(new Event('auth-change'));
+  },
+
   updateProfile(updates: Partial<UserProfile>): UserProfile | null {
     if (!currentUserCache) return null;
     const updated = { ...currentUserCache, ...updates };
     currentUserCache = updated;
-    if (isSupabaseConfigured() && !updated.id.startsWith('usr-')) {
+    if (isSupabaseConfigured()) {
       void supabase.from('profiles').update({ full_name: updated.name, phone: updated.phone, updated_at: new Date().toISOString() }).eq('id', updated.id);
     }
     window.dispatchEvent(new Event('auth-change'));
@@ -153,16 +259,14 @@ export const authService = {
       ? (currentUserCache.addresses || []).map((a) => ({ ...a, isDefault: false })).concat(newAddr)
       : [...(currentUserCache.addresses || []), newAddr];
     this.updateProfile({ addresses: updatedAddresses });
-    if (!currentUserCache.id.startsWith('usr-')) {
-      void supabase.from('addresses').insert({ user_id: currentUserCache.id, label: newAddr.label || 'Home', full_name: newAddr.fullName, phone: newAddr.phone, address_line_1: newAddr.address, city: newAddr.city, postal_code: newAddr.postalCode, country: 'Pakistan', is_default: !!newAddr.isDefault });
-    }
+    void supabase.from('addresses').insert({ user_id: currentUserCache.id, label: newAddr.label || 'Home', full_name: newAddr.fullName, phone: newAddr.phone, address_line_1: newAddr.address, city: newAddr.city, postal_code: newAddr.postalCode, country: 'Pakistan', is_default: !!newAddr.isDefault });
     return newAddr;
   },
 
   deleteAddress(addressId: string): void {
     if (!currentUserCache) return;
     currentUserCache = { ...currentUserCache, addresses: (currentUserCache.addresses || []).filter((a) => a.id !== addressId) };
-    if (!addressId.startsWith('addr-')) void supabase.from('addresses').delete().eq('id', addressId);
+    void supabase.from('addresses').delete().eq('id', addressId);
     window.dispatchEvent(new Event('auth-change'));
   },
 };

@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+import { settingsService } from './settingsService';
+
 export interface CouponValidationResult {
   valid: boolean;
   code?: string;
@@ -129,15 +131,9 @@ export const couponService = {
   },
 
   /**
-   * Authoritative shipping calculation helper matching place_order RPC
+   * Authoritative shipping calculation helper matching place_order RPC and store settings
    */
   calculateShipping(deliveryMethod: 'standard' | 'express', subtotal: number): number {
-    if (deliveryMethod === 'express') {
-      return 350;
-    }
-    if (subtotal >= 3000 || subtotal === 0) {
-      return 0;
-    }
-    return 200;
+    return settingsService.calculateShipping(deliveryMethod, subtotal);
   },
 };
