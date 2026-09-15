@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Eye, Heart, ShoppingBag, ArrowRight, History } from 'lucide-react';
 import { Product } from '../types';
-import { recentlyViewedService } from '../services/recentlyViewedService';
+import { recentActivityService } from '../services/recentActivityService';
 import { productService } from '../services/productService';
 
 interface RecentlyViewedSectionProps {
@@ -34,7 +34,7 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
 
   const loadItems = async () => {
     try {
-      const rawIdentifiers = recentlyViewedService.getRecentlyViewed();
+      const rawIdentifiers = recentActivityService.getRecentlyViewedIds();
       if (!rawIdentifiers || rawIdentifiers.length === 0) {
         setProducts([]);
         setLoading(false);
@@ -68,7 +68,7 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
         });
         const invalidIds = requestedIds.filter((id) => !validSet.has(id.toLowerCase()));
         if (invalidIds.length > 0) {
-          recentlyViewedService.removeInvalidProducts(invalidIds);
+          recentActivityService.removeInvalidProducts(invalidIds);
         }
       }
 
@@ -117,7 +117,7 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => recentlyViewedService.clearRecentlyViewed()}
+            onClick={() => recentActivityService.clearRecentlyViewed()}
             className="text-xs text-[#888888] hover:text-red-600 transition-colors cursor-pointer px-2.5 py-1 rounded-md hover:bg-[#efe8dc]/50"
           >
             Clear History

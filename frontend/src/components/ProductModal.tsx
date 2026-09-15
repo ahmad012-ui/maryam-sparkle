@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Heart, ShoppingBag, Sparkles, Check, ShieldCheck, Truck, RefreshCw, Star, ChevronLeft, ChevronRight, Images } from 'lucide-react';
+import { X, Heart, ShoppingBag, Sparkles, Check, ShieldCheck, Truck, RefreshCw, Star, ChevronLeft, ChevronRight, Images, Share2 } from 'lucide-react';
 import { Product } from '../types';
+import { recentActivityService } from '../services/recentActivityService';
 
 interface ProductModalProps {
   product: Product | null;
@@ -25,6 +26,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [customNote, setCustomNote] = useState('');
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const galleryImages = (product?.images && product.images.length > 0)
     ? product.images
@@ -34,12 +36,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const currentImage = galleryImages[activeImageIndex] || product?.image || '';
 
   React.useEffect(() => {
-    if (product) {
+    if (isOpen && product) {
       const initial = product.finish || product.availableFinishes?.[0] || 'Gold-Tone';
       setSelectedFinish(initial);
       setActiveImageIndex(0);
+      setCopiedLink(false);
+
+      // Authoritative recently viewed recording whenever canonical product-detail is opened/viewed
+      recentActivityService.recordProductView(product.id);
     }
-  }, [product]);
+  }, [isOpen, product?.id]);
 
   if (!isOpen || !product) return null;
 
@@ -51,12 +57,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     : ['Gold-Tone', 'Silver-Tone'];
 
   const handleAdd = () => {
+    if (!product.inStock) return;
     onAddToCart(product, selectedSize, selectedFinish, customNote);
     setAddedAnimation(true);
     setTimeout(() => {
       setAddedAnimation(false);
       onClose();
     }, 900);
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/product/${product.slug}`;
+    if (navigator.share) {
+      navigator.share({
+        title: product.name,
+        text: product.shortDescription || product.description,
+        url,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
   };
 
   const handlePrevImage = (e: React.MouseEvent) => {
@@ -72,14 +94,24 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
       <div className="relative bg-[#fdfaf5] rounded-[32px] max-w-3xl w-full overflow-hidden shadow-2xl border border-[#e0d8c8] my-8 animate-in fade-in zoom-in-95 duration-200">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 bg-white/80 hover:bg-white text-[#333333] rounded-full transition-colors shadow-sm cursor-pointer"
-          aria-label="Close modal"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Top Right Action Buttons (Share & Close) */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            className="p-2 bg-white/80 hover:bg-white text-[#333333] rounded-full transition-colors shadow-sm cursor-pointer"
+            aria-label="Share product"
+            title="Share product link"
+          >
+            {copiedLink ? <Check className="w-5 h-5 text-green-600" /> : <Share2 className="w-5 h-5" />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 bg-white/80 hover:bg-white text-[#333333] rounded-full transition-colors shadow-sm cursor-pointer"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Left: Visual Artwork Preview & Gallery Switcher */}
@@ -276,7 +308,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <div>
               <button
                 onClick={handleAdd}
-                className={`w-full py-3.5 rounded-full font-medium text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer ${
+                disabled={!product.inStock}
+                className={`w-full py-3.5 rounded-full font-medium text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                   addedAnimation
                     ? 'bg-green-700 text-white'
                     : 'bg-[#2d5a61] text-white hover:bg-[#1e3c41]'
@@ -290,7 +323,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 ) : (
                   <>
                     <ShoppingBag className="w-4 h-4" />
-                    <span>Add to Bag • Rs. {product.price.toLocaleString()}</span>
+                    <span>{product.inStock ? `Add to Bag • Rs. ${product.price.toLocaleString()}` : 'Out of Stock'}</span>
                   </>
                 )}
               </button>
