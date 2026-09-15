@@ -23,6 +23,7 @@ import { productService } from '../services/productService';
 import { reviewService, ProductReview } from '../services/reviewService';
 import { authService } from '../services/authService';
 import { recentActivityService } from '../services/recentActivityService';
+import { recentlyViewedService } from '../services/recentlyViewedService';
 import { analyticsService } from '../services/analyticsService';
 import { SEO } from '../components/SEO';
 import { RecentlyViewedSection } from '../components/RecentlyViewedSection';
@@ -67,18 +68,21 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [reviewFeedback, setReviewFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadProduct() {
       if (!slug) return;
       setLoading(true);
       const found = await productService.getProductBySlug(slug);
+      if (!isMounted) return;
+
       if (found) {
         setProduct(found);
         setSelectedImage(found.images?.[0] || found.image);
         const initialFinish = found.finish || found.availableFinishes?.[0] || 'Gold-Tone';
         setSelectedFinish(initialFinish);
 
-        // Record recently viewed & analytics tracking
-        recentActivityService.recordProductView(found.id);
+        // Record recently viewed ONLY after product is successfully resolved
+        recentlyViewedService.addRecentlyViewed(found.slug || found.id);
         analyticsService.trackProductView({
           id: found.id,
           name: found.name,
@@ -92,29 +96,41 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           productService.getRelatedProducts(found.id, 4),
           productService.getFrequentlyPaired(found, 2),
         ]);
-        setRelatedProducts(related);
-        setFrequentlyPaired(paired);
+        if (isMounted) {
+          setRelatedProducts(related);
+          setFrequentlyPaired(paired);
+        }
 
         // Pre-fill user name if logged in
         const currentUser = authService.getCurrentUser();
-        if (currentUser) {
+        if (currentUser && isMounted) {
           setReviewAuthor(currentUser.name);
         }
 
         // Load reviews
         setIsLoadingReviews(true);
         reviewService.getProductReviews(found.id).then((revs) => {
-          setReviews(revs);
-          setIsLoadingReviews(false);
+          if (isMounted) {
+            setReviews(revs);
+            setIsLoadingReviews(false);
+          }
         }).catch((err) => {
           console.warn('Error loading product reviews:', err);
-          setIsLoadingReviews(false);
+          if (isMounted) {
+            setIsLoadingReviews(false);
+          }
         });
+      } else {
+        setProduct(null);
       }
       setLoading(false);
       window.scrollTo(0, 0);
     }
     loadProduct();
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -973,6 +989,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       <div className="mt-16">
         <RecentlyViewedSection
           currentProductId={product.id}
+          currentProductSlug={product.slug}
           wishlistIds={wishlistIds}
           onAddToCart={(p) => onAddToCart(p, 1)}
           onToggleWishlist={onToggleWishlist}
