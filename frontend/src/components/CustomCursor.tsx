@@ -38,7 +38,7 @@ export const CustomCursor: React.FC = () => {
     document.documentElement.classList.add('has-custom-cursor');
 
     let animationFrameId: number;
-    const lerpFactor = reducedMotionMedia.matches ? 1 : 0.22;
+    const lerpFactor = reducedMotionMedia.matches ? 1 : 0.65;
 
     const handlePointerMove = (e: PointerEvent) => {
       mousePos.current.x = e.clientX;
@@ -137,16 +137,24 @@ export const CustomCursor: React.FC = () => {
       innerRef.current.style.filter = filter;
     };
 
-    // Render loop for smooth lag/easing
+    // Render loop for smooth, ultra-responsive direct tracking
     const render = () => {
       if (cursorRef.current && isVisible.current) {
-        // Easing interpolation
-        currentPos.current.x += (mousePos.current.x - currentPos.current.x) * lerpFactor;
-        currentPos.current.y += (mousePos.current.y - currentPos.current.y) * lerpFactor;
+        const dx = mousePos.current.x - currentPos.current.x;
+        const dy = mousePos.current.y - currentPos.current.y;
 
-        // Centered around 20px mark (offset by 10px)
-        const x = Math.round((currentPos.current.x - 10) * 100) / 100;
-        const y = Math.round((currentPos.current.y - 10) * 100) / 100;
+        // Settle immediately when the difference is microscopic to eliminate floating drift
+        if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
+          currentPos.current.x = mousePos.current.x;
+          currentPos.current.y = mousePos.current.y;
+        } else {
+          currentPos.current.x += dx * lerpFactor;
+          currentPos.current.y += dy * lerpFactor;
+        }
+
+        // Direct sub-pixel floating-point positioning centered around 20px mark (offset by 10px)
+        const x = currentPos.current.x - 10;
+        const y = currentPos.current.y - 10;
 
         cursorRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
       }
