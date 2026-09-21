@@ -2,6 +2,7 @@ import { UserProfile, UserAddress } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 let currentUserCache: UserProfile | null = null;
+let initialSessionPromise: Promise<UserProfile | null> | null = null;
 
 function requireSupabase() {
   if (!isSupabaseConfigured()) throw new Error('Supabase is not configured. Authentication requires Supabase Auth.');
@@ -59,8 +60,15 @@ async function syncSessionUser(user: any): Promise<UserProfile | null> {
 
 export const authService = {
   initAuthListener(): () => void {
-    if (!isSupabaseConfigured()) return () => {};
-    void supabase.auth.getSession().then(({ data }) => syncSessionUser(data.session?.user || null));
+    if (!isSupabaseConfigured()) {
+      initialSessionPromise = Promise.resolve(null);
+      return () => {};
+    }
+    initialSessionPromise = supabase.auth
+      .getSession()
+      .then(({ data }) => syncSessionUser(data.session?.user || null))
+      .catch(() => null);
+
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       void syncSessionUser(session?.user || null).then(() => {
         if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' || event === 'PASSWORD_RECOVERY') {
@@ -69,6 +77,17 @@ export const authService = {
       });
     });
     return () => data.subscription.unsubscribe();
+  },
+
+  waitForInitialAuth(): Promise<UserProfile | null> {
+    if (!initialSessionPromise) {
+      if (!isSupabaseConfigured()) return Promise.resolve(null);
+      initialSessionPromise = supabase.auth
+        .getSession()
+        .then(({ data }) => syncSessionUser(data.session?.user || null))
+        .catch(() => null);
+    }
+    return initialSessionPromise;
   },
 
   async getCurrentUserAsync(): Promise<UserProfile | null> {

@@ -39,6 +39,9 @@ import { CustomerCareModal } from './components/CustomerCareModal';
 import { AskMaryamWidget } from './components/AskMaryamWidget';
 import { MobileDynamicIslandNav } from './components/MobileDynamicIslandNav';
 import { AdminApp } from './admin';
+import { authService } from './services/authService';
+import { CustomCursor } from './components/CustomCursor';
+import { FullScreenLoader } from './components/FullScreenLoader';
 
 // Helper component to automatically scroll to top on route change
 function ScrollToTop() {
@@ -58,83 +61,66 @@ function MainApp() {
   // Authoritative catalog products & categories from Supabase (with static seed fallback)
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [isAppReady, setIsAppReady] = useState(false);
 
+  // Application initial lifecycle: genuinely restores auth session and preloads catalog, cart, wishlist, and settings
   useEffect(() => {
     let isMounted = true;
-    async function loadCatalog() {
+
+    async function initializeApplication() {
       try {
-        const [fetchedProducts, fetchedCategories] = await Promise.all([
+        const [, fetchedProducts, fetchedCategories, cartRes, wishlistRes] = await Promise.allSettled([
+          authService.waitForInitialAuth(),
           productService.getProducts(),
           productService.getCategories(),
+          cartService.getCart(),
+          wishlistService.getWishlist(),
+          settingsService.getSettings(),
         ]);
+
+        if (!isMounted) return;
+
+        if (fetchedProducts.status === 'fulfilled' && fetchedProducts.value && fetchedProducts.value.length > 0) {
+          setProducts(fetchedProducts.value);
+        }
+        if (fetchedCategories.status === 'fulfilled' && fetchedCategories.value && fetchedCategories.value.length > 0) {
+          setCategories(fetchedCategories.value);
+        }
+        if (cartRes.status === 'fulfilled' && cartRes.value?.items && cartRes.value.items.length > 0) {
+          setCartItems(cartRes.value.items);
+        }
+        if (wishlistRes.status === 'fulfilled' && wishlistRes.value) {
+          setWishlistIds(wishlistRes.value);
+        }
+      } catch (err) {
+        console.warn('Startup initialization notice in App:', err);
+      } finally {
         if (isMounted) {
-          if (fetchedProducts && fetchedProducts.length > 0) {
-            setProducts(fetchedProducts);
-          }
-          if (fetchedCategories && fetchedCategories.length > 0) {
-            setCategories(fetchedCategories);
-          }
+          setIsAppReady(true);
         }
-      } catch (err) {
-        console.warn('Failed to load authoritative catalog from Supabase:', err);
       }
     }
-    loadCatalog();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
-  // Cart items synced with real backend Cart API (Phase 5 & 7)
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-
-  // Load cart from backend on initial mount
-  useEffect(() => {
-    let isMounted = true;
-    async function loadBackendCart() {
-      try {
-        const res = await cartService.getCart();
-        if (isMounted && res.items && res.items.length > 0) {
-          setCartItems(res.items);
-        }
-      } catch (err) {
-        console.warn('Initial backend cart fetch error in App:', err);
-      }
-    }
-    loadBackendCart();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const [wishlistIds, setWishlistIds] = useState<string[]>([]);
-
-  // Load wishlist from wishlistService & sync on auth change
-  useEffect(() => {
-    let isMounted = true;
-    async function loadWishlist() {
-      try {
-        const ids = await wishlistService.getWishlist();
-        if (isMounted) setWishlistIds(ids);
-      } catch (err) {
-        console.warn('Error loading wishlist:', err);
-      }
-    }
-    loadWishlist();
+    initializeApplication();
 
     const handleAuthChange = () => {
-      loadWishlist();
+      wishlistService
+        .getWishlist()
+        .then((ids) => {
+          if (isMounted) setWishlistIds(ids);
+        })
+        .catch((err) => {
+          console.warn('Error reloading wishlist on auth change:', err);
+        });
     };
     window.addEventListener('auth-change', handleAuthChange);
+
     return () => {
       isMounted = false;
       window.removeEventListener('auth-change', handleAuthChange);
     };
-  }, []);
-
-  // Pre-load store settings
-  useEffect(() => {
-    settingsService.getSettings().catch((err) => console.warn('Failed to load store settings:', err));
   }, []);
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -161,6 +147,7 @@ function MainApp() {
   if (location.pathname.startsWith('/admin')) {
     return (
       <>
+        <FullScreenLoader isReady={isAppReady} />
         <ScrollToTop />
         <AdminApp onBackToStore={() => navigate('/')} />
       </>
@@ -346,6 +333,7 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-[#efe8dc] text-[#333333] flex flex-col font-sans selection:bg-[#2d5a61] selection:text-white pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] sm:pb-0">
+      <FullScreenLoader isReady={isAppReady} />
       <ScrollToTop />
 
       {/* Main Responsive Header */}
@@ -625,6 +613,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <PasswordResetProvider>
+        <CustomCursor />
         <MainApp />
       </PasswordResetProvider>
     </BrowserRouter>

@@ -160,3 +160,53 @@ body {
   border-radius: 9999px;
 }
 
+/* Custom Cursor Desktop Global Rules */
+@media (pointer: fine) {
+  html.has-custom-cursor,
+  html.has-custom-cursor body,
+  html.has-custom-cursor a,
+  html.has-custom-cursor button,
+  html.has-custom-cursor [role="button"],
+  html.has-custom-cursor .cursor-pointer {
+    cursor: none !important;
+  }
+
+  html.has-custom-cursor input,
+  html.has-custom-cursor textarea,
+  html.has-custom-cursor select,
+  html.has-custom-cursor [contenteditable="true"],
+  html.has-custom-cursor [role="textbox"] {
+    cursor: text !important;
+  }
+}
+
+/* Full-Screen Brand Loader Animations */
+@keyframes ms-loader-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ms-loader-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(45, 90, 97, 0.15));
+    opacity: 0.92;
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(45, 90, 97, 0.45));
+    opacity: 1;
+  }
+}
+
+.animate-ms-loader-spin {
+  animation: ms-loader-rotate 9s linear infinite;
+}
+
+.animate-ms-loader-pulse {
+  animation: ms-loader-pulse 2.5s ease-in-out infinite;
+}
+
+
