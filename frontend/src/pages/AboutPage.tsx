@@ -271,7 +271,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end text-white text-xs">
                 <p className="line-clamp-2 text-[11px]">{post.caption}</p>
-                <span className="text-[10px] text-[#D4B982] mt-1 font-semibold">❤️ {post.likes} likes</span>
+                <span className="text-[10px] text-[#D4B982] mt-1 font-semibold">✨ Maryam Sparkle Atelier</span>
               </div>
             </div>
           ))}

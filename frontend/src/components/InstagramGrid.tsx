@@ -46,13 +46,10 @@ export const InstagramGrid: React.FC = () => {
               loading="lazy"
             />
 
-            {/* Hover overlay with heart & likes */}
+            {/* Hover overlay */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-2xs opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center text-white p-2 text-center">
-              <div className="flex items-center gap-1 text-xs font-semibold mb-1">
-                <Heart className="w-3.5 h-3.5 fill-white" />
-                <span>{post.likes}</span>
-              </div>
-              <Instagram className="w-4 h-4 opacity-80" />
+              <Instagram className="w-5 h-5 mb-1 text-white" />
+              <span className="text-[10px] tracking-wider uppercase font-medium">View Post</span>
             </div>
           </div>
         ))}
@@ -89,10 +86,15 @@ export const InstagramGrid: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 text-xs font-semibold text-[#2d5a61]">
-                  <Heart className="w-4 h-4 fill-[#2d5a61]" />
-                  <span>{selectedPost.likes} likes</span>
-                </div>
+                <a
+                  href="https://instagram.com/maryamsparkle456"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[#2d5a61] hover:underline"
+                >
+                  <Instagram className="w-3.5 h-3.5" />
+                  <span>Follow Atelier</span>
+                </a>
               </div>
 
               <p className="text-xs sm:text-sm text-[#444444] leading-relaxed mb-4">

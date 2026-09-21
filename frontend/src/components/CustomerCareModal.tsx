@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ChevronDown, ChevronRight, Truck, RotateCcw, Search, Phone, Mail, HelpCircle, Sparkles } from 'lucide-react';
 import { FAQS } from '../data/products';
+import { orderService } from '../services/orderService';
 
 interface CustomerCareModalProps {
   isOpen: boolean;
@@ -16,20 +17,47 @@ export const CustomerCareModal: React.FC<CustomerCareModalProps> = ({
   const [activeTab, setActiveTab] = useState(initialTab);
   const [openFaq, setOpenFaq] = useState<string | null>(FAQS[0].id);
   const [trackingNumber, setTrackingNumber] = useState('');
-  const [trackingResult, setTrackingResult] = useState<any>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [trackingResult, setTrackingResult] = useState<{
+    found: boolean;
+    number?: string;
+    status?: string;
+    courier?: string;
+    estimatedDelivery?: string;
+    message?: string;
+  } | null>(null);
 
   if (!isOpen) return null;
 
-  const handleTrack = (e: React.FormEvent) => {
+  const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (trackingNumber.trim()) {
+    const query = trackingNumber.trim().toUpperCase();
+    if (!query) return;
+
+    setIsSearching(true);
+    try {
+      const realOrder = await orderService.getOrder(query);
+      if (realOrder) {
+        setTrackingResult({
+          found: true,
+          number: realOrder.orderNumber,
+          status: realOrder.status.replace(/_/g, ' ').toUpperCase(),
+          courier: realOrder.courierName || 'In Atelier Processing',
+          estimatedDelivery: realOrder.estimatedDelivery || 'Calculated upon dispatch'
+        });
+      } else {
+        setTrackingResult({
+          found: false,
+          message: `No order found with number "${query}". Please check your order confirmation.`
+        });
+      }
+    } catch {
       setTrackingResult({
-        number: trackingNumber,
-        status: 'In Atelier Crafting & Quality Inspection',
-        courier: 'Trax / TCS Express Logistics',
-        estimatedDelivery: 'In 2-3 Business Days',
-        location: 'Lahore Fulfillment Atelier',
+        found: false,
+        message: 'Could not retrieve tracking details. Please try again.'
       });
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -202,24 +230,32 @@ export const CustomerCareModal: React.FC<CustomerCareModalProps> = ({
 
               {trackingResult && (
                 <div className="bg-[#efe8dc] p-5 rounded-2xl border border-[#e0d8c8] space-y-2 text-xs">
-                  <div className="flex justify-between items-center pb-2 border-b border-[#e0d8c8]">
-                    <span className="font-bold text-sm text-[#2d5a61]">{trackingResult.number}</span>
-                    <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                      Active
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#888888]">Current Status:</span>
-                    <span className="font-semibold text-[#333333]">{trackingResult.status}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#888888]">Carrier:</span>
-                    <span>{trackingResult.courier}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#888888]">Expected Delivery:</span>
-                    <span className="text-[#2d5a61] font-bold">{trackingResult.estimatedDelivery}</span>
-                  </div>
+                  {trackingResult.found ? (
+                    <>
+                      <div className="flex justify-between items-center pb-2 border-b border-[#e0d8c8]">
+                        <span className="font-bold text-sm text-[#2d5a61]">{trackingResult.number}</span>
+                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                          Verified Order
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Current Status:</span>
+                        <span className="font-semibold text-[#333333]">{trackingResult.status}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Courier:</span>
+                        <span>{trackingResult.courier}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#888888]">Expected Delivery:</span>
+                        <span className="text-[#2d5a61] font-bold">{trackingResult.estimatedDelivery}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-2 text-[#666666]">
+                      <p>{trackingResult.message}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -229,17 +265,22 @@ export const CustomerCareModal: React.FC<CustomerCareModalProps> = ({
             <div className="space-y-4">
               <h4 className="font-serif text-lg text-[#333333]">We would love to hear from you!</h4>
               <p className="text-xs text-[#666666]">
-                Have a question about bridal favors, bulk orders, or custom stones? Contact us directly:
+                Have a question about bridal favors, bespoke wrist sizing, or custom gemstones? Contact our atelier:
               </p>
 
               <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-[#e0d8c8]">
+                <a
+                  href="https://instagram.com/maryamsparkle456"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-[#e0d8c8] hover:border-[#2d5a61] transition-colors"
+                >
                   <Phone className="w-5 h-5 text-[#2d5a61]" />
                   <div>
-                    <h5 className="font-semibold text-xs text-[#333333]">WhatsApp & Calls</h5>
-                    <p className="text-xs text-[#666666]">+92 300 1234567 (10:00 AM – 8:00 PM PKT)</p>
+                    <h5 className="font-semibold text-xs text-[#333333]">Direct Atelier Chat</h5>
+                    <p className="text-xs text-[#666666]">Instagram DM / WhatsApp Concierge (10:00 AM – 8:00 PM PKT)</p>
                   </div>
-                </div>
+                </a>
 
                 <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border border-[#e0d8c8]">
                   <Mail className="w-5 h-5 text-[#2d5a61]" />

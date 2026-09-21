@@ -123,14 +123,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 className="w-full h-full object-cover transition-all duration-300"
               />
 
-              {/* Wishlist Button */}
+              {/* Wishlist Button (placed top-left of image preview to avoid collision with modal action buttons) */}
               <button
                 onClick={() => onToggleWishlist(product)}
-                className={`absolute top-3 right-3 p-2.5 rounded-full transition-all shadow-md z-10 ${
+                className={`absolute top-3 left-3 p-2.5 rounded-full transition-all shadow-md z-10 ${
                   isWishlisted
                     ? 'bg-red-50 text-red-500 scale-110'
                     : 'bg-white/80 text-[#666666] hover:bg-white hover:text-red-500'
                 }`}
+                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
               >
                 <Heart className="w-5 h-5" fill={isWishlisted ? 'currentColor' : 'none'} />
               </button>
@@ -186,22 +187,38 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           {/* Right: Product Details & Customization Options */}
           <div className="p-6 sm:p-8 flex flex-col justify-between max-h-[85vh] overflow-y-auto">
             <div>
-              {/* Category & Rating */}
-              <div className="flex items-center justify-between text-xs mb-2">
-                <span className="font-semibold uppercase tracking-widest text-[#2d5a61]">
-                  {product.category}
-                </span>
-                <div className="flex items-center gap-1 text-[#D4B982] font-semibold">
-                  <Star className="w-3.5 h-3.5 fill-[#D4B982]" />
-                  <span>{product.rating || 4.9}</span>
-                  <span className="text-[#888888]">({product.reviewsCount || 42} reviews)</span>
+              {/* Category, Rating & Title Header with dedicated clearance for top-right action buttons */}
+              <div className="pr-20 sm:pr-24 mb-3">
+                <div className="flex items-center gap-2.5 text-xs mb-1.5 flex-wrap">
+                  <span className="font-semibold uppercase tracking-widest text-[#2d5a61]">
+                    {product.category}
+                  </span>
+                  {Boolean(product.rating && product.reviewsCount && product.reviewsCount > 0) ? (
+                    <>
+                      <span className="text-[#d8cfc0]">•</span>
+                      <div className="flex items-center gap-1 text-[#D4B982] font-semibold">
+                        <Star className="w-3.5 h-3.5 fill-[#D4B982]" />
+                        <span>{product.rating}</span>
+                        <span className="text-[#888888] font-normal">
+                          ({product.reviewsCount} {product.reviewsCount === 1 ? 'review' : 'reviews'})
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[#d8cfc0]">•</span>
+                      <span className="text-[11px] text-[#777777] font-normal">
+                        Handcrafted Atelier Original
+                      </span>
+                    </>
+                  )}
                 </div>
-              </div>
 
-              {/* Title */}
-              <h2 className="font-serif text-2xl sm:text-3xl text-[#333333] mb-2 font-medium leading-tight">
-                {product.name}
-              </h2>
+                {/* Title */}
+                <h2 className="font-serif text-2xl sm:text-3xl text-[#333333] font-medium leading-tight">
+                  {product.name}
+                </h2>
+              </div>
 
               {/* Price */}
               <div className="flex items-baseline gap-2 mb-4">

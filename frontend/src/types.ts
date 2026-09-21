@@ -49,7 +49,7 @@ export interface Category {
 export interface InstagramPost {
   id: string;
   image: string;
-  likes: number;
+  likes?: number;
   caption: string;
   handle: string;
   productTag?: string;

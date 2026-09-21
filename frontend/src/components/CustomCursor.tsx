@@ -12,9 +12,8 @@ export const CustomCursor: React.FC = () => {
   const cursorRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
 
-  // Position references (avoiding React state on mousemove)
+  // Position and state references (avoiding React state on mousemove)
   const mousePos = useRef({ x: -100, y: -100 });
-  const currentPos = useRef({ x: -100, y: -100 });
   const isClicking = useRef(false);
   const isOverInput = useRef(false);
   const isOverProduct = useRef(false);
@@ -37,16 +36,19 @@ export const CustomCursor: React.FC = () => {
     setIsEnabled(true);
     document.documentElement.classList.add('has-custom-cursor');
 
-    let animationFrameId: number;
-    const lerpFactor = reducedMotionMedia.matches ? 1 : 0.65;
-
     const handlePointerMove = (e: PointerEvent) => {
       mousePos.current.x = e.clientX;
       mousePos.current.y = e.clientY;
+
       if (!isVisible.current) {
         isVisible.current = true;
-        currentPos.current.x = e.clientX;
-        currentPos.current.y = e.clientY;
+        if (cursorRef.current && !isOverInput.current) {
+          cursorRef.current.style.opacity = '1';
+        }
+      }
+
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${e.clientX - 10}px, ${e.clientY - 10}px, 0)`;
       }
     };
 
@@ -67,8 +69,11 @@ export const CustomCursor: React.FC = () => {
       }
     };
 
-    const handleMouseEnter = () => {
+    const handleMouseEnter = (e: MouseEvent) => {
       isVisible.current = true;
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${e.clientX - 10}px, ${e.clientY - 10}px, 0)`;
+      }
       updateVisualState();
     };
 
@@ -137,31 +142,6 @@ export const CustomCursor: React.FC = () => {
       innerRef.current.style.filter = filter;
     };
 
-    // Render loop for smooth, ultra-responsive direct tracking
-    const render = () => {
-      if (cursorRef.current && isVisible.current) {
-        const dx = mousePos.current.x - currentPos.current.x;
-        const dy = mousePos.current.y - currentPos.current.y;
-
-        // Settle immediately when the difference is microscopic to eliminate floating drift
-        if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
-          currentPos.current.x = mousePos.current.x;
-          currentPos.current.y = mousePos.current.y;
-        } else {
-          currentPos.current.x += dx * lerpFactor;
-          currentPos.current.y += dy * lerpFactor;
-        }
-
-        // Direct sub-pixel floating-point positioning centered around 20px mark (offset by 10px)
-        const x = currentPos.current.x - 10;
-        const y = currentPos.current.y - 10;
-
-        cursorRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-      }
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('pointerdown', handlePointerDown, { passive: true });
     window.addEventListener('pointerup', handlePointerUp, { passive: true });
@@ -169,11 +149,8 @@ export const CustomCursor: React.FC = () => {
     document.addEventListener('mouseleave', handleMouseLeave);
     document.addEventListener('mouseenter', handleMouseEnter);
 
-    animationFrameId = requestAnimationFrame(render);
-
     return () => {
       document.documentElement.classList.remove('has-custom-cursor');
-      cancelAnimationFrame(animationFrameId);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointerup', handlePointerUp);

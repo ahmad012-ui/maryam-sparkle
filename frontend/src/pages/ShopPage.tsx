@@ -596,7 +596,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                             <span className="uppercase tracking-wider font-medium text-[10px] text-[#2d5a61]">
                               {product.category}
                             </span>
-                            {product.rating && (
+                            {Boolean(product.rating && product.reviewsCount && product.reviewsCount > 0) && (
                               <div className="flex items-center gap-1 text-[#D4B982]">
                                 <Star className="w-3.5 h-3.5 fill-current" />
                                 <span className="text-[11px] font-semibold text-[#444444]">

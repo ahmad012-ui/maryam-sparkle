@@ -17,7 +17,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { PRODUCTS } from '../data/products';
 import { orderService } from '../services/orderService';
 import { Order } from '../types';
 import { SEO } from '../components/SEO';
@@ -53,213 +52,6 @@ interface TrackingOrder {
     completed: boolean;
   }[];
 }
-
-const SAMPLE_ORDERS: TrackingOrder[] = [
-  {
-    id: 'MS-8291',
-    customerName: 'Ayesha Khan',
-    phone: '03001234567',
-    destinationCity: 'Lahore, Punjab',
-    address: 'House #42, Street 8, DHA Phase 5, Lahore',
-    orderDate: 'Aug 30, 2026',
-    estimatedDelivery: 'Today by 5:00 PM',
-    carrier: 'TCS Express Logistics',
-    trackingNumber: 'TCS-9928172635',
-    paymentMethod: 'Cash on Delivery (COD)',
-    paymentStatus: 'Pending Cash on Delivery',
-    currentStep: 5,
-    statusText: 'Out for Delivery',
-    statusDescription: 'Your parcel is with courier rider Usman (0321-9876543) for final delivery.',
-    items: [
-      {
-        productId: PRODUCTS[0].id,
-        productName: PRODUCTS[0].name,
-        image: PRODUCTS[0].image,
-        quantity: 1,
-        price: PRODUCTS[0].price,
-        size: 'Medium (6.5")',
-        finish: '18k Gold Finish'
-      },
-      {
-        productId: PRODUCTS[1].id,
-        productName: PRODUCTS[1].name,
-        image: PRODUCTS[1].image,
-        quantity: 1,
-        price: PRODUCTS[1].price,
-        size: 'Medium (6.5")',
-        finish: '18k Gold Finish'
-      }
-    ],
-    timeline: [
-      {
-        title: 'Order Confirmed',
-        description: 'Order placed & custom gemstone materials assigned in atelier.',
-        timestamp: 'Aug 30, 11:20 AM',
-        completed: true
-      },
-      {
-        title: 'Handcrafted by Maryam',
-        description: 'Baroque pearls & Ruby Quartz hand-threaded and knotted.',
-        timestamp: 'Aug 31, 03:45 PM',
-        completed: true
-      },
-      {
-        title: 'Velvet Pouch Packaging & QA',
-        description: 'Cleaned, jeweler-polished, and sealed with personalized note.',
-        timestamp: 'Sep 01, 10:15 AM',
-        completed: true
-      },
-      {
-        title: 'Handed to TCS Express',
-        description: 'Dispatched from Lahore Atelier Hub. In Transit.',
-        timestamp: 'Sep 01, 04:30 PM',
-        completed: true
-      },
-      {
-        title: 'Out for Delivery',
-        description: 'Rider is currently on the delivery route.',
-        timestamp: 'Sep 02, 09:10 AM',
-        completed: true
-      },
-      {
-        title: 'Delivered',
-        description: 'Package handed to recipient with signature.',
-        timestamp: 'Expected today by 5:00 PM',
-        completed: false
-      }
-    ]
-  },
-  {
-    id: 'MS-9402',
-    customerName: 'Zainab Fatima',
-    phone: '03214567890',
-    destinationCity: 'Karachi, Sindh',
-    address: 'Apartment 4B, Clifton Block 2, Karachi',
-    orderDate: 'Sep 01, 2026',
-    estimatedDelivery: 'Sep 03, 2026',
-    carrier: 'Leopard Courier Express',
-    trackingNumber: 'LEO-771829341',
-    paymentMethod: 'Bank Transfer (Meezan Bank)',
-    paymentStatus: 'Paid',
-    currentStep: 4,
-    statusText: 'In Transit to Destination Hub',
-    statusDescription: 'Parcel has departed Lahore sorting facility en route to Karachi Regional Center.',
-    items: [
-      {
-        productId: PRODUCTS[2].id,
-        productName: PRODUCTS[2].name,
-        image: PRODUCTS[2].image,
-        quantity: 1,
-        price: PRODUCTS[2].price,
-        size: 'Medium (6.5")',
-        finish: 'Sterling Silver Finish'
-      }
-    ],
-    timeline: [
-      {
-        title: 'Order Confirmed',
-        description: 'Payment verified and verified in studio queue.',
-        timestamp: 'Sep 01, 09:15 AM',
-        completed: true
-      },
-      {
-        title: 'Handcrafted & Assembled',
-        description: 'Freshwater pearls strung with silver lock finish.',
-        timestamp: 'Sep 01, 02:00 PM',
-        completed: true
-      },
-      {
-        title: 'Packaged in Signature Gift Box',
-        description: 'Safely packed in tamper-evident velvet box.',
-        timestamp: 'Sep 01, 05:40 PM',
-        completed: true
-      },
-      {
-        title: 'Dispatched via Leopard Air Express',
-        description: 'Flight transit to Karachi Airport Cargo.',
-        timestamp: 'Sep 02, 01:20 AM',
-        completed: true
-      },
-      {
-        title: 'Out for Delivery',
-        description: 'Scheduled for tomorrow morning.',
-        timestamp: 'Sep 03, 10:00 AM',
-        completed: false
-      },
-      {
-        title: 'Delivered',
-        description: 'Pending final dispatch.',
-        timestamp: 'Sep 03, 04:00 PM',
-        completed: false
-      }
-    ]
-  },
-  {
-    id: 'MS-3819',
-    customerName: 'Hira Tariq',
-    phone: '03337890123',
-    destinationCity: 'Islamabad, ICT',
-    address: 'Street 14, Sector F-7/2, Islamabad',
-    orderDate: 'Sep 02, 2026',
-    estimatedDelivery: 'Sep 04, 2026',
-    carrier: 'TCS Express Logistics',
-    trackingNumber: 'TCS-1049281734',
-    paymentMethod: 'Cash on Delivery (COD)',
-    paymentStatus: 'Pending Cash on Delivery',
-    currentStep: 2,
-    statusText: 'Handcrafting in Atelier',
-    statusDescription: 'Maryam is currently hand-threading and sizing your bespoke Aventurine bracelets.',
-    items: [
-      {
-        productId: PRODUCTS[3].id,
-        productName: PRODUCTS[3].name,
-        image: PRODUCTS[3].image,
-        quantity: 2,
-        price: PRODUCTS[3].price,
-        size: 'Small (6.0")',
-        finish: '18k Gold Finish'
-      }
-    ],
-    timeline: [
-      {
-        title: 'Order Confirmed',
-        description: 'Custom sizing notes confirmed by team.',
-        timestamp: 'Sep 02, 08:30 AM',
-        completed: true
-      },
-      {
-        title: 'Handcrafting on Design Board',
-        description: 'Currently on the jeweler bench.',
-        timestamp: 'Sep 02, 11:00 AM',
-        completed: true
-      },
-      {
-        title: 'Packaging & QA Check',
-        description: 'Scheduled for this afternoon.',
-        timestamp: 'Sep 02, 04:00 PM',
-        completed: false
-      },
-      {
-        title: 'Handover to Courier',
-        description: 'Scheduled for evening pickup.',
-        timestamp: 'Sep 02, 06:30 PM',
-        completed: false
-      },
-      {
-        title: 'In Transit',
-        description: 'Overnight ground freight to Islamabad.',
-        timestamp: 'Sep 03',
-        completed: false
-      },
-      {
-        title: 'Delivered',
-        description: 'Estimated delivery on Wednesday.',
-        timestamp: 'Sep 04',
-        completed: false
-      }
-    ]
-  }
-];
 
 function convertOrderToTrackingOrder(ord: Order): TrackingOrder {
   const stepMap: Record<string, number> = {
@@ -315,7 +107,7 @@ function convertOrderToTrackingOrder(ord: Order): TrackingOrder {
 export const TrackOrderPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [searchInput, setSearchInput] = useState('');
-  const [activeOrder, setActiveOrder] = useState<TrackingOrder | null>(SAMPLE_ORDERS[0]);
+  const [activeOrder, setActiveOrder] = useState<TrackingOrder | null>(null);
   const [copied, setCopied] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -339,34 +131,22 @@ export const TrackOrderPage: React.FC = () => {
     setIsSearching(true);
 
     try {
-      // 1. Check real saved orders in orderService (for both guest and logged in orders)
+      // Look up genuine order in persistent storage (guest & registered orders)
       const realOrder = await orderService.getOrder(cleanQuery);
       if (realOrder) {
         setActiveOrder(convertOrderToTrackingOrder(realOrder));
         return;
       }
+
+      setActiveOrder(null);
+      setErrorMessage(`No active order found with reference "${cleanQuery}". Please verify your order number.`);
     } catch (err) {
       console.error('Error fetching order from storage:', err);
+      setActiveOrder(null);
+      setErrorMessage(`Unable to look up order "${cleanQuery}". Please check your internet connection or try again.`);
     } finally {
       setIsSearching(false);
     }
-
-    // 2. Check predefined sample orders
-    const matched = SAMPLE_ORDERS.find(
-      (o) =>
-        o.id.toUpperCase() === cleanQuery ||
-        o.phone.includes(cleanQuery) ||
-        o.trackingNumber.toUpperCase().includes(cleanQuery)
-    );
-
-    if (matched) {
-      setActiveOrder(matched);
-      return;
-    }
-
-    // 3. Order not found
-    setActiveOrder(null);
-    setErrorMessage(`We could not locate any order with ID or details "${cleanQuery}". Please double check your order number.`);
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -422,7 +202,7 @@ export const TrackOrderPage: React.FC = () => {
                   id="tracking-search-input"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Enter Order ID (e.g. MS-8291) or Phone (03001234567)"
+                  placeholder="Enter Order ID (e.g. MS-8291) or customer phone number"
                   className="w-full bg-[#efe8dc]/50 border border-[#e0d8c8] rounded-full pl-11 pr-4 py-3.5 text-sm text-[#333333] placeholder-[#888888] focus:outline-none focus:ring-2 focus:ring-[#2d5a61] focus:bg-white transition-all shadow-inner"
                 />
                 {searchInput && (
@@ -463,27 +243,10 @@ export const TrackOrderPage: React.FC = () => {
               </div>
             )}
 
-            {/* Clickable Quick Sample Test Buttons */}
-            <div className="pt-3 border-t border-[#e0d8c8]/60 flex flex-wrap items-center gap-2 text-xs text-[#666666]">
-              <span className="font-medium text-[#444444]">Try Demo Orders:</span>
-              {SAMPLE_ORDERS.map((sample) => (
-                <button
-                  key={sample.id}
-                  type="button"
-                  onClick={() => {
-                    setSearchInput(sample.id);
-                    setActiveOrder(sample);
-                    setHasSearched(true);
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-mono font-medium border transition-all cursor-pointer ${
-                    activeOrder?.id === sample.id
-                      ? 'bg-[#2d5a61] text-white border-[#2d5a61]'
-                      : 'bg-white/80 text-[#2d5a61] border-[#e0d8c8] hover:bg-[#efe8dc]'
-                  }`}
-                >
-                  {sample.id} ({sample.statusText.split(' ')[0]})
-                </button>
-              ))}
+            {/* Helpful reference note */}
+            <div className="pt-3 border-t border-[#e0d8c8]/60 flex flex-wrap items-center justify-between gap-2 text-xs text-[#777777]">
+              <span>Enter your 6-digit Order ID (e.g., MS-8291) or your order contact number.</span>
+              <span className="text-[#2d5a61] font-medium">Official Maryam Sparkle Dispatch</span>
             </div>
           </form>
         </div>
@@ -724,6 +487,40 @@ export const TrackOrderPage: React.FC = () => {
           </div>
         )}
 
+        {/* Initial Prompt State */}
+        {!activeOrder && !hasSearched && (
+          <div className="bg-white/80 border border-[#e0d8c8] rounded-3xl p-10 text-center max-w-xl mx-auto space-y-4 shadow-xs">
+            <div className="w-14 h-14 rounded-full bg-[#2d5a61]/10 text-[#2d5a61] flex items-center justify-center mx-auto">
+              <Package className="w-7 h-7" />
+            </div>
+            <h3 className="font-serif text-xl text-[#2d5a61] font-medium">Track Your Atelier Dispatch</h3>
+            <p className="text-xs sm:text-sm text-[#666666] leading-relaxed">
+              Enter your Order ID (from your confirmation email or checkout summary) above to view real-time artisan crafting, inspection, and delivery progress.
+            </p>
+          </div>
+        )}
+
+        {/* Not Found State */}
+        {!activeOrder && hasSearched && errorMessage && (
+          <div className="bg-white/80 border border-[#e0d8c8] rounded-3xl p-10 text-center max-w-xl mx-auto space-y-4 shadow-xs">
+            <div className="w-14 h-14 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center mx-auto">
+              <Search className="w-7 h-7" />
+            </div>
+            <h3 className="font-serif text-xl text-[#333333] font-medium">Order Not Found</h3>
+            <p className="text-xs sm:text-sm text-[#666666] leading-relaxed">
+              {errorMessage}
+            </p>
+            <div className="pt-2">
+              <Link
+                to="/shop"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2d5a61] text-white text-xs rounded-full hover:bg-[#23474d] transition-colors"
+              >
+                Browse Jewelry Collection
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Reassurance & Care Promise */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6">
           <div className="bg-white/70 border border-[#e0d8c8] p-5 rounded-2xl text-center space-y-2">
@@ -741,7 +538,7 @@ export const TrackOrderPage: React.FC = () => {
           <div className="bg-white/70 border border-[#e0d8c8] p-5 rounded-2xl text-center space-y-2">
             <MessageCircle className="w-6 h-6 text-[#2d5a61] mx-auto" />
             <h4 className="font-serif text-sm font-semibold text-[#2d5a61]">Need Help with Order?</h4>
-            <p className="text-xs text-[#666666]">WhatsApp Maryam anytime at +92 300 1234567.</p>
+            <p className="text-xs text-[#666666]">Reach our studio concierge for immediate order updates.</p>
           </div>
         </div>
       </div>

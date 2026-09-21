@@ -541,6 +541,8 @@ function MainApp() {
         products={products}
         onAddToCart={handleAddToCart}
         onQuickView={(product) => setQuickViewProduct(product)}
+        onOpenCustomOrder={() => setIsCustomOrderOpen(true)}
+        onOpenCustomerCare={(tab) => setCustomerCareTab(tab || 'faqs')}
       />
 
       {/* Cart Drawer */}

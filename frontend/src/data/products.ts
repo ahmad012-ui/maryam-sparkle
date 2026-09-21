@@ -12,8 +12,8 @@ export const CATEGORIES: Category[] = [
     id: 'bracelets',
     name: 'Bracelets',
     slug: 'bracelets',
-    image: HERO_IMAGES.collectionPlaceholder,
-    itemCount: 14,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe',
+    itemCount: 5,
     tagline: 'Handcrafted beaded bracelets with delicate charms & chains',
     description: 'Stackable, vibrant bracelets crafted with colorful glass and acrylic beads, charm accents, and delicate linked chains.'
   },
@@ -21,8 +21,8 @@ export const CATEGORIES: Category[] = [
     id: 'anklets',
     name: 'Anklets',
     slug: 'anklets',
-    image: HERO_IMAGES.collectionPlaceholder,
-    itemCount: 8,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP',
+    itemCount: 2,
     tagline: 'Sun-kissed anklets featuring colorful beads and golden bells',
     description: 'Delicate waterproof anklets strung with radiant beads, beach-inspired accents, and musical chime bells.'
   },
@@ -30,8 +30,8 @@ export const CATEGORIES: Category[] = [
     id: 'necklaces',
     name: 'Necklaces',
     slug: 'necklaces',
-    image: HERO_IMAGES.collectionPlaceholder,
-    itemCount: 12,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmeq-VwhiU435DetS1X3uFs7ftPFTXuoNQPezkt-FDdS5fVi-fWgAQ_3PvJaDU9x4xRw9sw7ru1NTVm_zs5SnnAjgi_E2wg681wIyMw8JV9vSVAfWYzcpF2UkfNK-BMxse2gjK2A1h8e3yxiOCNiD2WAJBuG3Iw-g3MZVUEn1s8s125YRifRsnzPAXqmvTSBCjOEOnUJwZJOSA8TQuT8SgzakSJP9LOMTUZ0VMg55dfVKNyPJBWwEe',
+    itemCount: 1,
     tagline: 'Layered beaded chokers and bohemian pendant necklaces',
     description: 'Romantic statement chokers with faceted glass beads, charm pendants, and gold-tone linked chains.'
   },
@@ -39,8 +39,8 @@ export const CATEGORIES: Category[] = [
     id: 'earrings',
     name: 'Earrings',
     slug: 'earrings',
-    image: HERO_IMAGES.collectionPlaceholder,
-    itemCount: 9,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjg3XRMb6wLdRZsXq5bkSYwoUFwyvwoR2OsMODh2in0onDVAfObyPentjgSGJdFHqrjI0OQJb1h8AnkSC9FGjBKn3HO-J33OYyAry0EjOjWNjvVeCan6nA7mcH25mWfDXFhyhG2AtLo8OwfAm-gj9bbjKpacz4e9hg-UZZh4SQktZZy1kByqyqp87OvVUQ9nlbBV2yWuShKbhVkjit8wUdSMJMe5MVDPDVLEDUNROkQAWSN9KexJgP',
+    itemCount: 1,
     tagline: 'Lightweight hand-woven beaded drops and dangle earrings',
     description: 'Feather-light beaded drops woven with colorful glass seed beads and gold-tone ear hooks.'
   },
@@ -48,8 +48,8 @@ export const CATEGORIES: Category[] = [
     id: 'rings',
     name: 'Rings',
     slug: 'rings',
-    image: HERO_IMAGES.collectionPlaceholder,
-    itemCount: 7,
+    image: HERO_IMAGES.circle,
+    itemCount: 1,
     tagline: 'Elastic micro-beaded rings with vibrant beads & tiny charms',
     description: 'Comfortable stretch micro-bead stacking rings decorated with miniature glass beads and gold-tone accents.'
   },
@@ -57,8 +57,8 @@ export const CATEGORIES: Category[] = [
     id: 'custom',
     name: 'Custom Pieces',
     slug: 'custom-pieces',
-    image: HERO_IMAGES.circle,
-    itemCount: 6,
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCym3c_VwqfMRpy3_4MFdu0SCPKfw5QcUU-EbMuf55Oi94gxmhoTK6DvIC9NqkyPrnut8FPQBvd9WbDwUMsdZ9daYCP0CEBw5n33CNNUg9Vf6Fewmrujse_GE-rIRWzfZCFbyHwSHJtFNsGE_sSprb1cpDADr9k1-_yCfeDaJG-ama0UAUP6afCNEvDh6unWvuAdhVdPq_tf06BMovavShLoOA0P9QvacYnLf7NQ8S0oIx-JbomFEdZ',
+    itemCount: 1,
     tagline: 'Bespoke bead palettes, custom name initials & personalized stacks',
     description: 'Bespoke pieces handcrafted to your exact wrist dimensions, custom bead color choices, and letter charms.'
   }
@@ -91,8 +91,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 12,
     sku: 'MS-BR-001',
-    rating: 4.9,
-    reviewsCount: 48,
     tags: ['Handmade', 'Star Charm', 'Ruby Red', 'Romantic', 'Beaded Bracelet'],
     careInstructions: 'Avoid spraying perfume directly onto the beads or star charms. Wipe with a dry microfiber cloth.',
     inStock: true
@@ -122,8 +120,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 9,
     sku: 'MS-BR-002',
-    rating: 4.8,
-    reviewsCount: 36,
     tags: ['Nature Inspired', 'Botanical', 'Charms', 'Green', 'Everyday', 'Beaded Bracelet'],
     careInstructions: 'Keep dry. Store in a soft jewelry pouch to preserve luster.',
     inStock: true
@@ -153,8 +149,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Silver-Tone'],
     stock: 14,
     sku: 'MS-BR-003',
-    rating: 5.0,
-    reviewsCount: 29,
     tags: ['Pastel', 'Lilac', 'Calm', 'Purple', 'Handmade', 'Silver-Tone', 'Beaded Bracelet'],
     careInstructions: 'Gently wipe the glass beads with a clean cotton cloth.',
     inStock: true
@@ -183,8 +177,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 8,
     sku: 'MS-BR-004',
-    rating: 4.9,
-    reviewsCount: 52,
     tags: ['Statement', 'Double Layer', 'Crimson Red', 'Beaded Bracelet', 'Boho'],
     careInstructions: 'Store flat to keep the strand drape pristine.',
     inStock: true
@@ -214,8 +206,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 16,
     sku: 'MS-BR-005',
-    rating: 4.9,
-    reviewsCount: 64,
     tags: ['Pearl Beads', 'Classic', 'Bridal', 'White', 'Chain Bracelet'],
     careInstructions: 'Gently wipe beads with a soft cloth after wearing.',
     inStock: true
@@ -244,8 +234,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Silver-Tone'],
     stock: 11,
     sku: 'MS-BR-006',
-    rating: 4.7,
-    reviewsCount: 41,
     tags: ['Minimalist', 'Black', 'Casual', 'Silver-Tone', 'Beaded Bracelet'],
     careInstructions: 'Clean with lukewarm water and a soft dry cloth.',
     inStock: true
@@ -275,8 +263,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 10,
     sku: 'MS-AK-001',
-    rating: 4.9,
-    reviewsCount: 19,
     tags: ['Anklet', 'Summer', 'Sun Charm', 'Amber Hues', 'Bohemian', 'Beaded Anklet'],
     careInstructions: 'Water-safe cord and chain. Rinse with fresh water after seaside walks.',
     inStock: true
@@ -305,8 +291,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Waterproof Cord'],
     stock: 7,
     sku: 'MS-AK-002',
-    rating: 4.8,
-    reviewsCount: 22,
     tags: ['Beach', 'Teal', 'Bohemian', 'Anklet', 'Beaded Anklet'],
     careInstructions: 'Designed for daily wear and beach trips.',
     inStock: true
@@ -336,8 +320,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 8,
     sku: 'MS-NK-001',
-    rating: 5.0,
-    reviewsCount: 31,
     tags: ['Romantic', 'Pink Beads', 'Statement', 'Choker', 'Necklace'],
     careInstructions: 'Store hung or in a pouch to prevent chain tangles.',
     inStock: true
@@ -366,8 +348,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 15,
     sku: 'MS-ER-001',
-    rating: 4.9,
-    reviewsCount: 17,
     tags: ['Earrings', 'Floral', 'Handwoven', 'Green', 'Dangle', 'Beaded Earrings'],
     careInstructions: 'Lightweight and comfortable for all-day wear.',
     inStock: true
@@ -397,8 +377,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone'],
     stock: 20,
     sku: 'MS-RG-001',
-    rating: 4.9,
-    reviewsCount: 28,
     tags: ['Ring Set', 'Stackable', 'Micro Beads', 'Glass Beads', 'Rings'],
     careInstructions: 'Roll gently onto fingers rather than pulling.',
     inStock: true
@@ -428,8 +406,6 @@ export const PRODUCTS: Product[] = [
     availableFinishes: ['Gold-Tone', 'Silver-Tone'],
     stock: 50,
     sku: 'MS-CUST-001',
-    rating: 5.0,
-    reviewsCount: 84,
     tags: ['Custom', 'Personalized', 'Initial Charm', 'Gift', 'Beads'],
     careInstructions: 'Individually crafted with love in 48 hours.',
     inStock: true
@@ -440,7 +416,6 @@ export const INSTAGRAM_POSTS: InstagramPost[] = [
   {
     id: 'ig-1',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUe5xVK7xEFG6rRlr9Uc8x0cnfclRYDjT00f40GBKwrUWw_daNFeBweBMiI2xE-UQys-RA9G3d865JZwNg0_Mh7ICBECQ3OQE-uKe-wml6uig6zV-IgeMvJ3Jzf6Or6uPQC0r5m9MFzVviEpjaG9czyKnz9Z04z3xAPsGpz8o4w7QFZWjn21MiIZ0AOBttaQQm4fw8jgXPcNw9nHf9ohyWbMdzhwufhIfcZg-84lFxuoeJ-6WruEir',
-    likes: 342,
     caption: 'Packing your custom wedding order with so much love today 🕊️✨ Each box is wrapped by hand.',
     handle: '@maryamsparkle456',
     productTag: 'Pearl Drop Bracelet'
@@ -448,14 +423,12 @@ export const INSTAGRAM_POSTS: InstagramPost[] = [
   {
     id: 'ig-2',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD1mFLIHyB397OGgT7iy-qohMJlGy7quNovH2SoOrUtmikEl_JY9Xo2qaI7cAEtw-54sLr2hVO1i1-RdPnpF2FDgS7Y_rznyXOnAUPcd6gdf4yuyoLBRWDAW6hJ5Nvrz8_HYfamg46qAyLOpbvuHaULlrO-SPHOfBHz1ci6NJi5M-1ue2oiGtdO3f3V0wjT9fWG0zd-HUC_eQq5wHcsLcqRK2BQQ8P-roHKEVIjHLs7N0_FMMkBbC_y',
-    likes: 489,
     caption: 'Afternoon coffee and sketching new botanical charm ideas in the studio ☕🌿',
     handle: '@maryamsparkle456'
   },
   {
     id: 'ig-3',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAootTjGXkyCCxbnu0mqbNYoY9sqfPubHfAS-HGngG9WMBn2wRioSO_d981iKoOqeu7N6uSv6_swKNBHxJnyAOkWl-wHjUs_N3DWninEyMiDD9jY6Af0bWDHzwRJgu6q0h8hrfd-NsxAxA0kKCluorzQN10EaufzD61wCiFdu-o-F9359wLkJ3qzC5Nk7ePS1xpi1xr0I0ONVpXH72HVuWsFne82fByH7IP_uT4DlRoQLKNbRmwDKsG',
-    likes: 612,
     caption: 'Sunset hues captured in our new Ruby Star and Crimson collections 🌅 Pure handcrafted magic.',
     handle: '@maryamsparkle456',
     productTag: 'Ruby Star Bracelet'
@@ -463,7 +436,6 @@ export const INSTAGRAM_POSTS: InstagramPost[] = [
   {
     id: 'ig-4',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCbqP5282WayZLIoQvlekSXSYYjHkdoaLWiEEtdyIcjq1NNsr0x5RSC89_XzPsudVZamIzHusxCRp0a5RfKiqqc62b8M0pv-4v29Meqypbo2v1EAyUiTI6GD1UNr8CproveEGXyT3dUu7779r9jrkkhd5vfHNzq1MJxaWMunbAtNTHaDX_x2Db-IEfENnVd_CMd59ZidqR30UPu4EPj2SQhKnvTAra9nY3QNMBeLm9jJBiezQBqnNBA',
-    likes: 520,
     caption: 'Golden hour strolls with our Green Charm stack. Which stack is your daily favorite? 🌿💫',
     handle: '@maryamsparkle456',
     productTag: 'Green Charm Bracelet'
@@ -471,21 +443,18 @@ export const INSTAGRAM_POSTS: InstagramPost[] = [
   {
     id: 'ig-5',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDHHb587nDTmqlTBbRZlp6xhO9deT8E6oFHbL80EJ-3XMLn8NEV4rcvt3w8qDkm1fTnCY1Yc6QpS3dh8n0RjWA_PwOssywDDmpTtUfvcLFZDIGIYJzPaR_8p2l-OEkB23kjn81A4nhWI9QZripSxNFAP3yRtpwnDkwtN6IiBhfNwhRr17Od1ExCd5dJt3Z8i9ffJ8BYdb-xkeQd3c2fb00Y0iiurXswW5pP5of6lhP_pyaipxZLEwRI',
-    likes: 418,
     caption: 'Workshop table flatlay: colorful glass beads sorted by shade and mood boards 🎨✨',
     handle: '@maryamsparkle456'
   },
   {
     id: 'ig-6',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB0tM5QumE6FTHncCM2rSy-WTHTLmkU9P-PfLwQeIzXvfSQLO7puOsR18L993DlruCpNzUzjRVgyTu1IchOKQiw0xT4G56xgqCL1Jb8FdUU6ob9ng0imrcjsmiadVfw3smFO91nSFH5XXO1QqGG9ACvYPUdFPepLVx5TVAu7Uf3ljg2EQaItAMc67Jyoc-IHuwpZpv30gNp6KTh9U9NGpkfiWat898AYUFSFnnwVCuSCU_yLQ2QyK5V',
-    likes: 388,
     caption: 'Studio desk vibes early morning. Creating peace one bead at a time ✨💻',
     handle: '@maryamsparkle456'
   },
   {
     id: 'ig-7',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDi_pap-VNL7uSPVfy-6CgsnROWVaOJpx-QaTWo42oaJT-QMi9f2CJiEw9MgluK941Pz-ZRN3xFhLhwIW3GisTa0HqXJBzw4fWawtjFhc-sWRR-LA55Nj3zLQobxifmZqhgagHsoRxOA9qqLylD0udhbawclxPNmg3cE9ERw6HgvrHtH4yLM-c7ta2pnQnXLyL1P56OL5fttameWKqYIbJe9w9i4mnytpPxozE6m0hJhRl3Iw6h1JfC',
-    likes: 567,
     caption: 'Spotted in the mountains with our Midnight Bead piece. Earthy textures everywhere ⛰️',
     handle: '@maryamsparkle456',
     productTag: 'Midnight Bead Bracelet'
@@ -493,7 +462,6 @@ export const INSTAGRAM_POSTS: InstagramPost[] = [
   {
     id: 'ig-8',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDiiaZCIjv_HudQnTY1mc02zaM6M8IKAXsxZw4gnijX-ycnF7Son3efC4jjEzVkVY2v0Wks6Zd3zv06Zdy-MtHND4BliUed7jCLlfFUYJsSdM__a8iYi0mst8Aadyb4uT9keOYW9KbhpBpxOEj9q1NuFQtS_cIqWGBN1MhkMZI18x3fAsTMRwaJBBp1rfjO3L3ptJqGDbcZIigrwBRRVFTWZzf_TiRNgHYOYlNEblwEU-3DRrI8seIT',
-    likes: 730,
     caption: 'Weekend brunch with Maryam Sparkle layered essentials. Tag us to be featured! 🥐✨',
     handle: '@maryamsparkle456'
   }
@@ -533,7 +501,7 @@ export const FAQS: FAQItem[] = [
   {
     id: 'faq-6',
     question: 'What is your return & exchange policy?',
-    answer: 'We offer a 7-day hassle-free exchange or repair policy for any sizing adjustments or defects. Simply reach out via WhatsApp at +92 300 1234567 or email maryamsparkle@gmail.com with your order number.',
+    answer: 'We offer a 7-day hassle-free exchange or repair policy for any sizing adjustments or defects. Simply reach out via WhatsApp or email maryamsparkle@gmail.com with your order number.',
     category: 'Payments & Returns'
   }
 ];
