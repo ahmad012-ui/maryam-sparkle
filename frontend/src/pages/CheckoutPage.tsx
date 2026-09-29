@@ -241,6 +241,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
       country: 'Pakistan',
       deliveryMethod: formData.deliveryMethod,
       paymentMethod: formData.paymentMethod,
+      transactionReference: '',
       notes: formData.notes
     });
     setFormErrors({});

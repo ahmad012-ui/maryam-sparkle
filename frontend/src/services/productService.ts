@@ -40,6 +40,9 @@ function mapSupabaseProductToProduct(sp: Record<string, any>, images: string[] =
     rating: sp.rating ? Number(sp.rating) : 5.0,
     reviewsCount: sp.reviews_count || 0,
     tags: sp.tags || [],
+    model3dUrl: sp.model_3d_url || sp.model3dUrl || undefined,
+    model3dPoster: sp.model_3d_poster || sp.model3dPoster || undefined,
+    has3dModel: Boolean(sp.has_3d_model || sp.has3dModel || sp.model_3d_url || sp.model3dUrl),
   };
 }
 

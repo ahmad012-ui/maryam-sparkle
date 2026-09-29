@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Heart, ChevronLeft, ChevronRight, Images, Sparkles, Box } from 'lucide-react';
 import { Product } from '../types';
+import { Real3DProductViewer } from './3d/Real3DProductViewer';
 
 interface ProductMediaViewerProps {
   product: Product;
@@ -31,11 +32,13 @@ export const ProductMediaViewer: React.FC<ProductMediaViewerProps> = ({
   const canTiltRef = useRef(false);
   const rafId = useRef<number | null>(null);
 
-  // Future 3D Model viewer state: active mode ('photo' vs '3d')
-  const hasReal3DModel = Boolean(product.model3dUrl);
-  const [activeMediaMode, setActiveMediaMode] = useState<'photo' | '3d'>(
-    hasReal3DModel ? '3d' : 'photo'
-  );
+  // Real 3D Model viewer state: active mode ('photo' vs '3d')
+  const hasReal3DModel = Boolean(product.model3dUrl || product.has3dModel);
+  const [activeMediaMode, setActiveMediaMode] = useState<'photo' | '3d'>('photo');
+
+  useEffect(() => {
+    setActiveMediaMode(hasReal3DModel ? '3d' : 'photo');
+  }, [product.id, hasReal3DModel]);
 
   useEffect(() => {
     const finePointer = window.matchMedia('(pointer: fine)').matches;
@@ -138,16 +141,13 @@ export const ProductMediaViewer: React.FC<ProductMediaViewerProps> = ({
       )}
 
       {/* Main Interactive Stage */}
-      {activeMediaMode === '3d' && product.model3dUrl ? (
-        /* Future-ready Real 3D Model Viewer Architecture */
-        <div className="relative w-full aspect-square max-h-[380px] rounded-2xl overflow-hidden shadow-md border-4 border-[#efe8dc] bg-[#fdfaf5] flex items-center justify-center">
-          {/* Note: When real .glb files are attached to products, <model-viewer> or three-fiber renders here */}
-          <div className="text-center p-6 space-y-3">
-            <Box className="w-12 h-12 text-[#2d5a61] mx-auto animate-bounce" />
-            <p className="font-serif text-[#2d5a61] font-medium text-base">Interactive 3D Asset Ready</p>
-            <p className="text-xs text-[#666666]">File: {product.model3dUrl}</p>
-          </div>
-        </div>
+      {activeMediaMode === '3d' && hasReal3DModel ? (
+        <Real3DProductViewer
+          modelUrl={product.model3dUrl}
+          poster={product.model3dPoster || currentImage}
+          productName={product.name}
+          onSwitchToPhotos={() => setActiveMediaMode('photo')}
+        />
       ) : (
         /* High-Fidelity 2D Depth Layered Canvas */
         <div

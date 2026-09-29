@@ -13,8 +13,11 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
     "@supabase/supabase-js": "^2.116.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
@@ -24,6 +27,7 @@
     "react-dom": "^19.0.1",
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.18.3",
+    "three": "^0.186.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {

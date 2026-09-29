@@ -47,4 +47,6 @@ export interface StoreSettings {
   storeName: string; tagline: string; currency: string; adminName: string; adminEmail: string; adminPhone: string; whatsappNumber: string;
   standardShippingFee: number; freeShippingThreshold: number; expressShippingFee: number; city: string; country: string; courierPartners: string[];
   bannerImages?: string[]; logoImage?: string;
+  phone?: string; email?: string; address?: string; shippingFee?: number; deliveryDays?: string;
+  codEnabled?: boolean; jazzCashEnabled?: boolean; jazzCashNumber?: string; easypaisaEnabled?: boolean; easypaisaNumber?: string;
 }

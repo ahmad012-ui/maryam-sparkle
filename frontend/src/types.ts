@@ -29,6 +29,7 @@ export interface Product {
   // Future-ready 3D Model Architecture (.glb / .gltf)
   model3dUrl?: string;
   model3dPoster?: string;
+  has3dModel?: boolean;
 }
 
 export interface CartItem {

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Heart, ShoppingBag, Eye, Star } from 'lucide-react';
+import { Heart, ShoppingBag, Eye, Star, Box } from 'lucide-react';
 import { Product } from '../types';
 import { useAddToCartAnimation } from '../context/AddToCartAnimationContext';
 
@@ -205,15 +205,23 @@ export const ProductCard3D: React.FC<ProductCard3DProps> = ({
               <span>Quick View</span>
             </button>
 
-            {/* New Badge */}
-            {product.isNew && (
-              <span
-                style={{ transform: 'translateZ(24px)' }}
-                className="absolute top-2.5 left-2.5 bg-[#2d5a61] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider z-20 shadow-xs"
-              >
-                New
-              </span>
-            )}
+            {/* Badges */}
+            <div
+              style={{ transform: 'translateZ(24px)' }}
+              className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1"
+            >
+              {product.isNew && (
+                <span className="bg-[#2d5a61] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                  New
+                </span>
+              )}
+              {Boolean(product.has3dModel || product.model3dUrl) && (
+                <span className="bg-[#2d5a61] text-[#d4b982] text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs flex items-center gap-1 border border-[#d4b982]/30">
+                  <Box className="w-2.5 h-2.5" />
+                  <span>3D View</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Product Info */}
@@ -303,6 +311,12 @@ export const ProductCard3D: React.FC<ProductCard3DProps> = ({
             {product.isNew && (
               <span className="bg-[#D4B982] text-[#1e3c41] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full shadow-xs">
                 New Gem
+              </span>
+            )}
+            {Boolean(product.has3dModel || product.model3dUrl) && (
+              <span className="bg-[#2d5a61] text-[#d4b982] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-[#d4b982]/30">
+                <Box className="w-3 h-3" />
+                <span>3D View</span>
               </span>
             )}
           </div>
