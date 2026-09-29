@@ -26,6 +26,9 @@ export interface Product {
   isNew?: boolean;
   careInstructions?: string;
   inStock: boolean;
+  // Future-ready 3D Model Architecture (.glb / .gltf)
+  model3dUrl?: string;
+  model3dPoster?: string;
 }
 
 export interface CartItem {

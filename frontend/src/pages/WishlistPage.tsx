@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingBag, Trash2, ArrowRight, Sparkles } from 'lucide-react';
+import { Heart, ShoppingBag, Sparkles } from 'lucide-react';
 import { Product } from '../types';
 import { SEO } from '../components/SEO';
+import { ProductCard3D } from '../components/ProductCard3D';
 
 interface WishlistPageProps {
   wishlist: Product[];
@@ -36,98 +37,59 @@ export const WishlistPage: React.FC<WishlistPageProps> = ({
         </p>
         <Link
           to="/shop"
-          className="inline-flex items-center gap-2 bg-[#2d5a61] text-white px-8 py-4 rounded-full font-medium text-sm hover:bg-[#1e3c41] transition-all shadow-sm"
+          className="bg-[#2d5a61] text-white px-8 py-3.5 rounded-full text-sm font-medium hover:bg-[#1e3c41] transition-all shadow-sm"
         >
-          <span>Discover Studio Pieces</span>
-          <ArrowRight className="w-4 h-4" />
+          Explore the Collection
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#efe8dc] py-12 md:py-16">
+    <div className="min-h-screen bg-[#efe8dc] py-12 px-6 md:px-12">
       <SEO
         title="Saved Studio Favorites"
         description="Review your saved handmade bead jewelry, bracelets, and necklaces in your Maryam Sparkle studio wishlist."
         canonical="/wishlist"
       />
-      <div className="max-w-7xl mx-auto px-6 md:px-10">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e0d8c8] mb-10">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#2d5a61]">
-                Saved Treasures
-              </span>
-              <Sparkles className="w-3.5 h-3.5 text-[#D4B982]" />
-            </div>
-            <h1 className="font-serif text-3xl md:text-4xl text-[#333333]">My Studio Wishlist</h1>
+            <h1 className="font-serif text-3xl sm:text-4xl text-[#333333]">Saved Favorites</h1>
+            <p className="text-xs sm:text-sm text-[#666666] mt-1">
+              {wishlist.length} {wishlist.length === 1 ? 'piece' : 'pieces'} waiting in your private curation.
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={onMoveAllToCart}
-              className="bg-[#2d5a61] text-white px-5 py-2.5 rounded-full text-xs font-medium hover:bg-[#1e3c41] transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
+              className="bg-[#2d5a61] text-white px-5 py-2.5 rounded-full text-xs font-semibold hover:bg-[#1e3c41] transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Add All to Bag</span>
+              <span>Move All to Bag</span>
+            </button>
+            <button
+              onClick={() => navigate('/shop')}
+              className="border border-[#e0d8c8] bg-white text-[#333333] px-5 py-2.5 rounded-full text-xs font-medium hover:border-[#2d5a61] hover:text-[#2d5a61] transition-colors cursor-pointer"
+            >
+              Continue Exploring
             </button>
           </div>
         </div>
 
-        {/* Product Cards Grid */}
+        {/* Product Cards Grid with 3D Depth */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {wishlist.map((product) => (
-            <div
+            <ProductCard3D
               key={product.id}
-              className="bg-[#fdfaf5] rounded-3xl p-5 border border-[#e0d8c8] shadow-xs flex flex-col justify-between hover:shadow-md transition-all group"
-            >
-              <div>
-                <div className="aspect-square rounded-2xl overflow-hidden mb-4 relative bg-[#efe8dc]">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
-                    onClick={() => navigate(`/product/${product.slug}`)}
-                  />
-
-                  {/* Remove button */}
-                  <button
-                    onClick={() => onRemoveFromWishlist(product)}
-                    className="absolute top-3 right-3 p-2 bg-white/90 text-red-500 hover:bg-red-50 rounded-full transition-colors shadow-xs cursor-pointer"
-                    title="Remove from wishlist"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-
-                  <span className="absolute bottom-3 left-3 bg-[#efe8dc]/90 backdrop-blur-xs text-[#2d5a61] text-[10px] font-bold px-2.5 py-1 rounded-full">
-                    {product.category}
-                  </span>
-                </div>
-
-                <h3
-                  onClick={() => navigate(`/product/${product.slug}`)}
-                  className="font-serif text-base text-[#333333] hover:text-[#2d5a61] cursor-pointer mb-1 truncate"
-                >
-                  {product.name}
-                </h3>
-
-                <p className="font-semibold text-sm text-[#333333] mb-4">
-                  Rs. {product.price.toLocaleString()}
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onMoveToBag(product)}
-                  className="flex-1 bg-[#2d5a61] text-white py-2.5 rounded-full text-xs font-medium flex items-center justify-center gap-2 hover:bg-[#1e3c41] transition-colors cursor-pointer shadow-2xs"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Move to Bag</span>
-                </button>
-              </div>
-            </div>
+              product={product}
+              isWishlisted={true}
+              onAddToCart={onMoveToBag}
+              onToggleWishlist={onRemoveFromWishlist}
+              onQuickView={(p) => navigate(`/product/${p.slug}`)}
+              variant="standard"
+            />
           ))}
         </div>
       </div>

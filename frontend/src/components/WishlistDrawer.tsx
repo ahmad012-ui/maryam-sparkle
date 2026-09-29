@@ -22,7 +22,7 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end" style={{ perspective: '1200px' }}>
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/45 backdrop-blur-xs transition-opacity"
@@ -30,7 +30,7 @@ export const WishlistDrawer: React.FC<WishlistDrawerProps> = ({
       />
 
       {/* Drawer */}
-      <div className="relative w-full max-w-md bg-[#efe8dc] h-full shadow-2xl flex flex-col z-10 border-l border-[#e0d8c8] overflow-hidden">
+      <div className="relative w-full max-w-md bg-[#efe8dc] h-full shadow-[-24px_0_55px_-12px_rgba(45,90,97,0.22),-6px_0_16px_rgba(0,0,0,0.08)] flex flex-col z-10 border-l border-[#e0d8c8] overflow-hidden animate-ms-drawer-entrance">
         {/* Header */}
         <div className="p-6 bg-[#fdfaf5] border-b border-[#e0d8c8] flex items-center justify-between">
           <div className="flex items-center gap-2">

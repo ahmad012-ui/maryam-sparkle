@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Product, Category } from '../types';
 import { PriceRangeFilter } from '../components/PriceRangeFilter';
+import { ProductCard3D } from '../components/ProductCard3D';
 import { 
   Filter, 
   SlidersHorizontal, 
@@ -526,125 +527,17 @@ export const ShopPage: React.FC<ShopPageProps> = ({
                   gridCols === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
                 } gap-6 md:gap-8`}
               >
-                {filteredProducts.map((product) => {
-                  const isWishlisted = wishlistIds.includes(product.id);
-
-                  return (
-                    <div
-                      key={product.id}
-                      id={`product-card-${product.id}`}
-                      className="group bg-white/80 rounded-2xl border border-[#e0d8c8]/80 overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                    >
-                      {/* Image Container */}
-                      <div className="relative aspect-square overflow-hidden bg-[#efe8dc]/40">
-                        {/* Badges */}
-                        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
-                          {product.isBestSeller && (
-                            <span className="bg-[#2d5a61] text-white text-[10px] font-semibold tracking-wider uppercase px-2.5 py-1 rounded-full shadow-2xs">
-                              Bestseller
-                            </span>
-                          )}
-                          {product.isNew && (
-                            <span className="bg-[#D4B982] text-[#1e3c41] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full shadow-2xs">
-                              New Gem
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Wishlist button */}
-                        <button
-                          id={`wishlist-btn-${product.id}`}
-                          onClick={() => onToggleWishlist(product)}
-                          className={`absolute top-3 right-3 z-10 p-2 rounded-full backdrop-blur-md transition-transform duration-200 hover:scale-110 cursor-pointer ${
-                            isWishlisted
-                              ? 'bg-[#2d5a61] text-white shadow-md'
-                              : 'bg-white/80 text-[#333333] hover:bg-white'
-                          }`}
-                          aria-label="Toggle Wishlist"
-                        >
-                          <Heart
-                            className="w-4 h-4"
-                            fill={isWishlisted ? 'currentColor' : 'none'}
-                          />
-                        </button>
-
-                        {/* Product Image */}
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover object-center group-hover:scale-108 transition-transform duration-500"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-
-                        {/* Quick View Overlay on Hover */}
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
-                          <button
-                            onClick={() => onQuickView(product)}
-                            className="bg-white/95 text-[#2d5a61] hover:bg-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-all cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            Quick Look
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Product Details */}
-                      <div className="p-5 flex flex-col flex-1 justify-between">
-                        <div>
-                          <div className="flex items-center justify-between text-xs text-[#888888] mb-1">
-                            <span className="uppercase tracking-wider font-medium text-[10px] text-[#2d5a61]">
-                              {product.category}
-                            </span>
-                            {Boolean(product.rating && product.reviewsCount && product.reviewsCount > 0) && (
-                              <div className="flex items-center gap-1 text-[#D4B982]">
-                                <Star className="w-3.5 h-3.5 fill-current" />
-                                <span className="text-[11px] font-semibold text-[#444444]">
-                                  {product.rating} ({product.reviewsCount})
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          <h3
-                            onClick={() => onQuickView(product)}
-                            className="font-serif text-lg text-[#333333] group-hover:text-[#2d5a61] transition-colors cursor-pointer line-clamp-1 mb-1"
-                          >
-                            {product.name}
-                          </h3>
-
-                          <p className="text-xs text-[#666666] line-clamp-2 leading-relaxed mb-3">
-                            {product.description}
-                          </p>
-                        </div>
-
-                        {/* Price & Add to Cart button */}
-                        <div className="pt-3 border-t border-[#e0d8c8]/50 flex items-center justify-between">
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-serif text-base md:text-lg font-normal text-[#2d5a61]">
-                              Rs. {product.price.toLocaleString()}
-                            </span>
-                            {product.originalPrice && (
-                              <span className="text-xs text-[#999999] line-through">
-                                Rs. {product.originalPrice.toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-
-                          <button
-                            id={`add-bag-btn-${product.id}`}
-                            onClick={() => onAddToCart(product)}
-                            className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white p-2.5 sm:px-4 sm:py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs hover:shadow-md cursor-pointer group/btn"
-                            aria-label={`Add ${product.name} to Bag`}
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />
-                            <span className="hidden sm:inline">Add to Bag</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {filteredProducts.map((product) => (
+                  <ProductCard3D
+                    key={product.id}
+                    product={product}
+                    isWishlisted={wishlistIds.includes(product.id)}
+                    onAddToCart={onAddToCart}
+                    onToggleWishlist={onToggleWishlist}
+                    onQuickView={onQuickView}
+                    variant="standard"
+                  />
+                ))}
               </div>
             )}
           </div>

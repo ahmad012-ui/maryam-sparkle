@@ -7,6 +7,7 @@ import { recentActivityService } from '../services/recentActivityService';
 import { analyticsService } from '../services/analyticsService';
 import { SEO } from '../components/SEO';
 import { ProductModal } from '../components/ProductModal';
+import { ProductCard3D } from '../components/ProductCard3D';
 import { RecentlyViewedSection } from '../components/RecentlyViewedSection';
 
 interface ProductDetailPageProps {
@@ -215,60 +216,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
-              {relatedProducts.map((relProduct) => {
-                const isWish = wishlistIds.includes(relProduct.id);
-                return (
-                  <div
-                    key={relProduct.id}
-                    className="bg-[#fdfaf5] rounded-2xl p-4 border border-[#e0d8c8] shadow-2xs flex flex-col justify-between hover:shadow-md transition-all group"
-                  >
-                    <div>
-                      <div className="aspect-square rounded-xl overflow-hidden mb-3 relative bg-[#efe8dc]">
-                        <img
-                          src={relProduct.images?.[0] || relProduct.image}
-                          alt={relProduct.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
-                          onClick={() => onQuickView(relProduct)}
-                        />
-                        <button
-                          onClick={() => onToggleWishlist(relProduct)}
-                          className={`absolute top-2.5 right-2.5 p-1.5 rounded-full shadow-xs transition-all ${
-                            isWish ? 'bg-red-50 text-red-500' : 'bg-white/80 text-[#666666] hover:text-red-500'
-                          }`}
-                          aria-label={isWish ? 'Remove from wishlist' : 'Add to wishlist'}
-                        >
-                          <Heart className="w-4 h-4" fill={isWish ? 'currentColor' : 'none'} />
-                        </button>
-                        <button
-                          onClick={() => onQuickView(relProduct)}
-                          className="absolute inset-x-2.5 bottom-2.5 py-1.5 bg-white/95 text-[#2d5a61] text-xs font-semibold rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 hover:bg-[#2d5a61] hover:text-white"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Quick View</span>
-                        </button>
-                      </div>
-
-                      <h4
-                        onClick={() => onQuickView(relProduct)}
-                        className="font-serif text-sm text-[#333333] hover:text-[#2d5a61] cursor-pointer truncate mb-1"
-                      >
-                        {relProduct.name}
-                      </h4>
-                      <p className="font-semibold text-xs text-[#333333] mb-3">
-                        Rs. {relProduct.price.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => onAddToCart(relProduct, 1)}
-                      className="w-full border border-[#e0d8c8] py-2 rounded-full text-xs font-medium text-[#333333] hover:bg-[#2d5a61] hover:text-white hover:border-[#2d5a61] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Add to Bag</span>
-                    </button>
-                  </div>
-                );
-              })}
+              {relatedProducts.map((relProduct) => (
+                <ProductCard3D
+                  key={relProduct.id}
+                  product={relProduct}
+                  isWishlisted={wishlistIds.includes(relProduct.id)}
+                  onAddToCart={(p) => onAddToCart(p, 1)}
+                  onToggleWishlist={onToggleWishlist}
+                  onQuickView={onQuickView}
+                  variant="compact"
+                />
+              ))}
             </div>
           </div>
         )}

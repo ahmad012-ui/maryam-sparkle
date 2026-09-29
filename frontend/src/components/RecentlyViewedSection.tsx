@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Eye, Heart, ShoppingBag, ArrowRight, History } from 'lucide-react';
 import { Product } from '../types';
+import { ProductCard3D } from './ProductCard3D';
 import { recentActivityService } from '../services/recentActivityService';
 import { productService } from '../services/productService';
 
@@ -134,123 +135,17 @@ export const RecentlyViewedSection: React.FC<RecentlyViewedSectionProps> = ({
 
       {/* Grid of Product Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
-        {products.map((product) => {
-          const isWishlisted = wishlistIds.includes(product.id);
-          const hasDiscount =
-            Boolean(product.compareAtPrice && product.compareAtPrice > product.price) ||
-            Boolean(product.originalPrice && product.originalPrice > product.price);
-          const comparePrice = product.compareAtPrice || product.originalPrice;
-
-          return (
-            <div
-              key={product.id}
-              className="bg-[#fdfaf5] rounded-2xl p-3.5 sm:p-4 border border-[#e0d8c8]/80 hover:border-[#2d5a61]/40 shadow-xs hover:shadow-md transition-all duration-300 flex flex-col justify-between group"
-            >
-              <div>
-                {/* Image & Badges */}
-                <div className="aspect-square rounded-xl overflow-hidden mb-3 relative bg-[#efe8dc]">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
-                    onClick={() => navigate(`/product/${product.slug}`)}
-                    loading="lazy"
-                  />
-
-                  {/* Badges */}
-                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10 pointer-events-none">
-                    {product.isNew && (
-                      <span className="bg-[#2d5a61] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                        New
-                      </span>
-                    )}
-                    {product.isBestSeller && !product.isNew && (
-                      <span className="bg-[#D4B982] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                        Bestseller
-                      </span>
-                    )}
-                    {hasDiscount && (
-                      <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                        Sale
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Action overlay buttons */}
-                  <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-10">
-                    {onToggleWishlist && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleWishlist(product);
-                        }}
-                        aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
-                        className={`p-1.5 rounded-full shadow-xs transition-all cursor-pointer ${
-                          isWishlisted
-                            ? 'bg-red-50 text-red-500 scale-105'
-                            : 'bg-white/85 text-[#666666] hover:text-red-500 hover:bg-white'
-                        }`}
-                      >
-                        <Heart className="w-3.5 h-3.5" fill={isWishlisted ? 'currentColor' : 'none'} />
-                      </button>
-                    )}
-                    {onQuickView && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onQuickView(product);
-                        }}
-                        aria-label="Quick preview"
-                        className="p-1.5 rounded-full bg-white/85 text-[#666666] hover:text-[#2d5a61] hover:bg-white shadow-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hidden sm:flex items-center justify-center"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Category & Title */}
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-[#888888] block mb-1">
-                  {product.category}
-                </span>
-                <h3
-                  onClick={() => navigate(`/product/${product.slug}`)}
-                  className="font-serif text-xs sm:text-sm text-[#333333] hover:text-[#2d5a61] cursor-pointer transition-colors line-clamp-1 mb-1.5 font-medium"
-                  title={product.name}
-                >
-                  {product.name}
-                </h3>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-xs sm:text-sm font-semibold text-[#333333]">
-                    Rs. {product.price.toLocaleString()}
-                  </span>
-                  {comparePrice && comparePrice > product.price && (
-                    <span className="text-[11px] text-[#888888] line-through">
-                      Rs. {comparePrice.toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Add to Bag button */}
-              {onAddToCart && (
-                <button
-                  type="button"
-                  onClick={() => onAddToCart(product)}
-                  disabled={!product.inStock}
-                  className="w-full border border-[#e0d8c8] hover:border-[#2d5a61] py-2 rounded-full text-xs font-medium text-[#333333] hover:bg-[#2d5a61] hover:text-white transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group/btn shadow-2xs"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />
-                  <span>{product.inStock ? 'Add to Bag' : 'Out of Stock'}</span>
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {products.map((product) => (
+          <ProductCard3D
+            key={product.id}
+            product={product}
+            isWishlisted={wishlistIds.includes(product.id)}
+            onAddToCart={onAddToCart || (() => {})}
+            onToggleWishlist={onToggleWishlist || (() => {})}
+            onQuickView={onQuickView || ((p) => navigate(`/product/${p.slug}`))}
+            variant="compact"
+          />
+        ))}
       </div>
     </section>
   );

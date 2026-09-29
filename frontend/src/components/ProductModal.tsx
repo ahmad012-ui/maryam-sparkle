@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, Heart, ShoppingBag, Sparkles, Check, ShieldCheck, Truck, RefreshCw, Star, ChevronLeft, ChevronRight, Images, Share2 } from 'lucide-react';
 import { Product } from '../types';
 import { recentActivityService } from '../services/recentActivityService';
+import { ProductMediaViewer } from './ProductMediaViewer';
+import { useAddToCartAnimation } from '../context/AddToCartAnimationContext';
 
 interface ProductModalProps {
   product: Product | null;
@@ -27,6 +29,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
+  const { triggerFlyAnimation } = useAddToCartAnimation();
 
   const galleryImages = (product?.images && product.images.length > 0)
     ? product.images
@@ -58,6 +61,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
   const handleAdd = () => {
     if (!product.inStock) return;
+    triggerFlyAnimation({
+      imageUrl: currentImage,
+    });
     onAddToCart(product, selectedSize, selectedFinish, customNote);
     setAddedAnimation(true);
     setTimeout(() => {
@@ -114,75 +120,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2">
-          {/* Left: Visual Artwork Preview & Gallery Switcher */}
-          <div className="relative bg-[#efe8dc] flex flex-col items-center justify-center p-6 sm:p-8">
-            <div className="relative w-full aspect-square max-h-[380px] rounded-2xl overflow-hidden shadow-md border-4 border-[#efe8dc] group">
-              <img
-                src={currentImage}
-                alt={product.name}
-                className="w-full h-full object-cover transition-all duration-300"
-              />
-
-              {/* Wishlist Button (placed top-left of image preview to avoid collision with modal action buttons) */}
-              <button
-                onClick={() => onToggleWishlist(product)}
-                className={`absolute top-3 left-3 p-2.5 rounded-full transition-all shadow-md z-10 ${
-                  isWishlisted
-                    ? 'bg-red-50 text-red-500 scale-110'
-                    : 'bg-white/80 text-[#666666] hover:bg-white hover:text-red-500'
-                }`}
-                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-              >
-                <Heart className="w-5 h-5" fill={isWishlisted ? 'currentColor' : 'none'} />
-              </button>
-
-              {/* Arrow navigation if multiple images */}
-              {galleryImages.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handlePrevImage}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Previous image"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextImage}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Next image"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  <span className="absolute bottom-2.5 left-2.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full font-medium backdrop-blur-xs flex items-center gap-1">
-                    <Images className="w-2.5 h-2.5" />
-                    {activeImageIndex + 1} / {galleryImages.length}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Thumbnail selector strip if more than 1 image */}
-            {galleryImages.length > 1 && (
-              <div className="flex items-center gap-2 mt-3 overflow-x-auto max-w-full pb-1 px-1 no-scrollbar">
-                {galleryImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setActiveImageIndex(idx)}
-                    className={`relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
-                      idx === activeImageIndex
-                        ? 'border-[#2d5a61] shadow-md scale-105'
-                        : 'border-transparent opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Left: Interactive 3D Depth Visual Artwork Preview & Gallery Switcher */}
+          <ProductMediaViewer
+            product={product}
+            currentImage={currentImage}
+            galleryImages={galleryImages}
+            activeImageIndex={activeImageIndex}
+            onSelectImage={setActiveImageIndex}
+            onPrevImage={handlePrevImage}
+            onNextImage={handleNextImage}
+            isWishlisted={isWishlisted}
+            onToggleWishlist={() => onToggleWishlist(product)}
+          />
 
           {/* Right: Product Details & Customization Options */}
           <div className="p-6 sm:p-8 flex flex-col justify-between max-h-[85vh] overflow-y-auto">

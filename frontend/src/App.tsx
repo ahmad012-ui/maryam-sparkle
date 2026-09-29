@@ -23,6 +23,7 @@ import { VerifyOtpPage } from './pages/VerifyOtpPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { PasswordResetSuccessPage } from './pages/PasswordResetSuccessPage';
 import { PasswordResetProvider } from './context/PasswordResetContext';
+import { AddToCartAnimationProvider } from './context/AddToCartAnimationContext';
 import { CustomOrderPage } from './pages/CustomOrderPage';
 import { CustomerCarePage } from './pages/CustomerCarePage';
 import { AboutPage } from './pages/AboutPage';
@@ -615,8 +616,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <PasswordResetProvider>
-        <CustomCursor />
-        <MainApp />
+        <AddToCartAnimationProvider>
+          <CustomCursor />
+          <MainApp />
+        </AddToCartAnimationProvider>
       </PasswordResetProvider>
     </BrowserRouter>
   );
