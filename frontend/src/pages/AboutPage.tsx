@@ -17,35 +17,35 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
         canonical="/about"
       />
       {/* Hero Banner with Arch Layout */}
-      <section className="relative py-16 md:py-24 border-b border-[#e0d8c8] overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="relative py-12 sm:py-16 md:py-24 border-b border-[#e0d8c8] overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Narrative */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2d5a61]/10 border border-[#2d5a61]/20 text-[#2d5a61] text-xs font-semibold tracking-widest uppercase">
                 <Sparkles className="w-3.5 h-3.5 text-[#D4B982]" />
                 <span>Our Artisan Heritage</span>
               </div>
-              <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#2d5a61] leading-[1.15]">
+              <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl text-[#2d5a61] leading-[1.18] sm:leading-[1.15]">
                 Jewelry Crafted with Soul, Care & Radiant Color
               </h1>
-              <p className="text-[#555555] text-base sm:text-lg font-light leading-relaxed">
+              <p className="text-[#555555] text-sm sm:text-base md:text-lg font-light leading-relaxed">
                 Maryam Sparkle began as an intimate pursuit of tranquility—hand-threading colorful glass and acrylic beads, playful charms, and delicate linked chains.
               </p>
-              <p className="text-[#666666] text-sm sm:text-base font-light leading-relaxed">
+              <p className="text-[#666666] text-xs sm:text-sm md:text-base font-light leading-relaxed">
                 Today, our studio in Pakistan creates charming, everyday treasures designed to accompany you through every milestone, celebration, and quiet cup of morning tea.
               </p>
-              <div className="pt-4 flex flex-wrap gap-4">
+              <div className="pt-2 sm:pt-4 flex flex-wrap justify-center lg:justify-start gap-3 sm:gap-4">
                 <Link
                   to="/shop"
-                  className="bg-[#2d5a61] text-white px-7 py-3.5 rounded-full text-sm font-medium hover:bg-[#1e3c41] transition-all shadow-md hover:shadow-lg flex items-center gap-2"
+                  className="bg-[#2d5a61] text-white px-6 sm:px-7 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-medium hover:bg-[#1e3c41] transition-all shadow-md hover:shadow-lg flex items-center gap-2"
                 >
                   <span>Explore Collections</span>
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <button
                   onClick={onOpenCustomOrder}
-                  className="border border-[#2d5a61] text-[#2d5a61] px-7 py-3.5 rounded-full text-sm font-medium hover:bg-[#2d5a61]/10 transition-colors flex items-center gap-2 cursor-pointer"
+                  className="border border-[#2d5a61] text-[#2d5a61] px-6 sm:px-7 py-3 sm:py-3.5 rounded-full text-xs sm:text-sm font-medium hover:bg-[#2d5a61]/10 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-[#D4B982]" />
                   <span>Request Bespoke Piece</span>
@@ -54,9 +54,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
             </div>
 
             {/* Right Visual Arch */}
-            <div className="lg:col-span-5 flex justify-center">
-              <div className="relative w-full max-w-sm">
-                <div className="w-full aspect-4/5 rounded-t-[140px] rounded-b-2xl overflow-hidden border-8 border-white/80 shadow-2xl bg-white">
+            <div className="lg:col-span-5 flex justify-center mt-4 lg:mt-0">
+              <div className="relative w-full max-w-xs sm:max-w-sm">
+                <div className="w-full aspect-4/5 rounded-t-[140px] rounded-b-2xl overflow-hidden border-4 sm:border-8 border-white/80 shadow-2xl bg-white">
                   <img
                     src={HERO_IMAGES.ourStory}
                     alt="Maryam in the jewelry studio"
@@ -65,12 +65,12 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
                   />
                 </div>
                 {/* Floating Artisan Badge */}
-                <div className="absolute -bottom-6 -left-6 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-[#e0d8c8] shadow-xl max-w-xs space-y-1">
+                <div className="absolute -bottom-4 left-2 sm:-bottom-6 sm:-left-6 bg-white/95 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-[#e0d8c8] shadow-xl max-w-[240px] sm:max-w-xs space-y-1">
                   <div className="flex items-center gap-1.5 text-[#2d5a61] font-semibold text-xs">
                     <Heart className="w-3.5 h-3.5 fill-current text-rose-500" />
                     <span>100% Handcrafted</span>
                   </div>
-                  <p className="text-[11px] text-[#666666] leading-tight">
+                  <p className="text-[10px] sm:text-[11px] text-[#666666] leading-tight">
                     Every bead is individually inspected, strung, and finished by hand.
                   </p>
                 </div>
@@ -81,8 +81,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
       </section>
 
       {/* Core Values Section */}
-      <section className="py-16 md:py-20 bg-white/40 border-b border-[#e0d8c8]">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
+      <section className="py-12 sm:py-16 md:py-20 bg-white/40 border-b border-[#e0d8c8]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <h2 className="font-serif text-3xl md:text-4xl text-[#2d5a61] mb-3">Our Guiding Values</h2>
             <p className="text-[#666666] text-sm md:text-base font-light">
@@ -90,7 +90,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onOpenCustomOrder }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             <div className="bg-white/80 border border-[#e0d8c8] p-6 rounded-2xl space-y-3 hover:shadow-lg transition-shadow">
               <div className="w-12 h-12 rounded-xl bg-[#2d5a61]/10 flex items-center justify-center text-[#2d5a61]">
                 <Gem className="w-6 h-6" />

@@ -110,7 +110,7 @@ export const ProductMediaViewer: React.FC<ProductMediaViewerProps> = ({
   };
 
   return (
-    <div className="relative bg-[#efe8dc] flex flex-col items-center justify-center p-6 sm:p-8 select-none">
+    <div className="relative bg-[#efe8dc] flex flex-col items-center justify-center p-3 xs:p-4 sm:p-8 select-none">
       {/* 3D / Photography Media Switcher (Architected for real GLB/GLTF models) */}
       {hasReal3DModel && (
         <div className="mb-3 flex items-center bg-[#e0d8c8] p-1 rounded-full text-xs z-20 shadow-xs">

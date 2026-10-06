@@ -224,18 +224,18 @@ export const AccountPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#efe8dc] py-10 md:py-16">
-      <div className="max-w-7xl mx-auto px-6 md:px-10">
+    <div className="min-h-screen bg-[#efe8dc] py-8 sm:py-10 md:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10">
         {/* Profile Welcome Header */}
-        <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-xs mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-[#efe8dc] text-[#2d5a61] flex items-center justify-center font-serif text-2xl font-bold border border-[#e0d8c8]">
+        <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-xs mb-6 sm:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#efe8dc] text-[#2d5a61] flex items-center justify-center font-serif text-xl sm:text-2xl font-bold border border-[#e0d8c8] shrink-0">
               {user.name.charAt(0)}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-serif text-2xl sm:text-3xl text-[#333333]">{user.name}</h1>
-                <span className="text-[10px] font-bold bg-[#2d5a61]/10 text-[#2d5a61] px-2.5 py-0.5 rounded-full">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-serif text-xl sm:text-2xl md:text-3xl text-[#333333]">{user.name}</h1>
+                <span className="text-[10px] font-bold bg-[#2d5a61]/10 text-[#2d5a61] px-2.5 py-0.5 rounded-full whitespace-nowrap">
                   Artisan VIP Member
                 </span>
               </div>
@@ -245,31 +245,31 @@ export const AccountPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2.5">
+          <div className="flex flex-wrap gap-2 sm:gap-2.5 w-full md:w-auto">
             <Link
               to="/admin"
-              className="bg-white border border-[#2d5a61]/30 text-[#2d5a61] px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#2d5a61]/5 transition-colors flex items-center gap-1.5 shadow-2xs"
+              className="bg-white border border-[#2d5a61]/30 text-[#2d5a61] px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-semibold hover:bg-[#2d5a61]/5 transition-colors flex items-center gap-1.5 shadow-2xs"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-[#c59d5f]" />
               <span>Studio Admin</span>
             </Link>
             <Link
               to="/track"
-              className="bg-[#2d5a61] text-white px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="bg-[#2d5a61] text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-semibold hover:bg-[#1e3c41] transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Truck className="w-3.5 h-3.5" />
               <span>Track Any Order</span>
             </Link>
             <Link
               to="/custom-orders"
-              className="bg-[#A96745] text-white px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#8e5233] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="bg-[#A96745] text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-semibold hover:bg-[#8e5233] transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>New Custom Request</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="bg-white border border-rose-200 text-rose-700 px-4 py-2.5 rounded-xl text-xs font-semibold hover:bg-rose-50 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              className="bg-white border border-rose-200 text-rose-700 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-semibold hover:bg-rose-50 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
               title="Log out of your account"
             >
               <LogOut className="w-3.5 h-3.5 text-rose-600" />
@@ -279,7 +279,7 @@ export const AccountPage: React.FC = () => {
         </div>
 
         {/* Account Nav Tabs */}
-        <div className="flex gap-2 border-b border-[#e0d8c8] pb-4 mb-8">
+        <div className="flex gap-2 border-b border-[#e0d8c8] pb-4 mb-6 sm:mb-8 overflow-x-auto no-scrollbar">
           {[
             { id: 'orders', label: `My Orders (${orders.length})`, icon: Package },
             { id: 'addresses', label: `Saved Addresses (${user.addresses.length})`, icon: MapPin },
@@ -290,7 +290,7 @@ export const AccountPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-2 px-4 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                className={`py-2 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'bg-[#2d5a61] text-white shadow-xs'
                     : 'text-[#666666] hover:bg-[#fdfaf5] hover:text-[#333333]'

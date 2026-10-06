@@ -8,23 +8,23 @@ interface OurStoryProps {
 
 export const OurStory: React.FC<OurStoryProps> = ({ onLearnMore }) => {
   return (
-    <section className="max-w-7xl mx-auto px-6 md:px-8 py-16">
-      <div className="bg-[#e8dfcf] rounded-[36px] md:rounded-[48px] overflow-hidden flex flex-col lg:flex-row shadow-sm border border-[#e0d8c8]">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-10 sm:py-16">
+      <div className="bg-[#e8dfcf] rounded-3xl sm:rounded-[36px] md:rounded-[48px] overflow-hidden flex flex-col lg:flex-row shadow-sm border border-[#e0d8c8]">
         {/* Left: Artisan Hands in Workshop */}
-        <div className="lg:w-1/2 relative min-h-[360px] lg:min-h-[520px]">
+        <div className="lg:w-1/2 relative min-h-[260px] sm:min-h-[360px] lg:min-h-[520px]">
           <img
             src={HERO_IMAGES.ourStory}
             alt="Artisan hands crafting delicate handmade jewelry on workshop bench"
             className="w-full h-full object-cover"
             loading="lazy"
           />
-          <div className="absolute top-6 left-6 bg-[#efe8dc]/85 backdrop-blur-xs py-1.5 px-4 rounded-full text-xs font-medium text-[#2d5a61] shadow-xs border border-[#e0d8c8]/60">
+          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 bg-[#efe8dc]/85 backdrop-blur-xs py-1.5 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-medium text-[#2d5a61] shadow-xs border border-[#e0d8c8]/60">
             Lahore Studio & Workshop
           </div>
         </div>
 
         {/* Right: Content & Craftsmanship values */}
-        <div className="lg:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
+        <div className="lg:w-1/2 p-5 sm:p-10 lg:p-16 flex flex-col justify-center">
           {/* Subheading */}
           <div className="flex items-center gap-2 text-[#2d5a61] italic font-serif text-lg md:text-xl mb-3">
             <span>Our Story</span>

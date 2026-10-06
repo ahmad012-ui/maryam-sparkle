@@ -336,10 +336,11 @@ export const Real3DProductViewer: React.FC<Real3DProductViewerProps> = ({
 
         {/* Interactive Helper Cue (Bottom Center - disappears on interaction) */}
         {!hasInteracted && (
-          <div className="absolute bottom-3 inset-x-0 flex justify-center pointer-events-none z-10 transition-opacity duration-500">
-            <div className="bg-[#2d5a61]/80 backdrop-blur-xs text-white text-[11px] font-medium px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 animate-pulse">
-              <Compass className="w-3 h-3" />
-              <span>Drag to rotate 3D jewelry • Pinch to zoom</span>
+          <div className="absolute bottom-3 inset-x-2 flex justify-center pointer-events-none z-10 transition-opacity duration-500">
+            <div className="bg-[#2d5a61]/80 backdrop-blur-xs text-white text-[10px] sm:text-[11px] font-medium px-2.5 sm:px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 animate-pulse text-center">
+              <Compass className="w-3 h-3 shrink-0" />
+              <span className="hidden xs:inline">Drag to rotate 3D jewelry • Pinch to zoom</span>
+              <span className="xs:hidden">Drag to rotate • Pinch to zoom</span>
             </div>
           </div>
         )}

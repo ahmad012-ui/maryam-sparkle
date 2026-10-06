@@ -261,7 +261,7 @@ export const Footer: React.FC<FooterProps> = () => {
       </div>
 
       {/* Bottom Row */}
-      <div className="border-t border-[#e0d8c8]/70 py-6 text-xs text-[#888888]">
+      <div className="border-t border-[#e0d8c8]/70 pt-6 pb-28 sm:pb-6 text-xs text-[#888888]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <p>
             &copy; {new Date().getFullYear()} Maryam Sparkle. All rights reserved.

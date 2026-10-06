@@ -198,23 +198,23 @@ export const CustomOrderPage: React.FC = () => {
         description="Design personalized bead bracelets, necklaces, and anklets with Maryam Sparkle in Pakistan."
         canonical="/custom-orders"
       />
-      <div className="max-w-4xl mx-auto px-6 md:px-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-10">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest font-semibold text-[#2d5a61] mb-2 bg-[#fdfaf5] px-4 py-1.5 rounded-full border border-[#e0d8c8]">
             <Sparkles className="w-3.5 h-3.5 text-[#D4B982]" />
             <span>Bespoke Atelier Service</span>
           </div>
-          <h1 className="font-serif text-3xl sm:text-5xl text-[#333333] mb-4">
+          <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl text-[#333333] mb-3 sm:mb-4">
             Design Your Custom Jewelry
           </h1>
-          <p className="text-sm md:text-base text-[#666666] max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm md:text-base text-[#666666] max-w-xl mx-auto leading-relaxed">
             Have a dream bead color palette, wedding favor idea, sketch, or personalized charm in mind? Maryam handcrafts one-of-a-kind bespoke pieces tailored to your style.
           </p>
         </div>
 
         {submitted ? (
-          <div className="bg-[#fdfaf5] rounded-3xl p-8 md:p-12 border border-[#e0d8c8] text-center shadow-sm animate-fade-in max-w-2xl mx-auto">
+          <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 border border-[#e0d8c8] text-center shadow-sm animate-fade-in max-w-2xl mx-auto">
             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-6 border border-emerald-200">
               <CheckCircle2 className="w-8 h-8" />
             </div>
@@ -267,9 +267,9 @@ export const CustomOrderPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 items-start">
             {/* Left Column: Form (8 cols) */}
-            <div className="lg:col-span-8 bg-[#fdfaf5] rounded-3xl p-6 md:p-10 border border-[#e0d8c8] shadow-xs">
+            <div className="lg:col-span-8 bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-10 border border-[#e0d8c8] shadow-xs">
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* 1. Jewelry Category */}
                 <div>

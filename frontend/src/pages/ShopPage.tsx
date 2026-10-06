@@ -188,11 +188,11 @@ export const ShopPage: React.FC<ShopPageProps> = ({
         </div>
 
         {/* Category Horizontal Filter Pills */}
-        <div className="flex items-center justify-center gap-2 md:gap-3 overflow-x-auto pb-4 mb-8 no-scrollbar">
+        <div className="flex items-center justify-start sm:justify-center gap-2 md:gap-3 overflow-x-auto pb-4 mb-8 no-scrollbar px-1">
           <button
             id="cat-all-btn"
             onClick={() => onSelectCategory(null)}
-            className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide whitespace-nowrap transition-all cursor-pointer ${
+            className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide whitespace-nowrap transition-all cursor-pointer shrink-0 ${
               selectedCategory === null
                 ? 'bg-[#2d5a61] text-white shadow-sm ring-2 ring-[#2d5a61]/30'
                 : 'bg-white/80 text-[#555555] hover:bg-[#e0d8c8] border border-[#e0d8c8]'
@@ -205,7 +205,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               key={cat.id}
               id={`cat-${cat.slug}-btn`}
               onClick={() => onSelectCategory(cat.slug)}
-              className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                 selectedCategory?.toLowerCase() === cat.slug.toLowerCase()
                   ? 'bg-[#2d5a61] text-white shadow-sm ring-2 ring-[#2d5a61]/30'
                   : 'bg-white/80 text-[#555555] hover:bg-[#e0d8c8] border border-[#e0d8c8]'
@@ -256,14 +256,14 @@ export const ShopPage: React.FC<ShopPageProps> = ({
           </div>
 
           {/* Right: Sort and Grid layout */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="w-4 h-4 text-[#666666] hidden sm:block" />
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <ArrowUpDown className="w-4 h-4 text-[#666666] hidden sm:block shrink-0" />
               <select
                 id="shop-sort-select"
                 value={selectedSort}
                 onChange={(e) => setSelectedSort(e.target.value as any)}
-                className="bg-[#efe8dc]/60 border border-[#e0d8c8] rounded-full px-3 py-2 text-xs sm:text-sm text-[#333333] focus:outline-none focus:ring-1 focus:ring-[#2d5a61] cursor-pointer"
+                className="w-full sm:w-auto bg-[#efe8dc]/60 border border-[#e0d8c8] rounded-full px-3 py-2 text-xs sm:text-sm text-[#333333] focus:outline-none focus:ring-1 focus:ring-[#2d5a61] cursor-pointer"
               >
                 <option value="featured">Featured & Bestsellers</option>
                 <option value="newest">New Arrivals</option>
@@ -523,9 +523,9 @@ export const ShopPage: React.FC<ShopPageProps> = ({
               </div>
             ) : (
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 ${
+                className={`grid grid-cols-2 sm:grid-cols-2 ${
                   gridCols === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
-                } gap-6 md:gap-8`}
+                } gap-3 sm:gap-6 md:gap-8`}
               >
                 {filteredProducts.map((product) => (
                   <ProductCard3D
@@ -545,7 +545,7 @@ export const ShopPage: React.FC<ShopPageProps> = ({
       </div>
 
       {/* Recently Viewed Drawer / Section */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 pb-16">
         <RecentlyViewedSection
           wishlistIds={wishlistIds}
           onAddToCart={(p) => onAddToCart(p)}

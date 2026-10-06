@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --breakpoint-xs: 440px;
+}
+
 @layer base {
   :root {
     --font-serif: 'Libre Caslon Text', Georgia, serif;
@@ -14,10 +18,25 @@
     --color-gold-shimmer: #d4b982;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: var(--color-ms-cream);
     color: var(--color-ms-text);
+    overflow-x: hidden;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #root {
+    overflow-x: hidden;
+    width: 100%;
+    min-width: 0;
   }
 
   h1, h2, h3, .font-serif {

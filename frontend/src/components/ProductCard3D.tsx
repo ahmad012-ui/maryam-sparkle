@@ -137,7 +137,7 @@ export const ProductCard3D: React.FC<ProductCard3DProps> = ({
           transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg)',
           transformStyle: 'preserve-3d',
         }}
-        className="bg-[#fdfaf5] rounded-2xl p-4 shadow-sm border border-[#e0d8c8]/70 group flex flex-col justify-between relative will-change-transform"
+        className="bg-[#fdfaf5] rounded-2xl p-3 sm:p-4 shadow-sm border border-[#e0d8c8]/70 group flex flex-col justify-between relative will-change-transform"
       >
         {/* Subtle Glare Specular Highlight Overlay */}
         <div
@@ -373,16 +373,16 @@ export const ProductCard3D: React.FC<ProductCard3DProps> = ({
         </div>
 
         {/* Product Details */}
-        <div className="p-5 flex flex-col justify-between" style={{ transform: 'translateZ(14px)' }}>
+        <div className="p-3.5 sm:p-5 flex flex-col justify-between" style={{ transform: 'translateZ(14px)' }}>
           <div>
             <div className="flex items-center justify-between text-xs text-[#888888] mb-1">
-              <span className="uppercase tracking-wider font-medium text-[10px] text-[#2d5a61]">
+              <span className="uppercase tracking-wider font-medium text-[9.5px] sm:text-[10px] text-[#2d5a61]">
                 {product.category}
               </span>
               {Boolean(product.rating && product.reviewsCount && product.reviewsCount > 0) && (
                 <div className="flex items-center gap-1 text-[#D4B982]">
-                  <Star className="w-3.5 h-3.5 fill-current" />
-                  <span className="text-[11px] font-semibold text-[#444444]">
+                  <Star className="w-3 sm:w-3.5 h-3 sm:h-3.5 fill-current" />
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-[#444444]">
                     {product.rating} ({product.reviewsCount})
                   </span>
                 </div>
@@ -391,24 +391,24 @@ export const ProductCard3D: React.FC<ProductCard3DProps> = ({
 
             <h3
               onClick={() => onQuickView(product)}
-              className="font-serif text-lg text-[#333333] group-hover:text-[#2d5a61] transition-colors cursor-pointer line-clamp-1 mb-1"
+              className="font-serif text-sm sm:text-base md:text-lg text-[#333333] group-hover:text-[#2d5a61] transition-colors cursor-pointer line-clamp-1 mb-1 font-medium"
             >
               {product.name}
             </h3>
 
-            <p className="text-xs text-[#666666] line-clamp-2 leading-relaxed mb-3">
+            <p className="text-[11px] sm:text-xs text-[#666666] line-clamp-2 leading-relaxed mb-3">
               {product.description}
             </p>
           </div>
 
           {/* Price & Add to Cart button */}
-          <div className="pt-3 border-t border-[#e0d8c8]/50 flex items-center justify-between">
-            <div className="flex items-baseline gap-2">
-              <span className="font-serif text-base md:text-lg font-normal text-[#2d5a61]">
+          <div className="pt-2.5 sm:pt-3 border-t border-[#e0d8c8]/50 flex items-center justify-between gap-2">
+            <div className="flex items-baseline gap-1.5 sm:gap-2">
+              <span className="font-serif text-sm sm:text-base md:text-lg font-normal text-[#2d5a61]">
                 Rs. {product.price.toLocaleString()}
               </span>
               {product.originalPrice && (
-                <span className="text-xs text-[#999999] line-through">
+                <span className="text-[10px] sm:text-xs text-[#999999] line-through">
                   Rs. {product.originalPrice.toLocaleString()}
                 </span>
               )}
@@ -417,7 +417,7 @@ export const ProductCard3D: React.FC<ProductCard3DProps> = ({
             <button
               id={`add-bag-btn-${product.id}`}
               onClick={handleAddClick}
-              className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white p-2.5 sm:px-4 sm:py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs hover:shadow-md cursor-pointer group/btn active:scale-95"
+              className="bg-[#2d5a61] hover:bg-[#1e3c41] text-white p-2 sm:px-4 sm:py-2 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs hover:shadow-md cursor-pointer group/btn active:scale-95 shrink-0"
               aria-label={`Add ${product.name} to Bag`}
             >
               <ShoppingBag className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />

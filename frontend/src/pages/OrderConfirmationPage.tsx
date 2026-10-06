@@ -71,26 +71,26 @@ export const OrderConfirmationPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#efe8dc] py-12 md:py-20">
-      <div className="max-w-4xl mx-auto px-6 md:px-10">
+    <div className="min-h-screen bg-[#efe8dc] py-8 sm:py-12 md:py-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-10">
         {/* Celebration Banner */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100 text-emerald-800 mb-6 shadow-sm border border-emerald-200">
-            <CheckCircle2 className="w-10 h-10" />
+        <div className="text-center mb-8 sm:mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-100 text-emerald-800 mb-4 sm:mb-6 shadow-sm border border-emerald-200">
+            <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10" />
           </div>
           <span className="text-xs uppercase tracking-widest font-semibold text-[#2d5a61] block mb-2">
             Handcrafted with Love in Karachi
           </span>
-          <h1 className="font-serif text-3xl sm:text-5xl text-[#333333] mb-4">
+          <h1 className="font-serif text-2xl sm:text-4xl md:text-5xl text-[#333333] mb-3 sm:mb-4">
             Thank You, {order.customer.fullName.split(' ')[0]}!
           </h1>
-          <p className="text-[#555555] max-w-lg mx-auto text-sm md:text-base leading-relaxed">
+          <p className="text-[#555555] max-w-lg mx-auto text-xs sm:text-sm md:text-base leading-relaxed">
             Your order has been confirmed and queued on the artisan's workbench. A confirmation SMS & email have been dispatched.
           </p>
         </div>
 
         {/* Order Identifier Card */}
-        <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-sm mb-8">
+        <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-sm mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e0d8c8]">
             <div>
               <span className="text-xs text-[#666666] block mb-1">Your Unique Order Tracking Number:</span>

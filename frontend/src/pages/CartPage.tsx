@@ -91,11 +91,11 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
         canonical="/cart"
         noindex={true}
       />
-      <div className="max-w-7xl mx-auto px-6 md:px-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#e0d8c8] mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pb-6 border-b border-[#e0d8c8] mb-6 sm:mb-8">
           <div>
-            <h1 className="font-serif text-3xl md:text-4xl text-[#333333]">Shopping Bag</h1>
+            <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#333333]">Shopping Bag</h1>
             <p className="text-xs md:text-sm text-[#666666] mt-1">
               You have {cart.reduce((c, i) => c + i.quantity, 0)} handcrafted {cart.reduce((c, i) => c + i.quantity, 0) === 1 ? 'piece' : 'pieces'} in your bag.
             </p>
@@ -131,7 +131,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
         </div>
 
         {/* 2-Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 items-start">
           {/* Left Column: Cart Items List (8 cols) */}
           <div className="lg:col-span-8 space-y-4">
             {cart.map((item) => {
@@ -139,10 +139,10 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
               return (
                 <div
                   key={itemKey}
-                  className="bg-[#fdfaf5] rounded-2xl p-4 sm:p-5 border border-[#e0d8c8] shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 justify-between transition-all hover:shadow-sm"
+                  className="bg-[#fdfaf5] rounded-2xl p-3.5 sm:p-5 border border-[#e0d8c8] shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3.5 sm:gap-6 justify-between transition-all hover:shadow-sm"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-[#efe8dc] shrink-0 border border-[#e0d8c8]">
+                  <div className="flex items-center gap-3.5 sm:gap-4 w-full sm:w-auto">
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-xl overflow-hidden bg-[#efe8dc] shrink-0 border border-[#e0d8c8]">
                       <img
                         src={item.product.image}
                         alt={item.product.name}
@@ -150,11 +150,11 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
                       />
                     </div>
 
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#2d5a61] bg-[#2d5a61]/10 px-2 py-0.5 rounded-md">
                         {item.product.category}
                       </span>
-                      <h3 className="font-serif text-base sm:text-lg text-[#333333] mt-1 font-medium">
+                      <h3 className="font-serif text-sm sm:text-lg text-[#333333] mt-1 font-medium truncate">
                         <Link to={`/product/${item.product.slug}`} className="hover:text-[#2d5a61] transition-colors">
                           {item.product.name}
                         </Link>
@@ -179,7 +179,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
                   </div>
 
                   {/* Right side controls on desktop */}
-                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-[#e0d8c8]">
+                  <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto pt-2.5 sm:pt-0 border-t sm:border-t-0 border-[#e0d8c8]">
                     {/* Quantity Counter */}
                     <div className="flex items-center bg-[#efe8dc]/70 border border-[#e0d8c8] rounded-xl overflow-hidden">
                       <button
@@ -225,7 +225,7 @@ export const CartPage: React.FC<CartPageProps> = ({ cart, onUpdateQuantity, onRe
 
           {/* Right Column: Order Summary (4 cols) */}
           <div className="lg:col-span-4">
-            <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-sm sticky top-24">
+            <div className="bg-[#fdfaf5] rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-sm sticky top-24">
               <h2 className="font-serif text-xl text-[#333333] mb-6 pb-4 border-b border-[#e0d8c8]">
                 Order Summary
               </h2>

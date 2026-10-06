@@ -98,24 +98,24 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative bg-[#fdfaf5] rounded-[32px] max-w-3xl w-full overflow-hidden shadow-2xl border border-[#e0d8c8] my-8 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
+      <div className="relative bg-[#fdfaf5] rounded-2xl sm:rounded-[32px] max-w-3xl w-full max-h-[92vh] overflow-y-auto md:overflow-hidden shadow-2xl border border-[#e0d8c8] my-auto animate-in fade-in zoom-in-95 duration-200">
         {/* Top Right Action Buttons (Share & Close) */}
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
           <button
             onClick={handleShare}
             className="p-2 bg-white/80 hover:bg-white text-[#333333] rounded-full transition-colors shadow-sm cursor-pointer"
             aria-label="Share product"
             title="Share product link"
           >
-            {copiedLink ? <Check className="w-5 h-5 text-green-600" /> : <Share2 className="w-5 h-5" />}
+            {copiedLink ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" /> : <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
           <button
             onClick={onClose}
             className="p-2 bg-white/80 hover:bg-white text-[#333333] rounded-full transition-colors shadow-sm cursor-pointer"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
@@ -134,7 +134,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           />
 
           {/* Right: Product Details & Customization Options */}
-          <div className="p-6 sm:p-8 flex flex-col justify-between max-h-[85vh] overflow-y-auto">
+          <div className="p-4 xs:p-5 sm:p-8 flex flex-col justify-between md:max-h-[85vh] md:overflow-y-auto">
             <div>
               {/* Category, Rating & Title Header with dedicated clearance for top-right action buttons */}
               <div className="pr-20 sm:pr-24 mb-3">

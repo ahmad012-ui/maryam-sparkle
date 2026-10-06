@@ -148,9 +148,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       />
 
       {/* Page Content & Background context */}
-      <div className="max-w-7xl mx-auto px-6 md:px-10 pt-8 pb-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 pt-6 sm:pt-8 pb-16">
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-xs text-[#888888] mb-8 overflow-x-auto whitespace-nowrap py-2">
+        <nav className="flex items-center gap-2 text-xs text-[#888888] mb-6 sm:mb-8 overflow-x-auto whitespace-nowrap py-2 no-scrollbar">
           <Link to="/" className="hover:text-[#2d5a61] transition-colors">
             Home
           </Link>
@@ -163,31 +163,31 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             {product.category}
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-[#bbb]" />
-          <span className="text-[#333333] font-medium truncate max-w-[200px] sm:max-w-none">
+          <span className="text-[#333333] font-medium truncate max-w-[140px] sm:max-w-none">
             {product.name}
           </span>
         </nav>
 
         {/* Quick Back to Collection Banner */}
-        <div className="bg-[#fdfaf5] border border-[#e0d8c8] rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 mb-12 shadow-2xs">
+        <div className="bg-[#fdfaf5] border border-[#e0d8c8] rounded-2xl p-4 sm:p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10 sm:mb-12 shadow-2xs">
           <div>
-            <h1 className="font-serif text-2xl sm:text-3xl text-[#333333] font-normal mb-1">
+            <h1 className="font-serif text-xl sm:text-2xl md:text-3xl text-[#333333] font-normal mb-1">
               {product.name}
             </h1>
             <p className="text-xs sm:text-sm text-[#666666]">
               Handcrafted in {product.category} • Rs. {product.price.toLocaleString()}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="bg-[#2d5a61] text-white px-6 py-2.5 rounded-full text-xs font-semibold hover:bg-[#1e3c41] transition-colors shadow-2xs cursor-pointer"
+              className="flex-1 sm:flex-initial text-center bg-[#2d5a61] text-white px-5 sm:px-6 py-2.5 rounded-full text-xs font-semibold hover:bg-[#1e3c41] transition-colors shadow-2xs cursor-pointer"
             >
               Open Piece Details
             </button>
             <Link
               to="/shop"
-              className="border border-[#e0d8c8] bg-white text-[#333333] px-5 py-2.5 rounded-full text-xs font-medium hover:border-[#2d5a61] hover:text-[#2d5a61] transition-colors"
+              className="flex-1 sm:flex-initial text-center border border-[#e0d8c8] bg-white text-[#333333] px-4 sm:px-5 py-2.5 rounded-full text-xs font-medium hover:border-[#2d5a61] hover:text-[#2d5a61] transition-colors"
             >
               Back to Shop
             </Link>
@@ -199,7 +199,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           <div className="mb-14">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-serif text-xl sm:text-2xl text-[#333333] font-medium">
+                <h3 className="font-serif text-lg sm:text-xl md:text-2xl text-[#333333] font-medium">
                   Complementary Creations
                 </h3>
                 <p className="text-xs text-[#666666] mt-0.5">
@@ -208,14 +208,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
               <Link
                 to={`/shop?category=${encodeURIComponent(product.category)}`}
-                className="text-xs font-semibold text-[#2d5a61] hover:text-[#1e3c41] flex items-center gap-1 group"
+                className="text-xs font-semibold text-[#2d5a61] hover:text-[#1e3c41] flex items-center gap-1 group shrink-0"
               >
                 <span>View More</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {relatedProducts.map((relProduct) => (
                 <ProductCard3D
                   key={relProduct.id}

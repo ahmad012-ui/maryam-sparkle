@@ -187,36 +187,36 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Center: Brand Logo (Mathematically Screen Centered) */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-center pointer-events-auto z-0 max-w-[42%] sm:max-w-none">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center text-center pointer-events-auto z-0 max-w-[48%] xs:max-w-none">
               <Link
                 to="/"
                 className="flex flex-col items-center justify-center focus:outline-none group cursor-pointer select-none"
                 aria-label="Maryam Sparkle Home"
               >
                 {/* Geometric Diamond Emblem */}
-                <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-[#2d5a61] mb-0.5 relative transition-transform duration-300 group-hover:rotate-45 shrink-0">
+                <div className="w-4.5 h-4.5 xs:w-5 xs:h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-[#2d5a61] mb-0.5 relative transition-transform duration-300 group-hover:rotate-45 shrink-0">
                   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <path d="M20 2L38 20L20 38L2 20L20 2Z" stroke="currentColor" strokeWidth="1.5" />
                     <path d="M20 8L32 20L20 32L8 20L20 8Z" stroke="currentColor" strokeWidth="1" />
                     <circle cx="20" cy="20" r="3.5" fill="currentColor" />
                   </svg>
                 </div>
-                <span className="font-serif text-sm sm:text-base md:text-xl tracking-[0.22em] sm:tracking-[0.25em] leading-none text-[#2d5a61] font-normal uppercase whitespace-nowrap">
+                <span className="font-serif text-xs xs:text-sm sm:text-base md:text-xl tracking-[0.2em] sm:tracking-[0.25em] leading-none text-[#2d5a61] font-normal uppercase whitespace-nowrap">
                   MARYAM
                 </span>
-                <span className="text-[6.5px] sm:text-[7.5px] md:text-[9px] tracking-[0.3em] uppercase text-[#666666] font-medium leading-none mt-0.5 whitespace-nowrap">
+                <span className="text-[6px] xs:text-[6.5px] sm:text-[7.5px] md:text-[9px] tracking-[0.28em] sm:tracking-[0.3em] uppercase text-[#666666] font-medium leading-none mt-0.5 whitespace-nowrap">
                   Sparkle
                 </span>
               </Link>
             </div>
 
             {/* Right: Minimalist Action Icons (Search, Wishlist, Bag) */}
-            <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 md:gap-3.5 z-10 shrink-0 text-sm text-[#333333]">
+            <div className="flex items-center justify-end gap-1 xs:gap-1.5 sm:gap-2.5 md:gap-3.5 z-10 shrink-0 text-sm text-[#333333]">
               {/* Search Trigger */}
               <button
                 id="search-header-btn"
                 onClick={onOpenSearch}
-                className="w-9 h-9 sm:w-auto sm:h-auto p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/70 hover:bg-white border border-[#e0d8c8]/80 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
+                className="w-8.5 h-8.5 xs:w-9 xs:h-9 sm:w-auto sm:h-auto p-1.5 xs:p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/70 hover:bg-white border border-[#e0d8c8]/80 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
                 aria-label="Search jewelry"
                 title="Search jewels"
               >
@@ -226,7 +226,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Wishlist Trigger */}
               <Link
                 to="/wishlist"
-                className="relative w-9 h-9 sm:w-auto sm:h-auto p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/70 hover:bg-white border border-[#e0d8c8]/80 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shadow-2xs"
+                className="relative hidden xs:flex w-8.5 h-8.5 xs:w-9 xs:h-9 sm:w-auto sm:h-auto p-1.5 xs:p-2 sm:p-2.5 rounded-full hover:text-[#2d5a61] bg-white/70 hover:bg-white border border-[#e0d8c8]/80 transition-colors focus:outline-none cursor-pointer items-center justify-center shadow-2xs"
                 aria-label="Wishlist"
                 title="Your Wishlist"
               >
@@ -242,7 +242,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="cart-header-btn"
                 onClick={onOpenCart}
-                className="relative w-9 h-9 sm:w-auto sm:h-auto p-2 sm:px-3.5 sm:py-2 rounded-full hover:text-[#2d5a61] bg-white/80 hover:bg-white border border-[#e0d8c8] transition-all focus:outline-none shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+                className="relative w-8.5 h-8.5 xs:w-9 xs:h-9 sm:w-auto sm:h-auto p-1.5 xs:p-2 sm:px-3.5 sm:py-2 rounded-full hover:text-[#2d5a61] bg-white/80 hover:bg-white border border-[#e0d8c8] transition-all focus:outline-none shadow-2xs cursor-pointer flex items-center justify-center gap-2"
                 aria-label="Shopping bag"
               >
                 <div className="relative flex items-center justify-center">

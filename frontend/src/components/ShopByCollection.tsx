@@ -129,11 +129,11 @@ export const ShopByCollection: React.FC<ShopByCollectionProps> = ({
   onSelectCategory,
 }) => {
   return (
-    <section className="max-w-7xl mx-auto px-6 md:px-8 py-16 bg-[#fdfaf5] mt-14 rounded-3xl border border-[#e0d8c8]/50 shadow-xs">
+    <section className="mx-2.5 xs:mx-3.5 sm:mx-6 lg:mx-auto max-w-7xl px-3 xs:px-4 sm:px-6 md:px-8 py-8 sm:py-14 bg-[#fdfaf5] mt-6 sm:mt-12 rounded-2xl sm:rounded-3xl border border-[#e0d8c8]/50 shadow-xs">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-4 mb-8 sm:mb-10">
         <div>
-          <h2 className="font-serif text-3xl md:text-4xl text-[#333333] decorative-sparkle">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#333333] decorative-sparkle">
             Shop by Collection
           </h2>
           <p className="text-xs md:text-sm text-[#666666] mt-1">
@@ -143,7 +143,7 @@ export const ShopByCollection: React.FC<ShopByCollectionProps> = ({
 
         <button
           onClick={() => onSelectCategory(null)}
-          className="text-sm font-medium text-[#2d5a61] hover:text-[#1e3c41] flex items-center group cursor-pointer"
+          className="text-xs sm:text-sm font-medium text-[#2d5a61] hover:text-[#1e3c41] flex items-center group cursor-pointer"
         >
           <span>View all collections</span>
           <ArrowRight className="w-4 h-4 ml-1.5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -151,7 +151,7 @@ export const ShopByCollection: React.FC<ShopByCollectionProps> = ({
       </div>
 
       {/* Grid of categories with subtle depth */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-5 md:gap-6">
         {categories.map((cat) => {
           const isSelected = selectedCategory === cat.slug;
           return (

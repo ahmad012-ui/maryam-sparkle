@@ -153,10 +153,7 @@ export const AskMaryamWidget: React.FC<AskMaryamWidgetProps> = ({
 
   return (
     <div
-      className="fixed z-40 right-4 sm:right-6 transition-all duration-300"
-      style={{
-        bottom: 'calc(98px + env(safe-area-inset-bottom, 0px))',
-      }}
+      className="fixed z-40 right-3.5 sm:right-6 bottom-[calc(84px+env(safe-area-inset-bottom,0px))] sm:bottom-6 transition-all duration-300"
     >
       {/* Floating Trigger Button */}
       {!isOpen && (

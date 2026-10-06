@@ -71,7 +71,7 @@ export const MobileDynamicIslandNav: React.FC<MobileDynamicIslandNavProps> = ({
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed left-1/2 -translate-x-1/2 z-40 sm:hidden w-[92%] max-w-[440px] h-[66px] rounded-[33px] bg-[#fdfaf5]/95 backdrop-blur-md border border-[#e0d8c8]/90 shadow-[0_12px_32px_-4px_rgba(45,90,97,0.18),0_4px_12px_rgba(0,0,0,0.06)] px-3 py-1.5 transition-all duration-300"
+      className="fixed left-1/2 -translate-x-1/2 z-40 sm:hidden w-[calc(100%-20px)] xs:w-[92%] max-w-[440px] h-[64px] xs:h-[66px] rounded-[33px] bg-[#fdfaf5]/95 backdrop-blur-md border border-[#e0d8c8]/90 shadow-[0_12px_32px_-4px_rgba(45,90,97,0.18),0_4px_12px_rgba(0,0,0,0.06)] px-2 xs:px-3 py-1.5 transition-all duration-300"
       style={{
         bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
       }}

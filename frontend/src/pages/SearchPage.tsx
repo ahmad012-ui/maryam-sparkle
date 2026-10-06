@@ -48,20 +48,20 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#efe8dc] py-10 md:py-16">
+    <div className="min-h-screen bg-[#efe8dc] py-8 sm:py-10 md:py-16">
       <SEO
         title={query ? `Search: "${query}"` : 'Search Handcrafted Jewelry'}
         description={`Discover handmade jewelry, beaded bracelets, delicate necklaces, and crystal pieces matching "${query || 'our collections'}" at Maryam Sparkle.`}
         canonical={query ? `/search?q=${encodeURIComponent(query)}` : '/search'}
         noindex={true}
       />
-      <div className="max-w-7xl mx-auto px-6 md:px-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10">
         {/* Search Input Banner */}
-        <div className="max-w-2xl mx-auto text-center mb-12">
+        <div className="max-w-2xl mx-auto text-center mb-8 sm:mb-12">
           <span className="text-xs uppercase tracking-widest font-semibold text-[#2d5a61] block mb-2">
             Artisan Catalog Search
           </span>
-          <h1 className="font-serif text-3xl sm:text-4xl text-[#333333] mb-6">
+          <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#333333] mb-4 sm:mb-6">
             Find Your Next Sparkle
           </h1>
 
@@ -161,13 +161,13 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 md:gap-6">
             {products.map((product) => {
               const isWishlisted = wishlistIds.includes(product.id);
               return (
                 <div
                   key={product.id}
-                  className="bg-[#fdfaf5] rounded-2xl p-4 border border-[#e0d8c8] shadow-xs flex flex-col justify-between hover:shadow-md transition-all group"
+                  className="bg-[#fdfaf5] rounded-2xl p-3 sm:p-4 border border-[#e0d8c8] shadow-xs flex flex-col justify-between hover:shadow-md transition-all group"
                 >
                   <div>
                     <div className="aspect-square rounded-xl overflow-hidden mb-3.5 relative bg-[#efe8dc]">

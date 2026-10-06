@@ -143,7 +143,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
       ref={containerRef}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative px-6 md:px-12 pt-10 md:pt-16 pb-20 md:pb-28 overflow-hidden bg-[#efe8dc] select-none"
+      className="relative px-4 sm:px-6 md:px-12 pt-8 sm:pt-12 md:pt-16 pb-16 sm:pb-20 md:pb-28 overflow-hidden bg-[#efe8dc] select-none"
     >
       {/* Background Wireframe Motif - Layer 0 (Counter-parallax) */}
       <div
@@ -158,27 +158,27 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
         </svg>
       </div>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         {/* Left Column: Typography & Action */}
-        <div className="z-10 lg:pr-6">
-          <div className="inline-flex items-center gap-2 text-[#2d5a61] italic font-serif text-lg md:text-xl mb-4">
+        <div className="z-10 lg:pr-6 text-center lg:text-left">
+          <div className="inline-flex items-center gap-2 text-[#2d5a61] italic font-serif text-base sm:text-lg md:text-xl mb-3 sm:mb-4 justify-center lg:justify-start">
             <span>Handmade with love</span>
             <Heart className="w-4 h-4 text-[#2d5a61]" fill="none" strokeWidth={1.5} />
           </div>
 
-          <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl leading-[1.08] text-[#333333] mb-6 tracking-tight">
+          <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.12] sm:leading-[1.08] text-[#333333] mb-4 sm:mb-6 tracking-tight">
             Colorful pieces,<br className="hidden sm:inline" />
-            <span className="italic font-normal">made just for you.</span>
+            <span className="italic font-normal"> made just for you.</span>
           </h1>
 
-          <p className="text-[#666666] text-base md:text-lg mb-8 max-w-md leading-relaxed font-light">
+          <p className="text-[#666666] text-sm sm:text-base md:text-lg mb-6 sm:mb-8 max-w-md mx-auto lg:mx-0 leading-relaxed font-light">
             Handmade jewellery crafted with love, inspired by nature and little moments of life.
           </p>
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 sm:gap-4">
             <button
               onClick={onShopNow}
-              className="inline-flex items-center justify-center bg-[#2d5a61] text-white px-8 py-3.5 rounded-full font-medium text-sm md:text-base hover:bg-[#1e3c41] transition-all duration-300 shadow-sm hover:shadow-md group cursor-pointer active:scale-95"
+              className="inline-flex items-center justify-center bg-[#2d5a61] text-white px-7 sm:px-8 py-3 sm:py-3.5 rounded-full font-medium text-sm md:text-base hover:bg-[#1e3c41] transition-all duration-300 shadow-sm hover:shadow-md group cursor-pointer active:scale-95"
             >
               <span>Shop Now</span>
               <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
@@ -186,7 +186,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
 
             <button
               onClick={onExploreNew}
-              className="inline-flex items-center justify-center text-[#2d5a61] border border-[#2d5a61]/40 px-6 py-3.5 rounded-full font-medium text-sm md:text-base hover:bg-[#2d5a61]/10 transition-colors cursor-pointer active:scale-95"
+              className="inline-flex items-center justify-center text-[#2d5a61] border border-[#2d5a61]/40 px-5 sm:px-6 py-3 sm:py-3.5 rounded-full font-medium text-sm md:text-base hover:bg-[#2d5a61]/10 transition-colors cursor-pointer active:scale-95"
             >
               Explore New In
             </button>
@@ -195,7 +195,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
 
         {/* Right Column: Hero 3D Visual Artwork Composition with Multi-Layer Depth */}
         <div
-          className="relative h-[480px] sm:h-[540px] md:h-[580px] flex justify-center items-center"
+          className="relative h-[340px] xs:h-[400px] sm:h-[500px] md:h-[560px] flex justify-center items-center w-full max-w-[440px] sm:max-w-[480px] mx-auto lg:max-w-none"
           style={{
             perspective: '1200px',
             transformStyle: 'preserve-3d',
@@ -204,7 +204,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
           {/* Main Arch Frame - Midground 3D Layer */}
           <div
             ref={archRef}
-            className="absolute top-0 right-4 sm:right-12 md:right-16 w-[280px] sm:w-[330px] md:w-[360px] h-[420px] sm:h-[480px] md:h-[510px] bg-[#e0d8c8] rounded-t-full overflow-hidden border-[6px] md:border-[8px] border-[#efe8dc] z-10 will-change-transform"
+            className="absolute top-0 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-8 md:right-16 w-[210px] xs:w-[250px] sm:w-[310px] md:w-[360px] h-[310px] xs:h-[360px] sm:h-[450px] md:h-[510px] bg-[#e0d8c8] rounded-t-full overflow-hidden border-[4px] sm:border-[6px] md:border-[8px] border-[#efe8dc] z-10 will-change-transform"
             style={{
               transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 15px)',
               boxShadow: '0 20px 30px -10px rgba(0,0,0,0.15)',
@@ -226,7 +226,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopNow, onExploreNew }) => {
           {/* Circular Offset Image - Foreground 3D Layer (Enhanced Parallax & Float) */}
           <div
             ref={circleRef}
-            className="absolute bottom-4 sm:bottom-6 right-0 sm:right-2 md:-right-4 translate-y-2 w-[210px] sm:w-[250px] md:w-[270px] h-[210px] sm:h-[250px] md:h-[270px] rounded-full overflow-hidden border-[6px] md:border-[8px] border-[#efe8dc] z-20 will-change-transform"
+            className="absolute bottom-1 xs:bottom-3 sm:bottom-6 right-2 xs:right-4 sm:right-2 md:-right-4 translate-y-1 sm:translate-y-2 w-[130px] xs:w-[160px] sm:w-[230px] md:w-[270px] h-[130px] xs:h-[160px] sm:h-[230px] md:h-[270px] rounded-full overflow-hidden border-[4px] sm:border-[6px] md:border-[8px] border-[#efe8dc] z-20 will-change-transform"
             style={{
               transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) translate3d(0, 0, 45px)',
               boxShadow: '0 25px 35px -8px rgba(45, 90, 97, 0.25)',

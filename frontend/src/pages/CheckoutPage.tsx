@@ -404,10 +404,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
   };
 
   return (
-    <div className="min-h-screen bg-[#efe8dc] py-10 md:py-16">
-      <div className="max-w-7xl mx-auto px-6 md:px-10">
+    <div className="min-h-screen bg-[#efe8dc] py-8 sm:py-10 md:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10">
         {/* Back Link & Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Link
             to="/cart"
             className="text-xs font-semibold text-[#2d5a61] hover:underline inline-flex items-center gap-1 mb-2"
@@ -415,9 +415,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
             <ChevronLeft className="w-4 h-4" />
             <span>Return to Shopping Bag</span>
           </Link>
-          <div className="flex items-center justify-between">
-            <h1 className="font-serif text-3xl md:text-4xl text-[#333333]">Secure Checkout</h1>
-            <div className="flex items-center gap-1.5 text-xs text-[#555555] bg-[#fdfaf5] px-3.5 py-1.5 rounded-full border border-[#e0d8c8]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+            <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#333333]">Secure Checkout</h1>
+            <div className="inline-flex items-center gap-1.5 text-xs text-[#555555] bg-[#fdfaf5] px-3.5 py-1.5 rounded-full border border-[#e0d8c8] self-start sm:self-auto">
               <Lock className="w-3.5 h-3.5 text-[#2d5a61]" />
               <span>SSL 256-Bit Encrypted</span>
             </div>
@@ -433,11 +433,11 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         )}
 
         <form onSubmit={handlePlaceOrder}>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 items-start">
             {/* Left Column: Form Fields (7 cols) */}
-            <div className="lg:col-span-7 space-y-8">
+            <div className="lg:col-span-7 space-y-6 sm:space-y-8">
               {/* Section 1: Customer Contact */}
-              <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-xs">
+              <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-xs">
                 <div className="flex items-center justify-between mb-5 pb-3 border-b border-[#e0d8c8]">
                   <h2 className="font-serif text-xl text-[#333333] flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-[#2d5a61] text-white text-xs flex items-center justify-center">1</span>
@@ -547,7 +547,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
               </div>
 
               {/* Section 2: Delivery Address & Shipping Method */}
-              <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-xs">
+              <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-xs">
                 <div className="flex items-center justify-between mb-5 pb-3 border-b border-[#e0d8c8]">
                   <h2 className="font-serif text-xl text-[#333333] flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-[#2d5a61] text-white text-xs flex items-center justify-center">2</span>
@@ -731,7 +731,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
               </div>
 
               {/* Section 3: Payment Method Architecture */}
-              <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-xs">
+              <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-xs">
                 <div className="flex items-center justify-between mb-5 pb-3 border-b border-[#e0d8c8]">
                   <h2 className="font-serif text-xl text-[#333333] flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-[#2d5a61] text-white text-xs flex items-center justify-center">3</span>
@@ -1158,7 +1158,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
 
             {/* Right Column: Order Review Summary (5 cols) */}
             <div className="lg:col-span-5">
-              <div className="bg-[#fdfaf5] rounded-3xl p-6 md:p-8 border border-[#e0d8c8] shadow-sm sticky top-24">
+              <div className="bg-[#fdfaf5] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-[#e0d8c8] shadow-sm sticky top-24">
                 <h2 className="font-serif text-xl text-[#333333] mb-4 pb-3 border-b border-[#e0d8c8]">
                   Order Summary ({activeCart.length})
                 </h2>

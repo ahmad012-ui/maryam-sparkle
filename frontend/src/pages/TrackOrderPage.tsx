@@ -275,7 +275,7 @@ export const TrackOrderPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="bg-[#efe8dc]/70 p-4 rounded-2xl border border-[#e0d8c8] text-right md:min-w-56">
+                <div className="bg-[#efe8dc]/70 p-4 rounded-2xl border border-[#e0d8c8] text-left sm:text-right md:min-w-56">
                   <span className="text-xs text-[#777777] block">Estimated Delivery</span>
                   <div className="font-serif text-lg font-bold text-emerald-800">
                     {activeOrder.estimatedDelivery}
@@ -287,58 +287,60 @@ export const TrackOrderPage: React.FC = () => {
               </div>
 
               {/* Progress Steps Visualizer */}
-              <div className="py-2">
-                {/* Step Labels */}
-                <div className="grid grid-cols-6 gap-1 sm:gap-2 text-center mb-4">
-                  {[
-                    { label: 'Confirmed', icon: CheckCircle2, step: 1 },
-                    { label: 'Crafting', icon: Sparkles, step: 2 },
-                    { label: 'Packaging', icon: Package, step: 3 },
-                    { label: 'In Transit', icon: Truck, step: 4 },
-                    { label: 'Out for Delivery', icon: MapPin, step: 5 },
-                    { label: 'Delivered', icon: Check, step: 6 },
-                  ].map((item) => {
-                    const isCompleted = activeOrder.currentStep >= item.step;
-                    const isCurrent = activeOrder.currentStep === item.step;
-                    const Icon = item.icon;
+              <div className="py-2 overflow-x-auto no-scrollbar">
+                <div className="min-w-[500px] sm:min-w-0">
+                  {/* Step Labels */}
+                  <div className="grid grid-cols-6 gap-1 sm:gap-2 text-center mb-4">
+                    {[
+                      { label: 'Confirmed', icon: CheckCircle2, step: 1 },
+                      { label: 'Crafting', icon: Sparkles, step: 2 },
+                      { label: 'Packaging', icon: Package, step: 3 },
+                      { label: 'In Transit', icon: Truck, step: 4 },
+                      { label: 'Out for Delivery', icon: MapPin, step: 5 },
+                      { label: 'Delivered', icon: Check, step: 6 },
+                    ].map((item) => {
+                      const isCompleted = activeOrder.currentStep >= item.step;
+                      const isCurrent = activeOrder.currentStep === item.step;
+                      const Icon = item.icon;
 
-                    return (
-                      <div key={item.step} className="flex flex-col items-center space-y-1.5">
-                        <div
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
-                            isCurrent
-                              ? 'bg-[#2d5a61] text-white ring-4 ring-[#2d5a61]/25 scale-110 shadow-md'
-                              : isCompleted
-                              ? 'bg-[#2d5a61] text-white'
-                              : 'bg-white text-gray-400 border border-gray-300'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      return (
+                        <div key={item.step} className="flex flex-col items-center space-y-1.5">
+                          <div
+                            className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
+                              isCurrent
+                                ? 'bg-[#2d5a61] text-white ring-4 ring-[#2d5a61]/25 scale-110 shadow-md'
+                                : isCompleted
+                                ? 'bg-[#2d5a61] text-white'
+                                : 'bg-white text-gray-400 border border-gray-300'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </div>
+                          <span
+                            className={`text-[10px] sm:text-xs leading-tight font-medium ${
+                              isCurrent
+                                ? 'text-[#2d5a61] font-bold'
+                                : isCompleted
+                                ? 'text-[#333333]'
+                                : 'text-gray-400'
+                            }`}
+                          >
+                            {item.label}
+                          </span>
                         </div>
-                        <span
-                          className={`text-[10px] sm:text-xs leading-tight font-medium ${
-                            isCurrent
-                              ? 'text-[#2d5a61] font-bold'
-                              : isCompleted
-                              ? 'text-[#333333]'
-                              : 'text-gray-400'
-                          }`}
-                        >
-                          {item.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
 
-                {/* Progress Bar Line */}
-                <div className="w-full bg-[#e0d8c8] h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-[#2d5a61] h-full transition-all duration-500 rounded-full"
-                    style={{
-                      width: `${((activeOrder.currentStep - 1) / 5) * 100}%`,
-                    }}
-                  />
+                  {/* Progress Bar Line */}
+                  <div className="w-full bg-[#e0d8c8] h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-[#2d5a61] h-full transition-all duration-500 rounded-full"
+                      style={{
+                        width: `${((activeOrder.currentStep - 1) / 5) * 100}%`,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
