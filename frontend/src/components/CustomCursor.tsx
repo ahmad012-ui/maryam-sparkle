@@ -2,72 +2,82 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BrandLogoMark } from './BrandLogoMark';
 
 /**
- * Custom Cursor Component for Maryam Sparkle
+ * Maryam Sparkle custom pointer.
  *
- * Uses the canonical vertical-square/diamond logo mark.
- * Runs on zero-latency, direct hardware-synchronous transforms (capturing mousemove).
- * Fully disabled on touch devices and respects prefers-reduced-motion.
+ * Desktop/trackpad: replaces the native pointer with the brand mark.
+ * Touch/tablet: shows the same mark while the user is touching/moving,
+ * without disabling native scrolling or gestures.
  */
 export const CustomCursor: React.FC = () => {
   const cursorRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<number | null>(null);
 
   const isVisible = useRef(false);
   const isClicking = useRef(false);
   const isOverInput = useRef(false);
-  const currentMode = useRef<'default' | 'interactive' | 'input'>('default');
-
+  const currentMode = useRef<'default' | 'interactive'>('default');
   const [isEnabled, setIsEnabled] = useState(false);
 
   useEffect(() => {
-    // Only enable on devices with fine pointer (mouse/trackpad), not touch screens
     const finePointerMedia = window.matchMedia('(pointer: fine)');
     const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const touchCapable = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-    if (!finePointerMedia.matches) {
-      setIsEnabled(false);
-      return;
+    setIsEnabled(!reducedMotionMedia.matches);
+
+    if (!reducedMotionMedia.matches && finePointerMedia.matches) {
+      document.documentElement.classList.add('has-custom-cursor');
     }
 
-    setIsEnabled(true);
-    document.documentElement.classList.add('has-custom-cursor');
+    const showCursor = (x: number, y: number, temporary = false) => {
+      const cursor = cursorRef.current;
+      if (!cursor) return;
 
-    // Immediate zero-latency pointer positioning (capture mode for earliest dispatch)
-    const handleMove = (e: MouseEvent) => {
-      const x = e.clientX;
-      const y = e.clientY;
+      cursor.style.transform = `translate3d(${x - 10}px, ${y - 10}px, 0)`;
+      isVisible.current = true;
 
-      if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate3d(${x - 10}px, ${y - 10}px, 0)`;
-        if (!isVisible.current) {
-          isVisible.current = true;
-          if (!isOverInput.current) {
-            cursorRef.current.style.opacity = '1';
+      if (!isOverInput.current || temporary) {
+        cursor.style.opacity = '1';
+      }
+
+      if (hideTimerRef.current !== null) {
+        window.clearTimeout(hideTimerRef.current);
+      }
+
+      if (temporary) {
+        hideTimerRef.current = window.setTimeout(() => {
+          if (!isClicking.current && cursorRef.current) {
+            cursorRef.current.style.opacity = '0';
+            isVisible.current = false;
           }
-        }
+        }, 900);
       }
     };
 
     const updateTransform = () => {
-      if (!innerRef.current) return;
-      if (isOverInput.current) return;
+      if (!innerRef.current || isOverInput.current) return;
 
-      const prefersReduced = reducedMotionMedia.matches;
-      let scale = 1.0;
+      let scale = 1;
       let rotation = 0;
 
       if (isClicking.current) {
         scale = 0.82;
       } else if (currentMode.current === 'interactive') {
         scale = 1.25;
-        rotation = prefersReduced ? 0 : 12;
+        rotation = reducedMotionMedia.matches ? 0 : 12;
       }
 
       innerRef.current.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
     };
 
-    const handlePointerDown = () => {
+    const handlePointerMove = (event: PointerEvent) => {
+      showCursor(event.clientX, event.clientY, event.pointerType === 'touch');
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
       isClicking.current = true;
+      showCursor(event.clientX, event.clientY, event.pointerType === 'touch');
       updateTransform();
     };
 
@@ -76,26 +86,16 @@ export const CustomCursor: React.FC = () => {
       updateTransform();
     };
 
-    const handleMouseLeave = () => {
-      isVisible.current = false;
-      if (cursorRef.current) {
+    const handlePointerCancel = () => {
+      isClicking.current = false;
+      if (cursorRef.current && touchCapable) {
         cursorRef.current.style.opacity = '0';
       }
+      updateTransform();
     };
 
-    const handleMouseEnter = (e: MouseEvent) => {
-      isVisible.current = true;
-      if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate3d(${e.clientX - 10}px, ${e.clientY - 10}px, 0)`;
-        if (!isOverInput.current) {
-          cursorRef.current.style.opacity = '1';
-        }
-      }
-    };
-
-    // Fast, lightweight event delegation (no expensive :has() selectors)
-    const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
+    const handlePointerOver = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
       if (!target) return;
 
       const isInput = Boolean(
@@ -105,56 +105,54 @@ export const CustomCursor: React.FC = () => {
       if (isInput !== isOverInput.current) {
         isOverInput.current = isInput;
         if (cursorRef.current) {
-          cursorRef.current.style.opacity = isInput ? '0' : (isVisible.current ? '1' : '0');
+          cursorRef.current.style.opacity = isInput ? '0' : isVisible.current ? '1' : '0';
         }
       }
 
       if (isInput) return;
 
       const isInteractive = Boolean(
-        target.closest('a, button, [role="button"], label[for], summary, [data-product-card], [data-category-card], .cursor-pointer')
+        target.closest(
+          'a, button, [role="button"], label[for], summary, [data-product-card], [data-category-card], .cursor-pointer'
+        )
       );
 
-      const nextMode = isInteractive ? 'interactive' : 'default';
-      if (currentMode.current !== nextMode) {
-        currentMode.current = nextMode;
-        updateTransform();
-      }
+      currentMode.current = isInteractive ? 'interactive' : 'default';
+      updateTransform();
     };
 
-    // Use capturing mousemove for instant response before other handlers
-    window.addEventListener('mousemove', handleMove, { capture: true, passive: true });
-    window.addEventListener('pointermove', handleMove, { capture: true, passive: true });
-    window.addEventListener('mousedown', handlePointerDown, { capture: true, passive: true });
-    window.addEventListener('mouseup', handlePointerUp, { capture: true, passive: true });
-    document.addEventListener('mouseover', handleMouseOver, { passive: true });
-    document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
+    const handlePointerLeave = () => {
+      if (cursorRef.current) cursorRef.current.style.opacity = '0';
+      isVisible.current = false;
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { capture: true, passive: true });
+    window.addEventListener('pointerdown', handlePointerDown, { capture: true, passive: true });
+    window.addEventListener('pointerup', handlePointerUp, { capture: true, passive: true });
+    window.addEventListener('pointercancel', handlePointerCancel, { capture: true, passive: true });
+    document.addEventListener('pointerover', handlePointerOver, { passive: true });
+    document.addEventListener('mouseleave', handlePointerLeave);
 
     return () => {
+      if (hideTimerRef.current !== null) window.clearTimeout(hideTimerRef.current);
       document.documentElement.classList.remove('has-custom-cursor');
-      window.removeEventListener('mousemove', handleMove, { capture: true });
-      window.removeEventListener('pointermove', handleMove, { capture: true });
-      window.removeEventListener('mousedown', handlePointerDown, { capture: true });
-      window.removeEventListener('mouseup', handlePointerUp, { capture: true });
-      document.removeEventListener('mouseover', handleMouseOver);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      document.removeEventListener('mouseenter', handleMouseEnter);
+      window.removeEventListener('pointermove', handlePointerMove, { capture: true });
+      window.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+      window.removeEventListener('pointerup', handlePointerUp, { capture: true });
+      window.removeEventListener('pointercancel', handlePointerCancel, { capture: true });
+      document.removeEventListener('pointerover', handlePointerOver);
+      document.removeEventListener('mouseleave', handlePointerLeave);
     };
   }, []);
 
-  if (!isEnabled) {
-    return null;
-  }
+  if (!isEnabled) return null;
 
   return (
     <div
       ref={cursorRef}
       aria-hidden="true"
       className="fixed top-0 left-0 pointer-events-none z-[999999] will-change-transform opacity-0"
-      style={{
-        transform: 'translate3d(-100px, -100px, 0)',
-      }}
+      style={{ transform: 'translate3d(-100px, -100px, 0)' }}
     >
       <div
         ref={innerRef}
