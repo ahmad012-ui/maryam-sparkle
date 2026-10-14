@@ -26,7 +26,6 @@ export interface Product {
   isNew?: boolean;
   careInstructions?: string;
   inStock: boolean;
-  // Future-ready 3D Model Architecture (.glb / .gltf)
   model3dUrl?: string;
   model3dPoster?: string;
   has3dModel?: boolean;
@@ -89,13 +88,14 @@ export interface OrderTimelineStep {
   current: boolean;
 }
 
-export type PaymentMethodId = 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer';
+export type PaymentMethodId = 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer' | 'card';
 
 export const PAYMENT_METHODS = {
   COD: 'cod',
   EASYPAISA: 'easypaisa',
   JAZZCASH: 'jazzcash',
   BANK_TRANSFER: 'bank_transfer',
+  CARD: 'card',
 } as const;
 
 export const ALLOWED_PAYMENT_METHODS: readonly PaymentMethodId[] = [
@@ -103,6 +103,7 @@ export const ALLOWED_PAYMENT_METHODS: readonly PaymentMethodId[] = [
   PAYMENT_METHODS.EASYPAISA,
   PAYMENT_METHODS.JAZZCASH,
   PAYMENT_METHODS.BANK_TRANSFER,
+  PAYMENT_METHODS.CARD,
 ] as const;
 
 export interface PaymentMethodOption {
@@ -175,4 +176,3 @@ export interface UserProfile {
   joinedDate: string;
   addresses: UserAddress[];
 }
-
