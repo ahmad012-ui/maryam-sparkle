@@ -28,7 +28,7 @@
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.18.3",
     "three": "^0.186.1",
-    "vite": "^6.2.3"
+    "vite": "^6.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
@@ -37,7 +37,7 @@
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3",
+    "vite": "^6.4.3",
     "@types/express": "^4.17.21"
   }
 }
