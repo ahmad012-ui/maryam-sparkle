@@ -3,6 +3,8 @@ import http from 'http';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { PRODUCTS } from './frontend/src/data/products';
 import dotenv from 'dotenv';
 
@@ -10,8 +12,53 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-app.use(express.json());
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+// Keep request bodies bounded so the public AI endpoint cannot be used for
+// oversized JSON/history payloads.
+app.use(express.json({ limit: '64kb' }));
+
+// Production HTTP hardening. The CSP explicitly allows the external image/font
+// hosts used by the storefront and the Supabase project used by the frontend.
+if (IS_PRODUCTION) {
+  app.use(
+    helmet({
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          baseUri: ["'self'"],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'self'"],
+          formAction: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+          connectSrc: [
+            "'self'",
+            'https://tfcuyfjyqqvononlvvdo.supabase.co',
+            'wss://tfcuyfjyqqvononlvvdo.supabase.co',
+          ],
+          workerSrc: ["'self'", 'blob:'],
+          upgradeInsecureRequests: [],
+        },
+      },
+    })
+  );
+}
+
+const chatRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many chat requests. Please try again later.' },
+});
 
 // API health endpoint
 app.get('/api/health', (_req, res) => {
@@ -64,10 +111,9 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
   const q = message.toLowerCase().trim();
   const isFirstTurn = !history || history.length === 0;
 
-  // 1. Sizing and wrist measurement inquiry
   if (q.includes('size') || q.includes('measure') || q.includes('wrist') || q.includes('inch') || q.includes('7 inch') || q.includes('6 inch') || q.includes('fit') || q.includes('tight')) {
     return {
-      reply: `Yes, absolutely! 🕊️ Every Maryam Sparkle bracelet can be custom-crafted to your exact wrist measurement (including 6.0", 6.5", 7.0", or any bespoke dimension) at **no extra charge**!\n\nTo ensure a perfect fit, simply measure your wrist snugly with a strip of paper against a ruler, and include your preferred size in the order notes during checkout or via our Custom Studio.`,
+      reply: `Yes, absolutely! 🕊️ Every Maryam Sparkle bracelet can be custom-crafted to your exact wrist measurement (including 6.0\", 6.5\", 7.0\", or any bespoke dimension) at **no extra charge**!\n\nTo ensure a perfect fit, simply measure your wrist snugly with a strip of paper against a ruler, and include your preferred size in the order notes during checkout or via our Custom Studio.`,
       recommendedProductIds: ['green-charm-bracelet', 'rose-quartz-serenity-bracelet'],
       suggestedActions: [
         { label: 'Open Custom Sizing Studio', action: 'navigate', payload: '/custom-orders' },
@@ -76,7 +122,6 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
     };
   }
 
-  // 2. Budget & gift query
   const priceMatch = q.match(/under\s*(?:rs\.?|pkr)?\s*(\d+)/i) || q.match(/(\d+)\s*(?:rs|rupees|budget)/i);
   if (priceMatch || q.includes('gift') || q.includes('present') || q.includes('sister') || q.includes('friend') || q.includes('eid')) {
     const budget = priceMatch ? parseInt(priceMatch[1], 10) : 2500;
@@ -94,7 +139,6 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
     };
   }
 
-  // 3. Gemstones, materials, or pearls
   if (q.includes('pearl') || q.includes('freshwater')) {
     const pearls = PRODUCTS.filter((p) => p.materials.some((m) => m.toLowerCase().includes('pearl')));
     return {
@@ -122,7 +166,6 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
     };
   }
 
-  // 4. Order tracking
   const orderMatch = q.match(/ms[- ]?([a-z0-9]{4,6})/i) || q.match(/\b(\d{4,6})\b/);
   if (orderMatch || q.includes('track') || q.includes('order status') || q.includes('parcel')) {
     const orderRef = orderMatch ? `MS-${orderMatch[1].toUpperCase()}` : '';
@@ -135,7 +178,6 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
     };
   }
 
-  // 5. Custom / Bespoke inquiries
   if (q.includes('custom') || q.includes('bespoke') || q.includes('initial') || q.includes('name')) {
     return {
       reply: `✨ **Maryam loves crafting custom bespoke pieces!**\n\nYou can select your personalized initial charm, choose custom bead shades, pick natural gemstone accents, and specify your exact wrist measurement in our studio designer:`,
@@ -147,7 +189,6 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
     };
   }
 
-  // 6. Conversational follow-ups (no looping canned greetings)
   if (isFirstTurn) {
     return {
       reply: `Salam & Welcome to Maryam Sparkle! 🕊️✨ I am Maryam, your studio jeweler and stylist. How can I guide you today? Ask about personalized gifts, gemstone meanings, wrist sizing, or tracking an order!`,
@@ -172,39 +213,44 @@ function generateSmartFallback(message: string, history: Array<{ sender: string;
 }
 
 // AI Chatbot Endpoint
-app.post('/api/chat', async (req, res) => {
-  const message = req.body?.message;
-  const history = req.body?.history;
+app.post('/api/chat', chatRateLimiter, async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const rawHistory = req.body?.history;
 
-  if (!message || typeof message !== 'string') {
+  if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
+  if (message.length > 4000) {
+    return res.status(413).json({ error: 'Message is too long.' });
+  }
+
+  const history: Array<{ sender: 'user' | 'model'; text: string }> = Array.isArray(rawHistory)
+    ? rawHistory
+        .filter((h): h is { sender: 'user' | 'model'; text: string } =>
+          !!h && (h.sender === 'user' || h.sender === 'model') && typeof h.text === 'string'
+        )
+        .slice(-6)
+        .map((h) => ({ sender: h.sender, text: h.text.slice(0, 2000) }))
+    : [];
 
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (apiKey) {
-    // Format chat contents ensuring alternating roles: user, model, user, ...
     const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
-    if (Array.isArray(history)) {
-      // Filter history so the first message is always from 'user'
-      let startIndex = history.findIndex((h) => h.sender === 'user');
-      if (startIndex !== -1) {
-        const validSlice = history.slice(startIndex, startIndex + 6);
-        for (const h of validSlice) {
-          if (h.sender && h.text) {
-            const role = h.sender === 'user' ? 'user' : 'model';
-            if (contents.length > 0 && contents[contents.length - 1].role === role) {
-              contents[contents.length - 1].parts[0].text += '\n' + h.text;
-            } else {
-              contents.push({ role, parts: [{ text: h.text }] });
-            }
-          }
+    let startIndex = history.findIndex((h) => h.sender === 'user');
+    if (startIndex !== -1) {
+      const validSlice = history.slice(startIndex, startIndex + 6);
+      for (const h of validSlice) {
+        const role = h.sender;
+        if (contents.length > 0 && contents[contents.length - 1].role === role) {
+          contents[contents.length - 1].parts[0].text += '\n' + h.text;
+        } else {
+          contents.push({ role, parts: [{ text: h.text }] });
         }
       }
     }
 
-    // Append latest user message
     if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
       contents[contents.length - 1].parts[0].text += '\n' + message;
     } else {
@@ -212,7 +258,6 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    // gemini-3.1-flash-lite provides reliable low-latency responses with high availability
     const candidateModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest'];
 
     for (const model of candidateModels) {
@@ -228,29 +273,24 @@ app.post('/api/chat', async (req, res) => {
 
         const rawText = response.text || '';
         try {
-          const parsed = JSON.parse(rawText);
-          return res.json(parsed);
+          return res.json(JSON.parse(rawText));
         } catch {
           const clean = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-          const parsed = JSON.parse(clean);
-          return res.json(parsed);
+          return res.json(JSON.parse(clean));
         }
       } catch {
-        // Silently advance to next candidate model or smart fallback without stderr noise
+        // Advance to the next candidate model or the local fallback.
       }
     }
   }
 
-  // Graceful smart fallback ensuring user always gets a direct, non-looping response
-  const fallback = generateSmartFallback(message, history);
-  return res.json(fallback);
+  return res.json(generateSmartFallback(message, history));
 });
 
 async function startServer() {
   const server = http.createServer(app);
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  if (!IS_PRODUCTION) {
     const isHmrDisabled = process.env.DISABLE_HMR === 'true';
     const vite = await createViteServer({
       server: {
