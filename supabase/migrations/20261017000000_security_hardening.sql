@@ -6,6 +6,11 @@ drop policy if exists reviews_own_insert on public.reviews;
 create policy reviews_own_insert on public.reviews
   for insert to authenticated
   with check (user_id = auth.uid() and status = 'pending');
+drop policy if exists reviews_own_update on public.reviews;
+create policy reviews_own_update on public.reviews
+  for update to authenticated
+  using (user_id = auth.uid() and status = 'pending')
+  with check (user_id = auth.uid() and status = 'pending');
 
 -- 2) Guest tracking: throttle repeated attempts and return only tracking-safe data.
 create table if not exists public.guest_tracking_attempts (
