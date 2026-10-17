@@ -39,7 +39,7 @@ begin
   end if;
 
   v_identifier := case when v_email <> '' then 'email:' || v_email else 'phone:' || v_phone end;
-  v_key := encode(digest(v_identifier, 'sha256'), 'hex');
+  v_key := md5(v_identifier);
 
   insert into public.guest_tracking_attempts(bucket_key, window_started_at, attempt_count)
   values (v_key, date_trunc('minute', now()), 1)
