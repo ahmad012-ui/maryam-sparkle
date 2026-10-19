@@ -37,8 +37,8 @@ const categoryName = (slug?: string | null): AdminProduct['category'] => {
   return 'Bracelets';
 };
 const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-const paymentMethod = (v?: string): AdminOrder['paymentMethod'] => v === 'easypaisa' ? 'Easypaisa' : v === 'jazzcash' ? 'JazzCash' : v === 'bank_transfer' ? 'Bank Transfer' : 'COD';
-const dbPaymentMethod = (v: AdminOrder['paymentMethod']) => v === 'Easypaisa' ? 'easypaisa' : v === 'JazzCash' ? 'jazzcash' : v === 'Bank Transfer' ? 'bank_transfer' : 'cod';
+const paymentMethod = (v?: string): AdminOrder['paymentMethod'] => v === 'easypaisa' ? 'Easypaisa' : v === 'jazzcash' ? 'JazzCash' : v === 'bank_transfer' ? 'Bank Transfer' : v === 'safepay' ? 'Safepay' : 'COD';
+const dbPaymentMethod = (v: AdminOrder['paymentMethod']) => v === 'Easypaisa' ? 'easypaisa' : v === 'JazzCash' ? 'jazzcash' : v === 'Bank Transfer' ? 'bank_transfer' : v === 'Safepay' ? 'safepay' : 'cod';
 const orderStatus = (v?: string): AdminOrder['orderStatus'] => {
   switch ((v || '').toLowerCase()) {
     case 'confirmed': return 'Confirmed'; case 'processing': return 'Processing'; case 'shipped': return 'Shipped';

@@ -14,6 +14,7 @@ import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
+import { PaymentResultPage } from './pages/PaymentResultPage';
 import { WishlistPage } from './pages/WishlistPage';
 import { SearchPage } from './pages/SearchPage';
 import { AccountPage } from './pages/AccountPage';
@@ -280,6 +281,16 @@ function MainApp() {
     setCartItems([]);
   };
 
+  // Clear the cart only after the server verifies a successful Safepay payment.
+  useEffect(() => {
+    const handleSafepayPaymentConfirmed = () => {
+      setCartItems([]);
+      void cartService.clearCart().catch((err) => console.warn('Cart cleanup after Safepay payment failed:', err));
+    };
+    window.addEventListener('safepay-payment-confirmed', handleSafepayPaymentConfirmed);
+    return () => window.removeEventListener('safepay-payment-confirmed', handleSafepayPaymentConfirmed);
+  }, []);
+
   // Wishlist operations
   const handleToggleWishlist = async (product: Product) => {
     // Optimistic UI update
@@ -421,6 +432,10 @@ function MainApp() {
           <Route
             path="/order-confirmation"
             element={<OrderConfirmationPage />}
+          />
+          <Route
+            path="/payment-result"
+            element={<PaymentResultPage />}
           />
           <Route
             path="/wishlist"

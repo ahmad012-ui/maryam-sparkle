@@ -88,12 +88,13 @@ function mapSupabaseOrderToOrder(so: Record<string, any>): Order {
   const paymentMethodKey: PaymentMethodId =
     so.payment_method === 'jazzcash' ? PAYMENT_METHODS.JAZZCASH :
     so.payment_method === 'easypaisa' ? PAYMENT_METHODS.EASYPAISA :
-    so.payment_method === 'bank_transfer' ? PAYMENT_METHODS.BANK_TRANSFER : PAYMENT_METHODS.COD;
+    so.payment_method === 'bank_transfer' ? PAYMENT_METHODS.BANK_TRANSFER : so.payment_method === 'safepay' ? PAYMENT_METHODS.SAFEPAY : PAYMENT_METHODS.COD;
   const paymentTitles: Record<PaymentMethodId, string> = {
     [PAYMENT_METHODS.COD]: 'Cash on Delivery (COD)',
     [PAYMENT_METHODS.EASYPAISA]: 'EasyPaisa Mobile Account',
     [PAYMENT_METHODS.JAZZCASH]: 'JazzCash Mobile Account',
     [PAYMENT_METHODS.BANK_TRANSFER]: 'Direct Bank Transfer',
+    [PAYMENT_METHODS.SAFEPAY]: 'Safepay Secure Online Payment',
   };
 
   return {

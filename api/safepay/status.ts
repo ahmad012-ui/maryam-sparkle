@@ -1,0 +1,86 @@
+import { createClient } from '@supabase/supabase-js';
+import { env } from 'node:process';
+
+async function safepayRequest(host: string, path: string, secret: string, method: 'GET' | 'POST', body?: Record<string, unknown>) {
+  const response = await fetch(`${host}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-SFPY-MERCHANT-SECRET': secret },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok === false || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
+    throw new Error(`Safepay API request failed (${response.status}).`);
+  }
+  return payload;
+}
+
+const json = (res: any, status: number, body: Record<string, unknown>) => {
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(status).json(body);
+};
+
+export default async function handler(req: any, res: any) {
+  if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
+  const secret = env.SAFEPAY_SECRET_KEY;
+  const serviceRole = env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  if (!secret || !serviceRole || !supabaseUrl) return json(res, 503, { error: 'Payment status is not configured.' });
+
+  const orderNumber = typeof req.body?.orderNumber === 'string' ? req.body.orderNumber : '';
+  const tracker = typeof req.body?.tracker === 'string' ? req.body.tracker : '';
+  if (!/^MS-[A-Z0-9-]{3,30}$/i.test(orderNumber) || !/^track_[a-zA-Z0-9-]+$/.test(tracker)) {
+    return json(res, 400, { error: 'Invalid payment reference.' });
+  }
+
+  const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: order, error: orderError } = await admin.from('orders')
+    .select('id, order_number, total, payment_status')
+    .eq('order_number', orderNumber)
+    .maybeSingle();
+  if (orderError || !order) return json(res, 404, { error: 'Order not found.' });
+
+  const { data: payment, error: paymentError } = await admin.from('payments')
+    .select('id, order_id, transaction_reference, method, status')
+    .eq('order_id', order.id)
+    .eq('method', 'safepay')
+    .eq('transaction_reference', tracker)
+    .maybeSingle();
+  if (paymentError || !payment) return json(res, 403, { error: 'Payment reference does not match this order.' });
+  if (order.payment_status === 'paid') return json(res, 200, { status: 'paid', orderNumber });
+
+  try {
+    const environment = env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+    const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
+    const response = await safepayRequest(host, `/reporter/api/v1/payments/${encodeURIComponent(tracker)}`, secret, 'GET');
+    const data = response?.data || {};
+    // The raw Reporter API returns the tracker as data; SDK examples wrap it as data.tracker.
+    const trackerData = data?.tracker || data;
+    const state = trackerData?.state || 'TRACKER_STARTED';
+
+    if (state === 'TRACKER_ENDED') {
+      const baseAmount = trackerData?.purchase_totals?.base_amount;
+      const actualAmount = Number(baseAmount?.amount);
+      if (baseAmount?.currency !== 'PKR' || !Number.isFinite(actualAmount) || actualAmount !== Math.round(Number(order.total) * 100)) {
+        console.error('Safepay status amount mismatch for order:', orderNumber);
+        return json(res, 409, { status: 'pending', error: 'Payment verification is still pending. Please contact support if you were charged.' });
+      }
+
+      const now = new Date().toISOString();
+      const { error: updatePaymentError } = await admin.from('payments')
+        .update({ status: 'paid', paid_at: now, updated_at: now }).eq('id', payment.id);
+      if (updatePaymentError) throw updatePaymentError;
+      const { error: updateOrderError } = await admin.from('orders')
+        .update({ payment_status: 'paid', updated_at: now }).eq('id', order.id);
+      if (updateOrderError) throw updateOrderError;
+      return json(res, 200, { status: 'paid', orderNumber });
+    }
+
+    if (state === 'TRACKER_CANCELLED' || state === 'TRACKER_EXPIRED') {
+      return json(res, 200, { status: 'cancelled', orderNumber });
+    }
+    return json(res, 200, { status: 'pending', orderNumber });
+  } catch (error) {
+    console.error('Safepay status check failed:', error);
+    return json(res, 502, { status: 'pending', error: 'Could not verify payment yet.' });
+  }
+}

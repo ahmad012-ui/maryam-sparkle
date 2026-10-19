@@ -183,13 +183,11 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
                   Chat directly with Maryam for instant sizing advice, gemstone recommendations, or custom photo previews before dispatch.
                 </p>
                 <a
-                  href="https://wa.me/923001234567?text=Hi%20Maryam!%20I%20have%20an%20inquiry%20about%20Maryam%20Sparkle%20jewelry"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#contact-form"
                   className="inline-flex items-center gap-2 bg-white text-emerald-950 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold hover:bg-emerald-50 transition-colors shadow-xs"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-700" />
-                  <span>Chat on WhatsApp (+92 300 1234567)</span>
+                  <span>Send us a message</span>
                 </a>
               </div>
             </div>
@@ -204,9 +202,9 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
                 <li className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-[#2d5a61] shrink-0 mt-0.5" />
                   <div>
-                    <span className="block text-xs font-semibold text-[#333333] uppercase">Call or SMS</span>
-                    <a href="tel:+923001234567" className="hover:text-[#2d5a61] transition-colors">
-                      +92 300 1234567
+                    <span className="block text-xs font-semibold text-[#333333] uppercase">Contact Form</span>
+                    <a href="#contact-form" className="hover:text-[#2d5a61] transition-colors">
+                      Send your inquiry using the form on this page
                     </a>
                   </div>
                 </li>
@@ -283,7 +281,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ onOpenCustomOrder }) =
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              <form id="contact-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-[#444444] uppercase mb-1.5">

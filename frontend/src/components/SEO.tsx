@@ -50,8 +50,8 @@ export const SEO: React.FC<SEOProps> = ({
   const currentUrl =
     typeof window !== 'undefined'
       ? canonical
-        ? `${window.location.origin}${canonical.startsWith('/') ? canonical : `/${canonical}`}`
-        : window.location.href
+        ? new URL(canonical.startsWith('http') ? canonical : canonical.startsWith('/') ? canonical : `/${canonical}`, window.location.origin).toString()
+        : `${window.location.origin}${window.location.pathname}`
       : '';
 
   // Generate structured data
@@ -109,7 +109,7 @@ export const SEO: React.FC<SEOProps> = ({
       description: DEFAULT_DESCRIPTION,
       image: DEFAULT_IMAGE,
       currenciesAccepted: 'PKR',
-      paymentAccepted: 'Cash, Bank Transfer, JazzCash, EasyPaisa',
+      paymentAccepted: 'Cash on Delivery, Safepay',
       priceRange: '₨₨',
       address: {
         '@type': 'PostalAddress',

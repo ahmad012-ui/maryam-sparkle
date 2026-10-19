@@ -489,7 +489,7 @@ export const FAQS: FAQItem[] = [
   {
     id: 'faq-4',
     question: 'What payment methods do you accept?',
-    answer: 'We support Cash on Delivery (COD) across Pakistan, EasyPaisa, JazzCash mobile accounts, and direct Online Bank Transfer.',
+    answer: 'We currently offer Cash on Delivery (COD) and secure online payment through Safepay.',
     category: 'Payments & Returns'
   },
   {

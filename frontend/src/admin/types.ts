@@ -23,7 +23,7 @@ export interface AdminProduct {
 export interface AdminOrder {
   id: string; orderNumber: string; date: string; customerName: string; customerEmail: string; customerPhone: string; city: string; address: string;
   items: { productId: string; productName: string; image: string; quantity: number; price: number; size?: string; finish?: string }[];
-  totalAmount: number; paymentMethod: 'COD' | 'JazzCash' | 'Easypaisa' | 'Bank Transfer'; paymentStatus: 'Pending' | 'Paid';
+  totalAmount: number; paymentMethod: 'COD' | 'JazzCash' | 'Easypaisa' | 'Bank Transfer' | 'Safepay'; paymentStatus: 'Pending' | 'Paid';
   orderStatus: 'Placed' | 'Confirmed' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled'; courierName?: string; trackingNumber?: string; notes?: string;
 }
 
