@@ -112,6 +112,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [pendingSafepayOrder, setPendingSafepayOrder] = useState<Order | null>(null);
 
   // Clean up Object URL on unmount
   useEffect(() => {
@@ -353,7 +354,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
 
       const isManualPayment = [PAYMENT_METHODS.EASYPAISA, PAYMENT_METHODS.JAZZCASH, PAYMENT_METHODS.BANK_TRANSFER].includes(formData.paymentMethod);
 
-      const newOrder: Order = await orderService.createOrder({
+      const newOrder: Order = (formData.paymentMethod === PAYMENT_METHODS.SAFEPAY && pendingSafepayOrder)
+        ? pendingSafepayOrder
+        : await orderService.createOrder({
         customer: {
           fullName: formData.fullName,
           email: formData.email,
@@ -389,6 +392,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
       });
 
       if (formData.paymentMethod === PAYMENT_METHODS.SAFEPAY) {
+        setPendingSafepayOrder(newOrder);
         const response = await fetch('/api/safepay/create-checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -403,8 +407,6 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         if (!response.ok || typeof result.checkoutUrl !== 'string') {
           throw new Error(result.error || 'Secure payment could not be started. Your order remains pending; please retry or contact support before placing another order.');
         }
-        await cartService.clearCart();
-        onClearCart();
         window.location.assign(result.checkoutUrl);
         return;
       }
