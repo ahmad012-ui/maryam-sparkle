@@ -49,6 +49,7 @@ export const PAYMENT_METHOD_TITLES: Record<PaymentMethodId, string> = {
   [PAYMENT_METHODS.EASYPAISA]: 'EasyPaisa Mobile Account',
   [PAYMENT_METHODS.JAZZCASH]: 'JazzCash Mobile Account',
   [PAYMENT_METHODS.BANK_TRANSFER]: 'Direct Bank Transfer',
+  [PAYMENT_METHODS.SAFEPAY]: 'Safepay Secure Online Payment',
 };
 
 interface CheckoutPageProps {
@@ -323,8 +324,8 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
       errors.postalCode = 'Postal code must be 4 to 6 digits';
     }
 
-    // Strict validation for Non-COD payment methods (Easypaisa, JazzCash, Bank Transfer)
-    if (formData.paymentMethod !== PAYMENT_METHODS.COD) {
+    // Manual transfer methods require a reference and proof; Safepay handles card details on its hosted page.
+    if ([PAYMENT_METHODS.EASYPAISA, PAYMENT_METHODS.JAZZCASH, PAYMENT_METHODS.BANK_TRANSFER].includes(formData.paymentMethod)) {
       if (!formData.transactionReference.trim()) {
         errors.transactionReference = 'Transaction/Reference ID is required';
       }
@@ -350,7 +351,7 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
           ? 'Express Courier (1-2 Days)'
           : 'Standard Tracked Delivery (2-4 Days)';
 
-      const isNonCod = formData.paymentMethod !== PAYMENT_METHODS.COD;
+      const isManualPayment = [PAYMENT_METHODS.EASYPAISA, PAYMENT_METHODS.JAZZCASH, PAYMENT_METHODS.BANK_TRANSFER].includes(formData.paymentMethod);
 
       const newOrder: Order = await orderService.createOrder({
         customer: {
@@ -374,10 +375,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         paymentMethod: {
           id: formData.paymentMethod,
           title: PAYMENT_METHOD_TITLES[formData.paymentMethod],
-          instructions: isNonCod ? `Ref: ${formData.transactionReference.trim()}` : undefined
+          instructions: isManualPayment ? `Ref: ${formData.transactionReference.trim()}` : undefined
         },
-        transactionReference: isNonCod ? formData.transactionReference.trim() : undefined,
-        proofOfPaymentUrl: isNonCod ? proofOfPaymentUrl.trim() : undefined,
+        transactionReference: isManualPayment ? formData.transactionReference.trim() : undefined,
+        proofOfPaymentUrl: isManualPayment ? proofOfPaymentUrl.trim() : undefined,
         items: [...activeCart],
         subtotal,
         shippingCost: shippingFee,
@@ -386,6 +387,27 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
         total,
         notes: formData.notes
       });
+
+      if (formData.paymentMethod === PAYMENT_METHODS.SAFEPAY) {
+        const response = await fetch('/api/safepay/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: newOrder.id,
+            orderNumber: newOrder.orderNumber,
+            email: formData.email.trim().toLowerCase(),
+            phone: formData.phone.trim()
+          })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || typeof result.checkoutUrl !== 'string') {
+          throw new Error(result.error || 'Secure payment could not be started. Your order remains pending; please retry or contact support before placing another order.');
+        }
+        await cartService.clearCart();
+        onClearCart();
+        window.location.assign(result.checkoutUrl);
+        return;
+      }
 
       // Clear the user's active cart in backend and local state
       await cartService.clearCart();
@@ -857,10 +879,50 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, onClearCart })
                       </p>
                     </div>
                   </label>
+
+                  {/* Safepay hosted checkout */}
+                  <label
+                    className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${
+                      formData.paymentMethod === PAYMENT_METHODS.SAFEPAY
+                        ? 'border-[#2d5a61] bg-[#efe8dc]/50 ring-2 ring-[#2d5a61]/20'
+                        : 'border-[#e0d8c8] bg-white/60 hover:bg-[#efe8dc]/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value={PAYMENT_METHODS.SAFEPAY}
+                      checked={formData.paymentMethod === PAYMENT_METHODS.SAFEPAY}
+                      onChange={() => setFormData({ ...formData, paymentMethod: PAYMENT_METHODS.SAFEPAY, transactionReference: '' })}
+                      className="mt-0.5 text-[#2d5a61]"
+                    />
+                    <div className="flex-1 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-[#333333] flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-[#2d5a61]" />
+                          Safepay — Secure Online Payment
+                        </span>
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">Secure checkout</span>
+                      </div>
+                      <p className="text-[11px] text-[#666666] mt-1">
+                        Pay on Safepay’s encrypted checkout page. Card details are entered directly with the payment provider and never stored by Maryam Sparkle.
+                      </p>
+                    </div>
+                  </label>
                 </div>
 
-                {/* Non-COD Payment Details & Proof Upload Section */}
-                {formData.paymentMethod !== PAYMENT_METHODS.COD ? (
+                {/* Payment details: hosted Safepay vs manual transfer */}
+                {formData.paymentMethod === PAYMENT_METHODS.SAFEPAY ? (
+                  <div className="mt-5 p-5 bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-2xl space-y-2">
+                    <div className="flex items-center gap-2 text-[#2d5a61] font-semibold text-sm">
+                      <ShieldCheck className="w-4 h-4" /> Secure hosted checkout
+                    </div>
+                    <p className="text-xs text-[#555555] leading-relaxed">
+                      You’ll be redirected to Safepay to complete your payment. Your order remains pending until Safepay confirms the payment.
+                    </p>
+                    <p className="text-[11px] text-[#777777]">No card number, expiry date, or CVV is collected on this website.</p>
+                  </div>
+                ) : formData.paymentMethod !== PAYMENT_METHODS.COD ? (
                   <div className="mt-5 p-5 bg-[#efe8dc]/40 border border-[#e0d8c8] rounded-2xl space-y-4">
                     {/* Method-specific transfer info box */}
                     {formData.paymentMethod === PAYMENT_METHODS.EASYPAISA && (
