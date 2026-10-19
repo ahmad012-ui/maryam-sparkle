@@ -1,5 +1,33 @@
-import Safepay from '@sfpy/node-core';
 import { createClient } from '@supabase/supabase-js';
+
+async function safepayRequest(host: string, path: string, secret: string, method: 'GET' | 'POST', body?: Record<string, unknown>) {
+  const response = await fetch(`${host}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-SFPY-MERCHANT-SECRET': secret },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
+    throw new Error(`Safepay API request failed (${response.status}).`);
+  }
+  return payload;
+}
+
+function buildCheckoutUrl(environment: 'sandbox' | 'production', tracker: string, tbt: string, redirectUrl: string, cancelUrl: string) {
+  const checkoutHost = environment === 'production'
+    ? 'https://getsafepay.com/checkout/pay'
+    : 'https://sandbox.api.getsafepay.com/checkout/pay';
+  const params = new URLSearchParams({
+    tracker,
+    tbt,
+    environment,
+    source: 'hosted',
+    redirect_url: redirectUrl,
+    cancel_url: cancelUrl,
+  });
+  return `${checkoutHost}?${params.toString()}`;
+}
+
 
 const json = (res: any, status: number, body: Record<string, unknown>) =>
   res.status(status).setHeader('Cache-Control', 'no-store').json(body);
@@ -36,8 +64,7 @@ export default async function handler(req: any, res: any) {
   try {
     const environment = process.env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
     const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
-    const safepay = new Safepay(secret, { authType: 'secret', host });
-    const response = await safepay.reporter.payments.fetch(tracker);
+    const response = await safepayRequest(host, `/reporter/api/v1/payments/${encodeURIComponent(tracker)}`, secret, 'GET');
     const data = response?.data || {};
     const state = data?.tracker?.state || 'TRACKER_STARTED';
 
