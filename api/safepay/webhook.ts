@@ -42,7 +42,7 @@ export default async function handler(req: any, res: any) {
   if (event?.type !== 'payment.succeeded') return res.status(200).json({ received: true });
   const data = event.data || {};
   const tracker = typeof data.tracker === 'string' ? data.tracker : '';
-  if (!tracker || data.currency !== 'PKR' || !Number.isFinite(Number(data.amount))) {
+  if (!tracker || data.state !== 'TRACKER_ENDED' || data.currency !== 'PKR' || !Number.isFinite(Number(data.amount))) {
     return res.status(400).json({ error: 'Invalid payment event.' });
   }
 
