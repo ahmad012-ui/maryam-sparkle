@@ -555,89 +555,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </div>
                   </label>
 
-                  {/* EasyPaisa */}
-                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                    checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA
-                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
-                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="drawerPaymentMethod"
-                      value={PAYMENT_METHODS.EASYPAISA}
-                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.EASYPAISA}
-                      onChange={() => {
-                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.EASYPAISA });
-                        setPaymentErrors({});
-                      }}
-                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
-                    />
-                    <div className="flex-1">
-                      <span className="font-medium text-[#333333] flex items-center gap-1.5">
-                        <Smartphone className="w-3.5 h-3.5 text-[#2d5a61]" />
-                        EasyPaisa Mobile Account
-                      </span>
-                      <p className="text-[10px] text-[#666666] mt-0.5">
-                        Transfer to 0300-1234567 and attach payment receipt.
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* JazzCash */}
-                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                    checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH
-                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
-                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="drawerPaymentMethod"
-                      value={PAYMENT_METHODS.JAZZCASH}
-                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.JAZZCASH}
-                      onChange={() => {
-                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.JAZZCASH });
-                        setPaymentErrors({});
-                      }}
-                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
-                    />
-                    <div className="flex-1">
-                      <span className="font-medium text-[#333333] flex items-center gap-1.5">
-                        <Smartphone className="w-3.5 h-3.5 text-[#2d5a61]" />
-                        JazzCash Mobile Account
-                      </span>
-                      <p className="text-[10px] text-[#666666] mt-0.5">
-                        Transfer to 0300-7654321 and attach payment receipt.
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Direct Bank Transfer */}
-                  <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                    checkoutData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER
-                      ? 'border-[#2d5a61] bg-[#efe8dc]/40 ring-1 ring-[#2d5a61]/30'
-                      : 'border-[#e0d8c8] bg-white hover:bg-[#efe8dc]/20'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="drawerPaymentMethod"
-                      value={PAYMENT_METHODS.BANK_TRANSFER}
-                      checked={checkoutData.paymentMethod === PAYMENT_METHODS.BANK_TRANSFER}
-                      onChange={() => {
-                        setCheckoutData({ ...checkoutData, paymentMethod: PAYMENT_METHODS.BANK_TRANSFER });
-                        setPaymentErrors({});
-                      }}
-                      className="mt-0.5 text-[#2d5a61] focus:ring-[#2d5a61]"
-                    />
-                    <div className="flex-1">
-                      <span className="font-medium text-[#333333] flex items-center gap-1.5">
-                        <CreditCard className="w-3.5 h-3.5 text-[#2d5a61]" />
-                        Direct Bank Transfer (Meezan Bank)
-                      </span>
-                      <p className="text-[10px] text-[#666666] mt-0.5">
-                        Online transfer to Meezan Bank studio account.
-                      </p>
-                    </div>
-                  </label>
+                  <Link
+                    to="/checkout"
+                    onClick={onClose}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-[#2d5a61]/30 bg-[#efe8dc]/50 p-3 text-left transition-colors hover:bg-[#efe8dc]"
+                  >
+                    <span className="flex items-center gap-2 text-xs font-semibold text-[#2d5a61]">
+                      <CreditCard className="h-4 w-4" />
+                      Pay securely online with Safepay
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-[#2d5a61]" />
+                  </Link>
                 </div>
               </div>
 
