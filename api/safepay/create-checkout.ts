@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { env } from 'node:process';
 
 async function safepayRequest(host: string, path: string, secret: string, method: 'GET' | 'POST', body?: Record<string, unknown>) {
   const response = await fetch(`${host}${path}`, {
@@ -37,7 +38,7 @@ const json = (res: any, status: number, body: Record<string, unknown>) => {
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
-  const appUrl = (process.env.APP_URL || 'https://maryam-sparkle.vercel.app').replace(/\/+$/, '');
+  const appUrl = (env.APP_URL || 'https://maryam-sparkle.vercel.app').replace(/\/+$/, '');
   const origin = req.headers.origin;
   const requestHost = typeof req.headers.host === 'string' ? req.headers.host : '';
   const allowedOrigins = [appUrl, requestHost ? `https://${requestHost}` : '', requestHost ? `http://${requestHost}` : ''];
@@ -45,10 +46,10 @@ export default async function handler(req: any, res: any) {
     return json(res, 403, { error: 'Origin not allowed.' });
   }
 
-  const secret = process.env.SAFEPAY_SECRET_KEY;
-  const publicKey = process.env.SAFEPAY_API_KEY;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const secret = env.SAFEPAY_SECRET_KEY;
+  const publicKey = env.SAFEPAY_API_KEY;
+  const serviceRole = env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   if (!secret || !publicKey || !serviceRole || !supabaseUrl) {
     return json(res, 503, { error: 'Online payments are not configured yet. Please choose another payment method.' });
   }
@@ -78,7 +79,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const environment = process.env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+    const environment = env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
     const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
     
 
