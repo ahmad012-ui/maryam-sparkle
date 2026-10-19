@@ -40,7 +40,7 @@ export default async function handler(req: any, res: any) {
   const appUrl = (process.env.APP_URL || 'https://maryam-sparkle.vercel.app').replace(/\/+$/, '');
   const origin = req.headers.origin;
   const requestHost = typeof req.headers.host === 'string' ? req.headers.host : '';
-  const allowedOrigins = [appUrl, requestHost ? \`https://\${requestHost}\` : '', requestHost ? \`http://\${requestHost}\` : ''];
+  const allowedOrigins = [appUrl, requestHost ? `https://${requestHost}` : '', requestHost ? `http://${requestHost}` : ''];
   if (origin && !allowedOrigins.includes(origin)) {
     return json(res, 403, { error: 'Origin not allowed.' });
   }
