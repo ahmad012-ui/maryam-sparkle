@@ -280,6 +280,16 @@ function MainApp() {
     setCartItems([]);
   };
 
+  // Clear the cart only after the server verifies a successful Safepay payment.
+  useEffect(() => {
+    const handleSafepayPaymentConfirmed = () => {
+      setCartItems([]);
+      void cartService.clearCart().catch((err) => console.warn('Cart cleanup after Safepay payment failed:', err));
+    };
+    window.addEventListener('safepay-payment-confirmed', handleSafepayPaymentConfirmed);
+    return () => window.removeEventListener('safepay-payment-confirmed', handleSafepayPaymentConfirmed);
+  }, []);
+
   // Wishlist operations
   const handleToggleWishlist = async (product: Product) => {
     // Optimistic UI update
