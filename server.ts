@@ -79,7 +79,7 @@ BRAND AESTHETIC & PHILOSOPHY:
 
 STORE POLICIES & HELPFUL DETAILS:
 - Shipping: Flat Rs. 200 standard across Pakistan; FREE shipping on all orders over Rs. 3,000. Delivery arrives in 2–4 business days via TCS/Trax. Worldwide delivery takes 7–12 business days.
-- Payments: Cash on Delivery (COD) across Pakistan, JazzCash, EasyPaisa, and Direct Bank Transfer.
+- Payments: Cash on Delivery (COD) across Pakistan and secure online payments through Safepay when enabled.
 - Sizing: Standard bracelet sizes are Small (6.0 in / 15.2 cm), Medium (6.5 in / 16.5 cm), Large (7.0 in / 17.8 cm). Custom wrist measurements are handcrafted at NO extra charge! Customers can measure their wrist snugly with a strip of paper or tape.
 - Jewelry Care: Gently roll elastic bracelets over the wrist rather than stretching sharply. Keep away from direct perfumes, chlorine, and lotions. Store in our signature satin/velvet pouch.
 - Exchanges & Resizing: 7-day hassle-free exchange or resize policy.
