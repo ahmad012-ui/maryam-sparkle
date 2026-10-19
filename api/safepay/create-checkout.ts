@@ -1,5 +1,33 @@
-import Safepay from '@sfpy/node-core';
 import { createClient } from '@supabase/supabase-js';
+
+async function safepayRequest(host: string, path: string, secret: string, method: 'GET' | 'POST', body?: Record<string, unknown>) {
+  const response = await fetch(`${host}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-SFPY-MERCHANT-SECRET': secret },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
+    throw new Error(`Safepay API request failed (${response.status}).`);
+  }
+  return payload;
+}
+
+function buildCheckoutUrl(environment: 'sandbox' | 'production', tracker: string, tbt: string, redirectUrl: string, cancelUrl: string) {
+  const checkoutHost = environment === 'production'
+    ? 'https://getsafepay.com/checkout/pay'
+    : 'https://sandbox.api.getsafepay.com/checkout/pay';
+  const params = new URLSearchParams({
+    tracker,
+    tbt,
+    environment,
+    source: 'hosted',
+    redirect_url: redirectUrl,
+    cancel_url: cancelUrl,
+  });
+  return `${checkoutHost}?${params.toString()}`;
+}
+
 
 const json = (res: any, status: number, body: Record<string, unknown>) =>
   res.status(status).setHeader('Cache-Control', 'no-store').json(body);
@@ -48,24 +76,21 @@ export default async function handler(req: any, res: any) {
   try {
     const environment = process.env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
     const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
-    const safepay = new Safepay(secret, { authType: 'secret', host });
+    
 
     const existing = await admin.from('payments').select('transaction_reference').eq('order_id', order.id).eq('method', 'safepay').maybeSingle();
     if (existing.data?.transaction_reference?.startsWith('track_')) {
       // Create a fresh checkout token for the same pending tracker to support safe retries.
-      const auth = await safepay.auth.passport.create();
-      const checkoutUrl = safepay.checkouts.payment.create({
-        tracker: existing.data.transaction_reference,
-        tbt: auth.data,
-        environment,
-        source: 'hosted',
-        redirect_url: `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}`,
-        cancel_url: `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}&cancelled=1`,
-      });
+      const auth = await safepayRequest(host, '/client/passport/v1/token', secret, 'POST');
+      const tbt = typeof auth?.data === 'string' ? auth.data : '';
+      if (!tbt) throw new Error('Safepay did not return an authentication token.');
+      const checkoutUrl = buildCheckoutUrl(environment, existing.data.transaction_reference, tbt,
+        `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}`,
+        `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}&cancelled=1`);
       return json(res, 200, { checkoutUrl });
     }
 
-    const session = await safepay.payments.session.setup({
+    const session = await safepayRequest(host, '/order/payments/v3/', secret, 'POST', {
       merchant_api_key: publicKey,
       intent: 'CYBERSOURCE',
       mode: 'payment',
@@ -87,15 +112,12 @@ export default async function handler(req: any, res: any) {
       .eq('method', 'safepay');
     if (saveError) throw saveError;
 
-    const auth = await safepay.auth.passport.create();
-    const checkoutUrl = safepay.checkouts.payment.create({
-      tracker,
-      tbt: auth.data,
-      environment,
-      source: 'hosted',
-      redirect_url: `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}`,
-      cancel_url: `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}&cancelled=1`,
-    });
+    const auth = await safepayRequest(host, '/client/passport/v1/token', secret, 'POST');
+    const tbt = typeof auth?.data === 'string' ? auth.data : '';
+    if (!tbt) throw new Error('Safepay did not return an authentication token.');
+    const checkoutUrl = buildCheckoutUrl(environment, tracker, tbt,
+      `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}`,
+      `${appUrl}/payment-result?order=${encodeURIComponent(order.order_number)}&cancelled=1`);
     return json(res, 200, { checkoutUrl });
   } catch (error) {
     console.error('Safepay checkout initialization failed:', error);
