@@ -14,6 +14,7 @@ import { ProductDetailPage } from './pages/ProductDetailPage';
 import { CartPage } from './pages/CartPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage';
+import { PaymentResultPage } from './pages/PaymentResultPage';
 import { WishlistPage } from './pages/WishlistPage';
 import { SearchPage } from './pages/SearchPage';
 import { AccountPage } from './pages/AccountPage';
@@ -431,6 +432,10 @@ function MainApp() {
           <Route
             path="/order-confirmation"
             element={<OrderConfirmationPage />}
+          />
+          <Route
+            path="/payment-result"
+            element={<PaymentResultPage />}
           />
           <Route
             path="/wishlist"
