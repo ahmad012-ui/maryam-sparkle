@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { env } from 'node:process';
 
 async function safepayRequest(host: string, path: string, secret: string, method: 'GET' | 'POST', body?: Record<string, unknown>) {
   const response = await fetch(`${host}${path}`, {
@@ -20,9 +21,9 @@ const json = (res: any, status: number, body: Record<string, unknown>) => {
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
-  const secret = process.env.SAFEPAY_SECRET_KEY;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const secret = env.SAFEPAY_SECRET_KEY;
+  const serviceRole = env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   if (!secret || !serviceRole || !supabaseUrl) return json(res, 503, { error: 'Payment status is not configured.' });
 
   const orderNumber = typeof req.body?.orderNumber === 'string' ? req.body.orderNumber : '';
@@ -48,7 +49,7 @@ export default async function handler(req: any, res: any) {
   if (order.payment_status === 'paid' || payment.status === 'paid') return json(res, 200, { status: 'paid', orderNumber });
 
   try {
-    const environment = process.env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+    const environment = env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
     const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
     const response = await safepayRequest(host, `/reporter/api/v1/payments/${encodeURIComponent(tracker)}`, secret, 'GET');
     const data = response?.data || {};
