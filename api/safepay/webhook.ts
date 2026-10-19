@@ -12,11 +12,10 @@ async function readRawBody(req: any): Promise<Buffer> {
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end('Method not allowed');
 
-  const secret = process.env.SAFEPAY_SECRET_KEY;
   const webhookSecret = process.env.SAFEPAY_WEBHOOK_SECRET;
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  if (!secret || !webhookSecret || !serviceRole || !supabaseUrl) {
+  if (!webhookSecret || !serviceRole || !supabaseUrl) {
     return res.status(503).json({ error: 'Webhook is not configured.' });
   }
 
