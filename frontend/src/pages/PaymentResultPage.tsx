@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { SEO } from '../components/SEO';
 import { CheckCircle2, Clock3, ShieldCheck, XCircle, Loader2, ArrowRight } from 'lucide-react';
 
 type PaymentState = 'checking' | 'paid' | 'pending' | 'cancelled' | 'error';
@@ -75,6 +76,7 @@ export const PaymentResultPage: React.FC = () => {
 
   return (
     <main className="min-h-[70vh] bg-[#efe8dc] px-4 py-16 sm:py-24">
+      <SEO title="Payment status" description="Check the status of your Maryam Sparkle order payment." canonical="/payment-result" noindex />
       <section className="mx-auto max-w-xl rounded-3xl border border-[#e0d8c8] bg-[#fdfaf5] p-6 text-center shadow-sm sm:p-10">
         <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ${paid ? 'bg-emerald-100 text-emerald-700' : cancelled || state === 'error' ? 'bg-amber-100 text-amber-800' : 'bg-[#efe8dc] text-[#2d5a61]'}`}>
           {paid ? <CheckCircle2 className="h-8 w-8" /> : cancelled || state === 'error' ? <XCircle className="h-8 w-8" /> : pending ? <Loader2 className="h-8 w-8 animate-spin" /> : <Clock3 className="h-8 w-8" />}
