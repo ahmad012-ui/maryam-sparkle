@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /cart
+Disallow: /checkout
+Disallow: /payment-result
+Disallow: /order-confirmation
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /verify-otp
+Disallow: /reset-password
+
+Sitemap: https://maryam-sparkle.vercel.app/sitemap.xml
