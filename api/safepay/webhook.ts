@@ -26,10 +26,10 @@ export default async function handler(req: any, res: any) {
     const raw = await readRawBody(req);
     const signature = req.headers['x-sfpy-signature'];
     if (typeof signature !== 'string' || !signature) return res.status(400).send('Missing Safepay signature.');
-    const computed = createHmac('sha512', webhookSecret).update(raw).digest('hex');
+    const computed = createHmac('sha256', webhookSecret).update(raw).digest('hex');
     const supplied = signature.trim().toLowerCase();
     const expectedBuffer = Buffer.from(computed, 'hex');
-    const suppliedBuffer = /^[a-f0-9]{128}$/.test(supplied) ? Buffer.from(supplied, 'hex') : Buffer.alloc(0);
+    const suppliedBuffer = /^[a-f0-9]{64}$/.test(supplied) ? Buffer.from(supplied, 'hex') : Buffer.alloc(0);
     if (expectedBuffer.length !== suppliedBuffer.length || !timingSafeEqual(expectedBuffer, suppliedBuffer)) {
       throw new Error('Invalid signature');
     }
