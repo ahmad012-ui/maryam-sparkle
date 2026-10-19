@@ -8,7 +8,7 @@ async function safepayRequest(host: string, path: string, secret: string, method
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
+  if (!response.ok || payload?.ok === false || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
     throw new Error(`Safepay API request failed (${response.status}).`);
   }
   return payload;
