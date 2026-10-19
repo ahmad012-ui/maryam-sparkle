@@ -4,7 +4,7 @@ import { env } from 'node:process';
 async function safepayRequest(host: string, path: string, secret: string, method: 'GET' | 'POST', body?: Record<string, unknown>) {
   const response = await fetch(`${host}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-SFPY-API-KEY': secret },
+    headers: { 'Content-Type': 'application/json', 'X-SFPY-MERCHANT-SECRET': secret },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const payload = await response.json().catch(() => ({}));
