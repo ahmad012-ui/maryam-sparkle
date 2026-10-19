@@ -30,8 +30,7 @@
     "react-helmet-async": "^3.0.0",
     "react-router-dom": "^7.18.3",
     "three": "^0.186.1",
-    "vite": "^6.4.3",
-    "@sfpy/node-core": "^0.3.5"
+    "vite": "^6.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
