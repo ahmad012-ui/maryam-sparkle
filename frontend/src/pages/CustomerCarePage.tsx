@@ -272,8 +272,8 @@ export const CustomerCarePage: React.FC = () => {
 
               <div className="p-4 bg-[#efe8dc]/60 rounded-2xl border border-[#e0d8c8] space-y-2 text-xs text-[#444444]">
                 <p><strong>Timeline:</strong> 7 to 12 Business Days via DHL Express / EMS Tracked.</p>
-                <p><strong>Payment:</strong> International Visa / Mastercard or Western Union.</p>
-                <p><strong>Inquiries:</strong> WhatsApp us at <strong>+92 300 1234567</strong> for bespoke worldwide shipping quotes.</p>
+                <p><strong>Payment:</strong> Cash on Delivery or secure online payment through Safepay.</p>
+                <p><strong>Inquiries:</strong> Use our <Link to="/contact" className="underline hover:text-[#2d5a61]">contact form</Link> for shipping questions and bespoke-order quotes.</p>
               </div>
             </div>
 
@@ -342,9 +342,9 @@ export const CustomerCarePage: React.FC = () => {
                     1
                   </span>
                   <div>
-                    <h4 className="font-semibold text-xs md:text-sm text-[#333333]">Send a message on WhatsApp</h4>
+                    <h4 className="font-semibold text-xs md:text-sm text-[#333333]">Contact the support team</h4>
                     <p className="text-xs text-[#666666] mt-0.5">
-                      Message <strong>+92 300 1234567</strong> with your Order Number (e.g. MS-8291) and a quick photo of the piece.
+                      Use our <Link to="/contact" className="underline hover:text-[#2d5a61]">contact form</Link> and include your order number and a photo of the piece.
                     </p>
                   </div>
                 </div>
