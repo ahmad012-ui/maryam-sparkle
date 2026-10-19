@@ -109,7 +109,7 @@ export const SEO: React.FC<SEOProps> = ({
       description: DEFAULT_DESCRIPTION,
       image: DEFAULT_IMAGE,
       currenciesAccepted: 'PKR',
-      paymentAccepted: 'Cash on Delivery, Safepay, Bank Transfer, JazzCash, EasyPaisa',
+      paymentAccepted: 'Cash on Delivery, Safepay',
       priceRange: '₨₨',
       address: {
         '@type': 'PostalAddress',
