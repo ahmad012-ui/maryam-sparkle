@@ -46,7 +46,7 @@ export default async function handler(req: any, res: any) {
     .eq('transaction_reference', tracker)
     .maybeSingle();
   if (paymentError || !payment) return json(res, 403, { error: 'Payment reference does not match this order.' });
-  if (order.payment_status === 'paid' || payment.status === 'paid') return json(res, 200, { status: 'paid', orderNumber });
+  if (order.payment_status === 'paid') return json(res, 200, { status: 'paid', orderNumber });
 
   try {
     const environment = env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
