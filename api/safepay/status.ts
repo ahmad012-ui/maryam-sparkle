@@ -8,7 +8,7 @@ async function safepayRequest(host: string, path: string, secret: string, method
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
+  if (!response.ok || payload?.ok === false || (Array.isArray(payload?.status?.errors) && payload.status.errors.length > 0)) {
     throw new Error(`Safepay API request failed (${response.status}).`);
   }
   return payload;
@@ -53,10 +53,12 @@ export default async function handler(req: any, res: any) {
     const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
     const response = await safepayRequest(host, `/reporter/api/v1/payments/${encodeURIComponent(tracker)}`, secret, 'GET');
     const data = response?.data || {};
-    const state = data?.tracker?.state || 'TRACKER_STARTED';
+    // The raw Reporter API returns the tracker as data; SDK examples wrap it as data.tracker.
+    const trackerData = data?.tracker || data;
+    const state = trackerData?.state || 'TRACKER_STARTED';
 
     if (state === 'TRACKER_ENDED') {
-      const baseAmount = data?.tracker?.purchase_totals?.base_amount;
+      const baseAmount = trackerData?.purchase_totals?.base_amount;
       const actualAmount = Number(baseAmount?.amount);
       if (baseAmount?.currency !== 'PKR' || !Number.isFinite(actualAmount) || actualAmount !== Math.round(Number(order.total) * 100)) {
         console.error('Safepay status amount mismatch for order:', orderNumber);
