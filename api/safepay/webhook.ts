@@ -1,4 +1,4 @@
-import Safepay from '@sfpy/node-core';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 export const config = { api: { bodyParser: false } };
@@ -25,10 +25,14 @@ export default async function handler(req: any, res: any) {
     const raw = await readRawBody(req);
     const signature = req.headers['x-sfpy-signature'];
     if (typeof signature !== 'string' || !signature) return res.status(400).send('Missing Safepay signature.');
-    const environment = process.env.SAFEPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
-    const host = environment === 'production' ? 'https://api.getsafepay.com' : 'https://sandbox.api.getsafepay.com';
-    const safepay = new Safepay(secret, { authType: 'secret', host });
-    event = safepay.webhooks.constructEvent(raw, signature, webhookSecret);
+    const computed = createHmac('sha512', webhookSecret).update(raw).digest('hex');
+    const supplied = signature.trim().toLowerCase();
+    const expectedBuffer = Buffer.from(computed, 'hex');
+    const suppliedBuffer = /^[a-f0-9]{128}$/.test(supplied) ? Buffer.from(supplied, 'hex') : Buffer.alloc(0);
+    if (expectedBuffer.length !== suppliedBuffer.length || !timingSafeEqual(expectedBuffer, suppliedBuffer)) {
+      throw new Error('Invalid signature');
+    }
+    event = JSON.parse(raw.toString('utf8'));
   } catch (error) {
     console.warn('Safepay webhook signature validation failed.');
     return res.status(400).send('Invalid webhook signature.');
