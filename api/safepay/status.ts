@@ -13,24 +13,10 @@ async function safepayRequest(host: string, path: string, secret: string, method
   return payload;
 }
 
-function buildCheckoutUrl(environment: 'sandbox' | 'production', tracker: string, tbt: string, redirectUrl: string, cancelUrl: string) {
-  const checkoutHost = environment === 'production'
-    ? 'https://getsafepay.com/checkout/pay'
-    : 'https://sandbox.api.getsafepay.com/checkout/pay';
-  const params = new URLSearchParams({
-    tracker,
-    tbt,
-    environment,
-    source: 'hosted',
-    redirect_url: redirectUrl,
-    cancel_url: cancelUrl,
-  });
-  return `${checkoutHost}?${params.toString()}`;
-}
-
-
-const json = (res: any, status: number, body: Record<string, unknown>) =>
-  res.status(status).setHeader('Cache-Control', 'no-store').json(body);
+const json = (res: any, status: number, body: Record<string, unknown>) => {
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(status).json(body);
+};
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
