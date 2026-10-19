@@ -88,14 +88,14 @@ export interface OrderTimelineStep {
   current: boolean;
 }
 
-export type PaymentMethodId = 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer' | 'card';
+export type PaymentMethodId = 'cod' | 'easypaisa' | 'jazzcash' | 'bank_transfer' | 'safepay';
 
 export const PAYMENT_METHODS = {
   COD: 'cod',
   EASYPAISA: 'easypaisa',
   JAZZCASH: 'jazzcash',
   BANK_TRANSFER: 'bank_transfer',
-  CARD: 'card',
+  SAFEPAY: 'safepay',
 } as const;
 
 export const ALLOWED_PAYMENT_METHODS: readonly PaymentMethodId[] = [
@@ -103,7 +103,7 @@ export const ALLOWED_PAYMENT_METHODS: readonly PaymentMethodId[] = [
   PAYMENT_METHODS.EASYPAISA,
   PAYMENT_METHODS.JAZZCASH,
   PAYMENT_METHODS.BANK_TRANSFER,
-  PAYMENT_METHODS.CARD,
+  PAYMENT_METHODS.SAFEPAY,
 ] as const;
 
 export interface PaymentMethodOption {
