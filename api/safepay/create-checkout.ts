@@ -20,7 +20,7 @@ function buildCheckoutUrl(environment: 'sandbox' | 'production', tracker: string
   const params = new URLSearchParams({
     tracker,
     tbt,
-    environment,
+    env: environment,
     source: 'hosted',
     redirect_url: redirectUrl,
     cancel_url: cancelUrl,
@@ -35,7 +35,7 @@ const json = (res: any, status: number, body: Record<string, unknown>) =>
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed.' });
 
-  const appUrl = process.env.APP_URL || 'https://maryam-sparkle.vercel.app';
+  const appUrl = (process.env.APP_URL || 'https://maryam-sparkle.vercel.app').replace(/\\/+$/, '');
   const origin = req.headers.origin;
   if (origin && origin !== appUrl && origin !== appUrl.replace(/\/$/, '')) {
     return json(res, 403, { error: 'Origin not allowed.' });
